@@ -1,0 +1,56 @@
+# Build output
+build/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+flacidal
+server
+tidal-to-spotify
+
+# Temp files
+diff.odt
+diff.txt
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+
+# Go
+*.test
+*.out
+go.work
+go.work.sum
+
+# Wails
+wails.json.bak
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Config (user-specific)
+# ~/.flacidal/ is the config directory, not tracked
+
+# Logs
+*.log
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Claude Code
+CLAUDE.md
