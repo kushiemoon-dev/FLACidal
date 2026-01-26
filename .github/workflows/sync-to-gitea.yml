@@ -17,12 +17,13 @@ jobs:
         env:
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_OWNER: ${{ secrets.GITEA_OWNER }}
         with:
           script: |
             const giteaUrl = process.env.GITEA_URL;
             const giteaToken = process.env.GITEA_TOKEN;
-            if (!giteaUrl || !giteaToken) { console.log("Secrets not set"); return; }
-            const owner = context.repo.owner;
+            const giteaOwner = process.env.GITEA_OWNER;
+            if (!giteaUrl || !giteaToken || !giteaOwner) { console.log("Secrets not set"); return; }
             const repo = context.repo.repo;
             const giteaApi = async (endpoint, method = "GET", body = null) => {
               const res = await fetch(giteaUrl + "/api/v1" + endpoint, {
@@ -33,42 +34,44 @@ jobs:
               if (!res.ok && res.status !== 404) throw new Error("Gitea API error: " + res.status);
               return res.status === 404 ? null : res.json();
             };
-            const giteaRepo = await giteaApi("/repos/" + owner + "/" + repo);
-            if (!giteaRepo) { console.log("Repo not found on Gitea"); return; }
+            const giteaRepo = await giteaApi("/repos/" + giteaOwner + "/" + repo);
+            if (!giteaRepo) { console.log("Repo " + giteaOwner + "/" + repo + " not found on Gitea"); return; }
             const action = context.payload.action;
             if (context.eventName === "issues" || (context.eventName === "issue_comment" && context.payload.issue)) {
               const issue = context.payload.issue;
-              const search = await giteaApi("/repos/" + owner + "/" + repo + "/issues?q=[GH%23" + issue.number + "]&type=issues&state=all");
+              const search = await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues?q=[GH%23" + issue.number + "]&type=issues&state=all");
               const existing = search ? search.find(i => i.title.includes("[GH#" + issue.number + "]")) : null;
               if (action === "created" && context.payload.comment) {
                 if (existing) {
                   const c = context.payload.comment;
-                  await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number + "/comments", "POST", { body: "**@" + c.user.login + "** [commented](" + c.html_url + "):\n\n" + c.body });
+                  await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number + "/comments", "POST", { body: "**@" + c.user.login + "** [commented](" + c.html_url + "):\n\n" + c.body });
                   console.log("Comment synced");
                 }
                 return;
               }
               const data = { title: "[GH#" + issue.number + "] " + issue.title, body: "> Synced from [GitHub #" + issue.number + "](" + issue.html_url + ")\n> Author: @" + issue.user.login + "\n\n" + (issue.body || "") };
               if (existing) {
-                if (action === "closed") await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "closed" });
-                else if (action === "reopened") await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "open" });
-                else await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", data);
-                console.log("Updated issue");
+                if (action === "closed") await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "closed" });
+                else if (action === "reopened") await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "open" });
+                else await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", data);
+                console.log("Updated issue #" + existing.number);
               } else if (action === "opened") {
-                await giteaApi("/repos/" + owner + "/" + repo + "/issues", "POST", data);
-                console.log("Created issue");
+                const created = await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues", "POST", data);
+                console.log("Created issue #" + created.number);
               }
             }
             if (context.eventName === "pull_request") {
               const pr = context.payload.pull_request;
-              const search = await giteaApi("/repos/" + owner + "/" + repo + "/issues?q=[PR%23" + pr.number + "]&type=issues&state=all");
+              const search = await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues?q=[PR%23" + pr.number + "]&type=issues&state=all");
               const existing = search ? search.find(i => i.title.includes("[PR#" + pr.number + "]")) : null;
               const data = { title: "[PR#" + pr.number + "] " + pr.title, body: "> PR from [GitHub #" + pr.number + "](" + pr.html_url + ")\n> Author: @" + pr.user.login + "\n> Branch: " + pr.head.ref + " -> " + pr.base.ref + "\n\n" + (pr.body || "") };
               if (existing) {
-                if (action === "closed") await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "closed", body: data.body + (pr.merged ? "\n\n---\nMerged" : "\n\n---\nClosed") });
-                else if (action === "reopened") await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "open" });
-                else await giteaApi("/repos/" + owner + "/" + repo + "/issues/" + existing.number, "PATCH", data);
+                if (action === "closed") await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "closed", body: data.body + (pr.merged ? "\n\n---\nMerged" : "\n\n---\nClosed") });
+                else if (action === "reopened") await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", { state: "open" });
+                else await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues/" + existing.number, "PATCH", data);
+                console.log("Updated PR issue");
               } else if (action === "opened") {
-                await giteaApi("/repos/" + owner + "/" + repo + "/issues", "POST", data);
+                const created = await giteaApi("/repos/" + giteaOwner + "/" + repo + "/issues", "POST", data);
+                console.log("Created issue for PR #" + created.number);
               }
             }
