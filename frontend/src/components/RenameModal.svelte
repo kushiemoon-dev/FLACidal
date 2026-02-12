@@ -2,9 +2,7 @@
   import { onMount } from 'svelte';
   import { GetRenameTemplates, PreviewRename, RenameFiles } from '../../wailsjs/go/main/App.js';
 
-  export let files: string[];
-  export let onClose: () => void;
-  export let onComplete: () => void;
+  let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
   interface Template {
     name: string;
@@ -20,17 +18,17 @@
     error?: string;
   }
 
-  let templates: Template[] = [];
-  let selectedTemplate = '';
-  let customTemplate = '';
-  let useCustom = false;
-  let previews: Preview[] = [];
-  let isLoading = true;
-  let isRenaming = false;
-  let error = '';
+  let templates: Template[] = $state([]);
+  let selectedTemplate = $state('');
+  let customTemplate = $state('');
+  let useCustom = $state(false);
+  let previews: Preview[] = $state([]);
+  let isLoading = $state(true);
+  let isRenaming = $state(false);
+  let error = $state('');
 
-  $: activeTemplate = useCustom ? customTemplate : selectedTemplate;
-  $: canRename = previews.length > 0 && !previews.some(p => p.hasError) && activeTemplate;
+  let activeTemplate = $derived(useCustom ? customTemplate : selectedTemplate);
+  let canRename = $derived(previews.length > 0 && !previews.some(p => p.hasError) && activeTemplate);
 
   onMount(async () => {
     await loadTemplates();
@@ -108,14 +106,14 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="dialog" aria-modal="true">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
       <h2>Rename Files</h2>
       <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''} selected</span>
-      <button class="close-btn" on:click={onClose}>
+      <button class="close-btn" onclick={onClose} aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -142,7 +140,7 @@
                   name="template"
                   value={tmpl.template}
                   bind:group={selectedTemplate}
-                  on:change={() => { useCustom = false; handleTemplateChange(); }}
+                  onchange={() => { useCustom = false; handleTemplateChange(); }}
                 />
                 <span class="template-name">{tmpl.name}</span>
                 <span class="template-pattern">{tmpl.template}</span>
@@ -155,7 +153,7 @@
                 name="template"
                 value="custom"
                 checked={useCustom}
-                on:change={() => { useCustom = true; handleTemplateChange(); }}
+                onchange={() => { useCustom = true; handleTemplateChange(); }}
               />
               <span class="template-name">Custom</span>
               {#if useCustom}
@@ -164,7 +162,7 @@
                   class="custom-input"
                   placeholder="e.g. {'{'}artist{'}'} - {'{'}title{'}'}"
                   bind:value={customTemplate}
-                  on:input={handleCustomTemplateInput}
+                  oninput={handleCustomTemplateInput}
                 />
               {/if}
             </label>
@@ -224,8 +222,8 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" on:click={onClose}>Cancel</button>
-        <button class="btn-primary" on:click={handleRename} disabled={!canRename || isRenaming}>
+        <button class="btn-secondary" onclick={onClose}>Cancel</button>
+        <button class="btn-primary" onclick={handleRename} disabled={!canRename || isRenaming}>
           {#if isRenaming}
             <span class="spinner"></span>
             Renaming...
