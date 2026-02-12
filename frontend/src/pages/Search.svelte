@@ -82,13 +82,13 @@
       <input
         type="text"
         bind:value={searchQuery}
-        on:keypress={handleKeyPress}
+        onkeypress={handleKeyPress}
         placeholder="Search for tracks, albums, artists..."
         class="search-input"
       />
       <button
         class="search-btn"
-        on:click={handleSearch}
+        onclick={handleSearch}
         disabled={isSearching || !searchQuery.trim()}
       >
         {#if isSearching}
@@ -116,7 +116,7 @@
   {:else if searchResults.length > 0}
     <div class="results-header">
       <span class="results-count">{searchResults.length} results</span>
-      <button class="download-all-btn" on:click={downloadAll}>
+      <button class="download-all-btn" onclick={downloadAll}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -143,7 +143,7 @@
           <span class="track-duration">{formatDuration(track.duration)}</span>
           <button
             class="track-download-btn"
-            on:click={() => downloadTrack(track)}
+            onclick={() => downloadTrack(track)}
             title="Download"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
