@@ -117,7 +117,7 @@
 
   <div class="main-content">
     {#if activePage === 'home'}
-      <Home initialContent={refetchedContent} on:contentCleared={() => refetchedContent = null} />
+      <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
     {:else if activePage === 'search'}
       <Search />
     {:else if activePage === 'queue'}
