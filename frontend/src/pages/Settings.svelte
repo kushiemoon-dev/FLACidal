@@ -13,10 +13,11 @@
     ResetToDefaults
   } from '../../wailsjs/go/main/App.js';
 
-  let config = {
+  let config = $state({
     downloadFolder: '',
     concurrentDownloads: 4,
     embedCover: true,
+    saveCoverFile: true,
     fileNameFormat: '{artist} - {title}',
     theme: 'system' as ThemeMode,
     accentColor: '#f472b6',
@@ -24,20 +25,22 @@
     soundVolume: 70,
     embedLyrics: false,
     preferSyncedLyrics: true,
+    autoAnalyze: false,
     tidalEnabled: true,
     qobuzEnabled: false,
     qobuzAppId: '',
     qobuzAppSecret: '',
     qobuzAuthToken: '',
     preferredSource: 'tidal'
-  };
-  let isSaving = false;
-  let saveMessage = '';
-  let showResetConfirm = false;
-  let isResetting = false;
+  });
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let showResetConfirm = $state(false);
+  let isResetting = $state(false);
 
-  // Update audio settings reactively
-  $: updateAudioSettings(config.soundEffects, config.soundVolume);
+  $effect(() => {
+    updateAudioSettings(config.soundEffects, config.soundVolume);
+  });
 
   function handleThemeChange(event: Event) {
     const select = event.target as HTMLSelectElement;
@@ -83,7 +86,9 @@
       const opts = await GetDownloadOptions();
       if (opts) {
         config.embedCover = opts.embedCover !== false;
+        config.saveCoverFile = opts.saveCoverFile !== false;
         config.fileNameFormat = opts.fileNameFormat || '{artist} - {title}';
+        config.autoAnalyze = opts.autoAnalyze || false;
       }
     } catch (error) {
       console.error('Error loading config:', error);
@@ -117,11 +122,13 @@
         downloadFolder: config.downloadFolder,
         concurrentDownloads: config.concurrentDownloads,
         embedCover: config.embedCover,
+        saveCoverFile: config.saveCoverFile,
         fileNameFormat: config.fileNameFormat,
         soundEffects: config.soundEffects,
         soundVolume: config.soundVolume,
         embedLyrics: config.embedLyrics,
         preferSyncedLyrics: config.preferSyncedLyrics,
+        autoAnalyze: config.autoAnalyze,
         tidalEnabled: config.tidalEnabled,
         qobuzEnabled: config.qobuzEnabled,
         qobuzAppId: config.qobuzAppId,
@@ -135,7 +142,9 @@
         'LOSSLESS',
         config.fileNameFormat,
         false,
-        config.embedCover
+        config.embedCover,
+        config.saveCoverFile,
+        config.autoAnalyze
       );
       saveMessage = 'Settings saved!';
       setTimeout(() => saveMessage = '', 3000);
@@ -154,6 +163,7 @@
       if (result) {
         config.concurrentDownloads = result.concurrentDownloads || 4;
         config.embedCover = result.embedCover !== false;
+        config.saveCoverFile = result.saveCoverFile !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
@@ -161,6 +171,7 @@
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
         config.preferSyncedLyrics = result.preferSyncedLyrics !== false;
+        config.autoAnalyze = result.autoAnalyze || false;
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
         config.preferredSource = result.preferredSource || 'tidal';
@@ -197,7 +208,7 @@
           <span class="setting-desc">Choose your preferred color scheme</span>
         </div>
         <div class="setting-control">
-          <select id="theme" value={config.theme} on:change={handleThemeChange} class="select-input">
+          <select id="theme" value={config.theme} onchange={handleThemeChange} class="select-input">
             <option value="system">System</option>
             <option value="dark">Dark</option>
             <option value="light">Light</option>
@@ -217,7 +228,7 @@
               class:active={config.accentColor === preset.color}
               style="background-color: {preset.color}"
               title={preset.name}
-              on:click={() => handleAccentColorChange(preset.color)}
+              onclick={() => handleAccentColorChange(preset.color)}
             ></button>
           {/each}
         </div>
@@ -233,7 +244,7 @@
             <input type="checkbox" bind:checked={config.soundEffects} />
             <span class="toggle-slider"></span>
           </label>
-          <button class="test-sound-btn" on:click={testSound} title="Test sound">
+          <button class="test-sound-btn" onclick={testSound} title="Test sound">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -281,7 +292,7 @@
             placeholder="Select a folder..."
             class="folder-input"
           />
-          <button class="browse-btn" on:click={selectFolder}>
+          <button class="browse-btn" onclick={selectFolder}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
@@ -327,6 +338,19 @@
 
       <div class="setting-item">
         <div class="setting-info">
+          <label for="save-cover-file">Save Cover as File</label>
+          <span class="setting-desc">Save album artwork as .jpg file next to each track (for iPod compatibility)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.saveCoverFile} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
           <label for="file-naming">File Naming</label>
           <span class="setting-desc">Template for downloaded file names</span>
         </div>
@@ -338,6 +362,33 @@
             <option value={'{track}. {artist} - {title}'}>{'{track}. {artist} - {title}'}</option>
           </select>
         </div>
+      </div>
+    </section>
+
+    <!-- Quality Verification Settings -->
+    <section class="settings-section">
+      <h2>Quality Verification</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-analyze">Auto-analyze Downloads</label>
+          <span class="setting-desc">Automatically analyze quality after download to detect upscaled files</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoAnalyze} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="quality-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>When enabled, downloaded files are analyzed to detect if they may be upscaled from lossy sources. Quality warnings will appear in the Terminal log.</span>
       </div>
     </section>
 
@@ -515,7 +566,7 @@
     {/if}
     <button
       class="reset-btn"
-      on:click={() => showResetConfirm = true}
+      onclick={() => showResetConfirm = true}
       disabled={isResetting}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -526,7 +577,7 @@
     </button>
     <button
       class="save-btn"
-      on:click={saveConfig}
+      onclick={saveConfig}
       disabled={isSaving}
     >
       {#if isSaving}
@@ -546,8 +597,8 @@
 
 <!-- Reset Confirmation Modal -->
 {#if showResetConfirm}
-  <div class="modal-overlay" on:click={() => showResetConfirm = false} on:keydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true">
-    <div class="modal" on:click|stopPropagation on:keydown|stopPropagation role="document">
+  <div class="modal-overlay" onclick={() => showResetConfirm = false} onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true" tabindex="-1">
+    <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
       <div class="modal-icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -557,10 +608,10 @@
       <h3>Reset to Defaults?</h3>
       <p>This will reset all settings to their default values. Your download folder will be preserved.</p>
       <div class="modal-actions">
-        <button class="modal-btn cancel" on:click={() => showResetConfirm = false}>
+        <button class="modal-btn cancel" onclick={() => showResetConfirm = false}>
           Cancel
         </button>
-        <button class="modal-btn confirm" on:click={handleReset} disabled={isResetting}>
+        <button class="modal-btn confirm" onclick={handleReset} disabled={isResetting}>
           {#if isResetting}
             Resetting...
           {:else}
@@ -1186,6 +1237,25 @@
 
   .source-info svg {
     color: #22c55e;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .quality-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #888;
+    margin-top: 8px;
+  }
+
+  .quality-info svg {
+    color: #f59e0b;
     flex-shrink: 0;
     margin-top: 1px;
   }

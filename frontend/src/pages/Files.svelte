@@ -17,21 +17,21 @@
     album: string;
   }
 
-  let files: DownloadedFile[] = [];
-  let isLoading = true;
-  let sortBy: 'name' | 'date' | 'size' = 'date';
-  let sortOrder: 'asc' | 'desc' = 'desc';
-  let metadataFilePath: string | null = null;
-  let selectedFiles: Set<string> = new Set();
-  let showRenameModal = false;
-  let showConvertModal = false;
-  let showAnalysisModal = false;
-  let converterAvailable = false;
-  let isFetchingLyrics = false;
-  let lyricsResults: { success: number; failed: number } | null = null;
+  let files: DownloadedFile[] = $state([]);
+  let isLoading = $state(true);
+  let sortBy: 'name' | 'date' | 'size' = $state('date');
+  let sortOrder: 'asc' | 'desc' = $state('desc');
+  let metadataFilePath: string | null = $state(null);
+  let selectedFiles: Set<string> = $state(new Set());
+  let showRenameModal = $state(false);
+  let showConvertModal = $state(false);
+  let showAnalysisModal = $state(false);
+  let converterAvailable = $state(false);
+  let isFetchingLyrics = $state(false);
+  let lyricsResults: { success: number; failed: number } | null = $state(null);
 
-  $: allSelected = files.length > 0 && selectedFiles.size === files.length;
-  $: someSelected = selectedFiles.size > 0;
+  let allSelected = $derived(files.length > 0 && selectedFiles.size === files.length);
+  let someSelected = $derived(selectedFiles.size > 0);
 
   function toggleSelectAll() {
     if (allSelected) {
@@ -173,7 +173,7 @@
     }
   }
 
-  $: sortedFiles = [...files].sort((a, b) => {
+  let sortedFiles = $derived([...files].sort((a, b) => {
     let comparison = 0;
     switch (sortBy) {
       case 'name':
@@ -187,7 +187,7 @@
         break;
     }
     return sortOrder === 'asc' ? comparison : -comparison;
-  });
+  }));
 </script>
 
 <div class="files-page">
@@ -199,14 +199,14 @@
     <div class="header-actions">
       {#if someSelected}
         <span class="selection-count">{selectedFiles.size} selected</span>
-        <button class="action-btn" on:click={clearSelection}>
+        <button class="action-btn" onclick={clearSelection}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
           Clear
         </button>
-        <button class="action-btn" on:click={() => showAnalysisModal = true} title="Analyze quality">
+        <button class="action-btn" onclick={() => showAnalysisModal = true} title="Analyze quality">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
@@ -214,7 +214,7 @@
         </button>
         <button
           class="action-btn"
-          on:click={handleFetchLyrics}
+          onclick={handleFetchLyrics}
           disabled={isFetchingLyrics}
           title="Fetch and embed lyrics"
         >
@@ -230,7 +230,7 @@
           {/if}
         </button>
         {#if converterAvailable}
-          <button class="action-btn" on:click={() => showConvertModal = true} title="Convert to lossy format">
+          <button class="action-btn" onclick={() => showConvertModal = true} title="Convert to lossy format">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
@@ -239,7 +239,7 @@
             Convert
           </button>
         {/if}
-        <button class="action-btn primary" on:click={() => showRenameModal = true}>
+        <button class="action-btn primary" onclick={() => showRenameModal = true}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -247,7 +247,7 @@
           Rename
         </button>
       {:else}
-        <button class="action-btn" on:click={loadFiles}>
+        <button class="action-btn" onclick={loadFiles}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 2v6h-6"/>
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -256,7 +256,7 @@
           </svg>
           Refresh
         </button>
-        <button class="action-btn primary" on:click={openFolder}>
+        <button class="action-btn primary" onclick={openFolder}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
@@ -302,7 +302,7 @@
     <div class="files-table">
       <div class="table-header">
         <label class="th checkbox-col">
-          <input type="checkbox" checked={allSelected} on:change={toggleSelectAll} />
+          <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
           <span class="custom-checkbox" class:checked={allSelected} class:indeterminate={someSelected && !allSelected}>
             {#if allSelected}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -315,7 +315,7 @@
             {/if}
           </span>
         </label>
-        <button class="th sortable" on:click={() => sortFiles('name')}>
+        <button class="th sortable" onclick={() => sortFiles('name')}>
           Name
           {#if sortBy === 'name'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -329,7 +329,7 @@
         </button>
         <span class="th">Artist</span>
         <span class="th">Album</span>
-        <button class="th sortable" on:click={() => sortFiles('size')}>
+        <button class="th sortable" onclick={() => sortFiles('size')}>
           Size
           {#if sortBy === 'size'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -341,7 +341,7 @@
             </svg>
           {/if}
         </button>
-        <button class="th sortable" on:click={() => sortFiles('date')}>
+        <button class="th sortable" onclick={() => sortFiles('date')}>
           Date
           {#if sortBy === 'date'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -360,7 +360,7 @@
         {#each sortedFiles as file}
           <div class="table-row" class:selected={selectedFiles.has(file.path)}>
             <label class="cell checkbox-col">
-              <input type="checkbox" checked={selectedFiles.has(file.path)} on:change={() => toggleSelect(file.path)} />
+              <input type="checkbox" checked={selectedFiles.has(file.path)} onchange={() => toggleSelect(file.path)} />
               <span class="custom-checkbox" class:checked={selectedFiles.has(file.path)}>
                 {#if selectedFiles.has(file.path)}
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -387,7 +387,7 @@
             <div class="cell actions">
               <button
                 class="file-btn info"
-                on:click={() => metadataFilePath = file.path}
+                onclick={() => metadataFilePath = file.path}
                 title="View metadata"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -398,7 +398,7 @@
               </button>
               <button
                 class="file-btn"
-                on:click={() => openInFileManager(file.path)}
+                onclick={() => openInFileManager(file.path)}
                 title="Show in folder"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -407,7 +407,7 @@
               </button>
               <button
                 class="file-btn danger"
-                on:click={() => deleteFileHandler(file.path)}
+                onclick={() => deleteFileHandler(file.path)}
                 title="Delete"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -2,9 +2,8 @@
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
   import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads } from '../../wailsjs/go/main/App.js';
 
-  // Reactive access to stores
-  $: queue = $queueStore;
-  $: folder = $downloadFolder;
+  let queue = $derived($queueStore);
+  let folder = $derived($downloadFolder);
 
   function getStatusClass(status: string) {
     switch (status) {
@@ -122,7 +121,7 @@
       <button
         class="action-btn pause-btn"
         class:paused={$queuePaused}
-        on:click={togglePause}
+        onclick={togglePause}
         disabled={$queueStats.pending === 0 && $queueStats.downloading === 0 && !$queuePaused}
       >
         {#if $queuePaused}
@@ -138,7 +137,7 @@
           Pause
         {/if}
       </button>
-      <button class="action-btn retry-all" on:click={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
+      <button class="action-btn retry-all" onclick={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 2v6h-6"/>
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -147,13 +146,13 @@
         </svg>
         Retry Failed ({$queueStats.failed})
       </button>
-      <button class="action-btn" on:click={clearCompleted} disabled={$queueStats.completed === 0}>
+      <button class="action-btn" onclick={clearCompleted} disabled={$queueStats.completed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
         Clear Completed
       </button>
-      <button class="action-btn" on:click={clearFailed} disabled={$queueStats.failed === 0}>
+      <button class="action-btn" onclick={clearFailed} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="15" y1="9" x2="9" y2="15"/>
@@ -161,7 +160,7 @@
         </svg>
         Clear Failed
       </button>
-      <button class="action-btn danger" on:click={clearAll} disabled={$queueStats.total === 0}>
+      <button class="action-btn danger" onclick={clearAll} disabled={$queueStats.total === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -224,7 +223,7 @@
             {#if item.status === 'downloading'}
               <button
                 class="item-btn cancel"
-                on:click={() => cancelDownload(item.trackId)}
+                onclick={() => cancelDownload(item.trackId)}
                 title="Cancel"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -235,7 +234,7 @@
             {#if item.status === 'error'}
               <button
                 class="item-btn retry"
-                on:click={() => retryFailed(item.trackId)}
+                onclick={() => retryFailed(item.trackId)}
                 title="Retry"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -248,7 +247,7 @@
             {/if}
             <button
               class="item-btn remove"
-              on:click={() => removeItem(item.trackId)}
+              onclick={() => removeItem(item.trackId)}
               title="Remove"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
