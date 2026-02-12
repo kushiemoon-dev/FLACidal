@@ -2,8 +2,7 @@
   import { onMount } from 'svelte';
   import { AnalyzeMultiple } from '../../wailsjs/go/main/App.js';
 
-  export let files: string[];
-  export let onClose: () => void;
+  let { files, onClose }: { files: string[]; onClose: () => void } = $props();
 
   interface AnalysisResult {
     filePath: string;
@@ -19,17 +18,17 @@
     bitDepth: number;
   }
 
-  let results: AnalysisResult[] = [];
-  let isAnalyzing = true;
-  let error = '';
+  let results: AnalysisResult[] = $state([]);
+  let isAnalyzing = $state(true);
+  let error = $state('');
 
-  $: summary = {
+  let summary = $derived({
     total: results.length,
     lossless: results.filter(r => r.verdict === 'lossless').length,
     likelyUpscaled: results.filter(r => r.verdict === 'likely_upscaled').length,
     upscaled: results.filter(r => r.verdict === 'upscaled').length,
     unknown: results.filter(r => r.verdict === 'unknown' || r.verdict === 'error').length
-  };
+  });
 
   onMount(async () => {
     await analyzeFiles();
@@ -86,14 +85,14 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="dialog" aria-modal="true">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
       <h2>Quality Analysis</h2>
       <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-      <button class="close-btn" on:click={onClose} disabled={isAnalyzing}>
+      <button class="close-btn" onclick={onClose} disabled={isAnalyzing} aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -218,7 +217,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-primary" on:click={onClose}>Close</button>
+        <button class="btn-primary" onclick={onClose}>Close</button>
       </div>
     {/if}
   </div>
