@@ -1,7 +1,9 @@
 <script lang="ts">
-  export let activePage: string = 'home';
-  export let onNavigate: (page: string) => void = () => {};
-  export let queueCount: number = 0;
+  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0 }: {
+    activePage?: string;
+    onNavigate?: (page: string) => void;
+    queueCount?: number;
+  } = $props();
 
   const navItems = [
     { id: 'home', label: 'Home', icon: 'home' },
@@ -37,7 +39,7 @@
       <button
         class="nav-item"
         class:active={activePage === item.id}
-        on:click={() => onNavigate(item.id)}
+        onclick={() => onNavigate(item.id)}
         title={item.label}
       >
         {#if item.icon === 'home'}
@@ -79,7 +81,7 @@
       <button
         class="nav-item"
         class:active={activePage === item.id}
-        on:click={() => onNavigate(item.id)}
+        onclick={() => onNavigate(item.id)}
         title={item.label}
       >
         {#if item.icon === 'terminal'}
