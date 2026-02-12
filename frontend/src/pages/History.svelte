@@ -14,16 +14,15 @@
     createdAt: string;
   }
 
-  let records: DownloadRecord[] = [];
-  let total = 0;
-  let isLoading = true;
-  let searchQuery = '';
-  let contentTypeFilter = '';
-  let currentPage = 1;
+  let records: DownloadRecord[] = $state([]);
+  let total = $state(0);
+  let isLoading = $state(true);
+  let searchQuery = $state('');
+  let contentTypeFilter = $state('');
+  let currentPage = $state(1);
   const pageSize = 20;
 
-  // Export function for triggering refetch from parent
-  export let onRefetch: (content: any) => void = () => {};
+  let { onRefetch = (content: any) => {} }: { onRefetch?: (content: any) => void } = $props();
 
   onMount(async () => {
     await loadHistory();
@@ -135,7 +134,7 @@
     }
   }
 
-  $: totalPages = Math.ceil(total / pageSize);
+  let totalPages = $derived(Math.ceil(total / pageSize));
 </script>
 
 <div class="history-page">
@@ -145,7 +144,7 @@
       <p class="record-count">{total} records</p>
     </div>
     <div class="header-actions">
-      <button class="action-btn" on:click={loadHistory}>
+      <button class="action-btn" onclick={loadHistory}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 2v6h-6"/>
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -155,7 +154,7 @@
         Refresh
       </button>
       {#if records.length > 0}
-        <button class="action-btn danger" on:click={handleClearAll}>
+        <button class="action-btn danger" onclick={handleClearAll}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 6h18"/>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -177,10 +176,10 @@
         type="text"
         placeholder="Search by name..."
         bind:value={searchQuery}
-        on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+        onkeydown={(e) => e.key === 'Enter' && handleSearch()}
       />
       {#if searchQuery}
-        <button class="clear-search" on:click={() => { searchQuery = ''; handleSearch(); }}>
+        <button class="clear-search" onclick={() => { searchQuery = ''; handleSearch(); }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -189,7 +188,7 @@
       {/if}
     </div>
 
-    <select bind:value={contentTypeFilter} on:change={handleFilterChange}>
+    <select bind:value={contentTypeFilter} onchange={handleFilterChange}>
       <option value="">All Types</option>
       <option value="playlist">Playlists</option>
       <option value="album">Albums</option>
@@ -266,7 +265,7 @@
             <div class="cell actions">
               <button
                 class="action-icon-btn primary"
-                on:click={() => handleRefetch(record)}
+                onclick={() => handleRefetch(record)}
                 title="Re-download"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -277,7 +276,7 @@
               </button>
               <button
                 class="action-icon-btn danger"
-                on:click={() => handleDelete(record)}
+                onclick={() => handleDelete(record)}
                 title="Delete from history"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -294,14 +293,14 @@
 
     {#if totalPages > 1}
       <div class="pagination">
-        <button class="page-btn" on:click={prevPage} disabled={currentPage === 1}>
+        <button class="page-btn" onclick={prevPage} disabled={currentPage === 1}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
           Previous
         </button>
         <span class="page-info">Page {currentPage} of {totalPages}</span>
-        <button class="page-btn" on:click={nextPage} disabled={currentPage >= totalPages}>
+        <button class="page-btn" onclick={nextPage} disabled={currentPage >= totalPages}>
           Next
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
