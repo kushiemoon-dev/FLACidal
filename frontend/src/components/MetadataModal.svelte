@@ -2,8 +2,7 @@
   import { onMount } from 'svelte';
   import { GetFileMetadata, GetFileCoverArt } from '../../wailsjs/go/main/App.js';
 
-  export let filePath: string;
-  export let onClose: () => void;
+  let { filePath, onClose }: { filePath: string; onClose: () => void } = $props();
 
   interface FLACMetadata {
     path: string;
@@ -29,11 +28,11 @@
     hasLyrics: boolean;
   }
 
-  let metadata: FLACMetadata | null = null;
-  let coverArt: string | null = null;
-  let loading = true;
-  let error = '';
-  let showLyrics = false;
+  let metadata: FLACMetadata | null = $state(null);
+  let coverArt: string | null = $state(null);
+  let loading = $state(true);
+  let error = $state('');
+  let showLyrics = $state(false);
 
   onMount(async () => {
     await loadMetadata();
@@ -91,13 +90,13 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="dialog" aria-modal="true">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
       <h2>File Metadata</h2>
-      <button class="close-btn" on:click={onClose}>
+      <button class="close-btn" onclick={onClose} aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -261,7 +260,7 @@
         <!-- Lyrics Section -->
         {#if metadata.hasLyrics}
           <div class="section lyrics-section">
-            <button class="lyrics-toggle" on:click={() => showLyrics = !showLyrics}>
+            <button class="lyrics-toggle" onclick={() => showLyrics = !showLyrics}>
               <h4>Lyrics</h4>
               <div class="lyrics-badges">
                 {#if metadata.syncedLyrics}
