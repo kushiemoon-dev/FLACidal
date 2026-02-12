@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     FetchTidalContent,
     ValidateTidalURL,
@@ -16,29 +16,29 @@
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
 
   // Accept initial content from history refetch
-  export let initialContent: any = null;
+  let { initialContent = null, onContentCleared = () => {} }: { initialContent?: any; onContentCleared?: () => void } = $props();
 
-  const dispatch = createEventDispatcher();
-
-  let tidalUrl = '';
-  let loading = false;
-  let error = '';
-  let version = '';
+  let tidalUrl = $state('');
+  let loading = $state(false);
+  let error = $state('');
+  let version = $state('');
 
   // Source detection
-  let detectedSource: { source: string; displayName: string; contentType: string; available: boolean } | null = null;
-  let detectingSource = false;
+  let detectedSource: { source: string; displayName: string; contentType: string; available: boolean } | null = $state(null);
+  let detectingSource = $state(false);
 
-  $: content = $currentContent;
-  $: stats = $queueStats;
-  $: folder = $downloadFolder;
+  let content = $derived($currentContent);
+  let stats = $derived($queueStats);
+  let folder = $derived($downloadFolder);
 
   // Detect source when URL changes
-  $: if (tidalUrl.trim()) {
-    detectSource(tidalUrl);
-  } else {
-    detectedSource = null;
-  }
+  $effect(() => {
+    if (tidalUrl.trim()) {
+      detectSource(tidalUrl);
+    } else {
+      detectedSource = null;
+    }
+  });
 
   async function detectSource(url: string) {
     detectingSource = true;
@@ -61,17 +61,19 @@
   }
 
   // Handle initial content from history
-  $: if (initialContent) {
-    currentContent.set({
-      type: initialContent.type,
-      title: initialContent.title,
-      creator: initialContent.creator,
-      coverUrl: initialContent.coverUrl,
-      tracks: initialContent.tracks || []
-    });
-    queueStore.reset();
-    dispatch('contentCleared');
-  }
+  $effect(() => {
+    if (initialContent) {
+      currentContent.set({
+        type: initialContent.type,
+        title: initialContent.title,
+        creator: initialContent.creator,
+        coverUrl: initialContent.coverUrl,
+        tracks: initialContent.tracks || []
+      });
+      queueStore.reset();
+      onContentCleared();
+    }
+  });
 
   onMount(async () => {
     // Load version
@@ -201,7 +203,7 @@
   }
 
   // Reactive: convert Map to object for proper Svelte reactivity
-  $: trackStatuses = Object.fromEntries($queueStore);
+  let trackStatuses = $derived(Object.fromEntries($queueStore));
 
   function formatDuration(seconds: number): string {
     const mins = Math.floor(seconds / 60);
@@ -245,7 +247,7 @@
           type="text"
           bind:value={tidalUrl}
           placeholder="Paste Tidal or Qobuz URL (playlist, album, or track)..."
-          on:keydown={(e) => e.key === 'Enter' && fetchContent()}
+          onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
         {#if detectedSource}
@@ -270,7 +272,7 @@
           </div>
         {/if}
       </div>
-      <button class="btn-primary" on:click={fetchContent} disabled={loading || (detectedSource && !detectedSource.available)}>
+      <button class="btn-primary" onclick={fetchContent} disabled={loading || (detectedSource && !detectedSource.available)}>
         {#if loading}
           <span class="spinner"></span>
         {:else}
@@ -293,7 +295,7 @@
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <span>{error}</span>
-      <button class="btn-icon" on:click={() => error = ''}>
+      <button class="btn-icon" onclick={() => error = ''}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -326,14 +328,14 @@
           <p class="track-count">{content.tracks?.length || 0} tracks</p>
         </div>
         <div class="folder-section">
-          <button class="btn-secondary" on:click={selectFolder}>
+          <button class="btn-secondary" onclick={selectFolder}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
             {folder ? folder.split('/').pop() : 'Select Folder'}
           </button>
           {#if folder}
-            <button class="btn-ghost" on:click={openFolder}>Open</button>
+            <button class="btn-ghost" onclick={openFolder}>Open</button>
           {/if}
         </div>
       </div>
@@ -366,14 +368,14 @@
                 <span class="status-badge queued">Queued</span>
               {:else if status?.status === 'error'}
                 <span class="status-badge error">Failed</span>
-                <button class="btn-icon" on:click={() => downloadSingleTrack(track)}>
+                <button class="btn-icon" onclick={() => downloadSingleTrack(track)}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                   </svg>
                 </button>
               {:else}
-                <button class="btn-icon download" on:click={() => downloadSingleTrack(track)} disabled={!folder}>
+                <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="7 10 12 15 17 10"/>
@@ -402,7 +404,7 @@
           </div>
         {/if}
 
-        <button class="btn-primary btn-large" on:click={downloadAllTracks} disabled={stats.downloading > 0 || !folder}>
+        <button class="btn-primary btn-large" onclick={downloadAllTracks} disabled={stats.downloading > 0 || !folder}>
           {#if stats.downloading > 0}
             <span class="spinner"></span>
             Downloading...
