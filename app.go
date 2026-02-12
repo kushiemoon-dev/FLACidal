@@ -45,7 +45,6 @@ func (a *App) startup(ctx context.Context) {
 	// Load config
 	config, err := backend.LoadConfig()
 	if err != nil {
-		println("Warning: Could not load config:", err.Error())
 		a.logBuffer.Warn("Could not load config: " + err.Error())
 		config = &backend.Config{}
 	}
@@ -55,7 +54,6 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize database
 	db, err := backend.NewDatabase()
 	if err != nil {
-		println("Error: Could not initialize database:", err.Error())
 		a.logBuffer.Error("Database initialization failed: " + err.Error())
 	} else {
 		a.logBuffer.Success("Database initialized")
