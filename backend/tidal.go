@@ -639,3 +639,35 @@ func (c *TidalClient) GetArtistDiscography(artistID string) (*TidalArtist, error
 	artist.Albums = allAlbums
 	return artist, nil
 }
+
+// ArtistImageURLs returns CDN URLs for multiple sizes of an artist's picture.
+// rawPictureID is the dashed UUID returned by the Tidal API (e.g. "11-22-33-...").
+// Returns a map of label → URL: "profile" (640×640), "profile_hires" (1280×1280), "banner" (1080×720).
+func ArtistImageURLs(rawPictureID string) map[string]string {
+	if rawPictureID == "" {
+		return nil
+	}
+	formatted := strings.ReplaceAll(rawPictureID, "-", "/")
+	base := "https://resources.tidal.com/images/" + formatted
+	return map[string]string{
+		"profile":       base + "/640x640.jpg",
+		"profile_hires": base + "/1280x1280.jpg",
+		"banner":        base + "/1080x720.jpg",
+	}
+}
+
+// GetArtistPictureID fetches only the artist name and raw picture ID (no album pagination).
+func (c *TidalClient) GetArtistPictureID(artistID string) (name string, pictureID string, err error) {
+	data, err := c.doRequest(fmt.Sprintf("/artists/%s?countryCode=US", artistID))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to fetch artist: %w", err)
+	}
+	var resp struct {
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return "", "", fmt.Errorf("failed to parse artist: %w", err)
+	}
+	return resp.Name, resp.Picture, nil
+}

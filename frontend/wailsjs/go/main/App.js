@@ -34,6 +34,10 @@ export function DeleteFile(arg1) {
   return window['go']['main']['App']['DeleteFile'](arg1);
 }
 
+export function DownloadArtistAssets(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DownloadArtistAssets'](arg1, arg2, arg3);
+}
+
 export function DeleteHistoryRecord(arg1) {
   return window['go']['main']['App']['DeleteHistoryRecord'](arg1);
 }
