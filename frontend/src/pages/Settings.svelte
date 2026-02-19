@@ -33,7 +33,8 @@
     qobuzAuthToken: '',
     preferredSource: 'tidal',
     generateM3u8: false,
-    skipUnavailableTracks: false
+    skipUnavailableTracks: false,
+    autoQualityFallback: false
   });
   let isSaving = $state(false);
   let saveMessage = $state('');
@@ -83,6 +84,7 @@
         config.preferredSource = result.preferredSource || 'tidal';
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
+        config.autoQualityFallback = result.autoQualityFallback || false;
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -140,7 +142,8 @@
         qobuzAuthToken: config.qobuzAuthToken,
         preferredSource: config.preferredSource,
         generateM3u8: config.generateM3u8,
-        skipUnavailableTracks: config.skipUnavailableTracks
+        skipUnavailableTracks: config.skipUnavailableTracks,
+        autoQualityFallback: config.autoQualityFallback
       });
 
       // Save download options
@@ -183,6 +186,7 @@
         config.preferredSource = result.preferredSource || 'tidal';
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
+        config.autoQualityFallback = result.autoQualityFallback || false;
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
@@ -376,6 +380,19 @@
     <!-- Quality Verification Settings -->
     <section class="settings-section">
       <h2>Quality Verification</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-quality-fallback">Auto Quality Fallback</label>
+          <span class="setting-desc">Retry with lower quality (HI_RES → LOSSLESS → HIGH) when the requested tier is unavailable</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoQualityFallback} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
 
       <div class="setting-item">
         <div class="setting-info">

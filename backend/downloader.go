@@ -122,13 +122,17 @@ type DownloadResult struct {
 
 // DownloadOptions configures download behavior
 type DownloadOptions struct {
-	Quality         string // "HI_RES", "LOSSLESS", "HIGH"
-	FileNameFormat  string // "{artist} - {title}", "{track} - {title}", etc.
-	OrganizeFolders bool   // Create Artist/Album/ subfolders
-	EmbedCover      bool   // Embed cover art in FLAC
-	SaveCoverFile   bool   // Save cover art as .jpg file next to FLAC
-	AutoAnalyze     bool   // Automatically analyze quality after download
+	Quality             string // "HI_RES", "LOSSLESS", "HIGH"
+	FileNameFormat      string // "{artist} - {title}", "{track} - {title}", etc.
+	OrganizeFolders     bool   // Create Artist/Album/ subfolders
+	EmbedCover          bool   // Embed cover art in FLAC
+	SaveCoverFile       bool   // Save cover art as .jpg file next to FLAC
+	AutoAnalyze         bool   // Automatically analyze quality after download
+	AutoQualityFallback bool   // Retry with lower quality when requested quality is unavailable
 }
+
+// qualityFallbackChain defines the descending quality order used for auto-fallback.
+var qualityFallbackChain = []string{"HI_RES", "LOSSLESS", "HIGH"}
 
 // NewTidalHifiService creates a new Tidal HiFi download service
 func NewTidalHifiService() *TidalHifiService {
@@ -333,13 +337,17 @@ func (t *TidalHifiService) GetTrackByID(trackID int) (*TidalHifiTrackResponse, e
 	return &trackInfo, nil
 }
 
-// GetStreamURL fetches the FLAC stream URL for a track and returns stream info
+// GetStreamURL fetches the stream URL using the configured quality setting.
 func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 	quality := t.options.Quality
 	if quality == "" {
 		quality = "LOSSLESS"
 	}
+	return t.getStreamURLForQuality(trackID, quality)
+}
 
+// getStreamURLForQuality fetches the stream URL requesting a specific quality level.
+func (t *TidalHifiService) getStreamURLForQuality(trackID int, quality string) (*StreamInfo, error) {
 	body, err := t.makeAPIRequest(fmt.Sprintf("/track/?id=%d&quality=%s", trackID, quality))
 	if err != nil {
 		return nil, fmt.Errorf("stream request failed: %w", err)
@@ -351,7 +359,6 @@ func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 		return nil, fmt.Errorf("failed to parse stream response: %w", err)
 	}
 
-	// Extract quality info from response
 	audioQuality := streamDataResp.Data.AudioQuality
 	audioMode := streamDataResp.Data.AudioMode
 	manifestBase64 := streamDataResp.Data.Manifest
@@ -368,10 +375,9 @@ func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 	}
 
 	if manifestBase64 == "" {
-		return nil, fmt.Errorf("no manifest in stream response")
+		return nil, fmt.Errorf("no manifest in stream response for quality %s", quality)
 	}
 
-	// Decode base64 manifest
 	manifestBytes, err := base64.StdEncoding.DecodeString(manifestBase64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode manifest: %w", err)
@@ -383,7 +389,7 @@ func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 	}
 
 	if len(manifest.URLs) == 0 {
-		return nil, fmt.Errorf("no download URLs in manifest")
+		return nil, fmt.Errorf("no download URLs in manifest for quality %s", quality)
 	}
 
 	return &StreamInfo{
@@ -391,6 +397,34 @@ func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 		AudioQuality: audioQuality,
 		AudioMode:    audioMode,
 	}, nil
+}
+
+// getStreamURLWithFallback tries the configured quality first, then walks down
+// qualityFallbackChain (HI_RES → LOSSLESS → HIGH) until a stream URL is obtained.
+// Returns the StreamInfo and the quality level that succeeded.
+func (t *TidalHifiService) getStreamURLWithFallback(trackID int, startQuality string) (*StreamInfo, string, error) {
+	// Find the starting position in the chain
+	startIdx := 0
+	for i, q := range qualityFallbackChain {
+		if q == startQuality {
+			startIdx = i
+			break
+		}
+	}
+
+	var lastErr error
+	for _, quality := range qualityFallbackChain[startIdx:] {
+		streamInfo, err := t.getStreamURLForQuality(trackID, quality)
+		if err == nil {
+			if quality != startQuality && t.logger != nil {
+				t.logger.Warn(fmt.Sprintf("%s unavailable for track %d, falling back to %s",
+					startQuality, trackID, quality))
+			}
+			return streamInfo, quality, nil
+		}
+		lastErr = err
+	}
+	return nil, "", fmt.Errorf("all quality levels failed: %v", lastErr)
 }
 
 // parseSearchBody extracts track items from a Tidal search response body.
@@ -481,26 +515,35 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 		result.CoverURL = coverURL
 	}
 
-	// Get stream URL and quality info
-	streamInfo, err := t.GetStreamURL(trackID)
+	// Get stream URL, with optional quality fallback
+	requestedQuality := t.options.Quality
+	if requestedQuality == "" {
+		requestedQuality = "LOSSLESS"
+	}
+
+	var streamInfo *StreamInfo
+	var actualQuality string
+	if t.options.AutoQualityFallback {
+		streamInfo, actualQuality, err = t.getStreamURLWithFallback(trackID, requestedQuality)
+	} else {
+		streamInfo, err = t.getStreamURLForQuality(trackID, requestedQuality)
+		actualQuality = requestedQuality
+	}
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to get stream URL: %v", err)
 		return result, err
 	}
 
-	// Use the actual quality from the server response
-	requestedQuality := t.options.Quality
-	if requestedQuality == "" {
-		requestedQuality = "LOSSLESS"
-	}
 	result.RequestedQuality = requestedQuality
 	result.Quality = streamInfo.AudioQuality
 
-	// Check for quality mismatch and log warning
-	if streamInfo.AudioQuality != "" && streamInfo.AudioQuality != requestedQuality {
+	// Log quality mismatch (server returned different quality than requested)
+	if streamInfo.AudioQuality != "" && streamInfo.AudioQuality != requestedQuality && actualQuality == requestedQuality {
 		result.QualityMismatch = true
-		println(fmt.Sprintf("Warning: requested %s but got %s for track %d (%s - %s)",
-			requestedQuality, streamInfo.AudioQuality, trackID, artistName, track.Title))
+		if t.logger != nil {
+			t.logger.Warn(fmt.Sprintf("quality mismatch: requested %s but received %s for track %d (%s - %s)",
+				requestedQuality, streamInfo.AudioQuality, trackID, artistName, track.Title))
+		}
 	}
 
 	// Determine output path based on options
