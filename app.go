@@ -611,12 +611,18 @@ func (a *App) DownloadTrack(trackID int, outputDir string) (*backend.DownloadRes
 	if outputDir == "" {
 		return nil, fmt.Errorf("no output directory specified")
 	}
-	return a.downloader.DownloadTrack(trackID, outputDir)
+	return a.downloader.DownloadTrack(trackID, outputDir, "", "")
 }
 
 // DownloadTrackFromTidal downloads using TidalTrack data (for UI convenience)
 func (a *App) DownloadTrackFromTidal(track backend.TidalTrack, outputDir string) (*backend.DownloadResult, error) {
-	return a.DownloadTrack(track.ID, outputDir)
+	if a.downloader == nil {
+		return nil, fmt.Errorf("downloader not initialized")
+	}
+	if outputDir == "" {
+		return nil, fmt.Errorf("no output directory specified")
+	}
+	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label)
 }
 
 // QueueDownloads queues multiple tracks for concurrent download

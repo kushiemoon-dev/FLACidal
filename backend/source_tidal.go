@@ -229,7 +229,7 @@ func (t *TidalSource) DownloadTrack(trackID string, outputDir string, options Do
 	// Apply options
 	t.service.SetOptions(options)
 
-	return t.service.DownloadTrack(id, outputDir)
+	return t.service.DownloadTrack(id, outputDir, "", "")
 }
 
 // GetService returns the underlying TidalHifiService
