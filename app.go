@@ -89,12 +89,13 @@ func (a *App) startup(ctx context.Context) {
 		fileNameFormat = "{artist} - {title}"
 	}
 	a.downloader.SetOptions(backend.DownloadOptions{
-		Quality:         quality,
-		FileNameFormat:  fileNameFormat,
-		OrganizeFolders: config.OrganizeFolders,
-		EmbedCover:      config.EmbedCover,
-		SaveCoverFile:   config.SaveCoverFile,
-		AutoAnalyze:     config.AutoAnalyze,
+		Quality:             quality,
+		FileNameFormat:      fileNameFormat,
+		OrganizeFolders:     config.OrganizeFolders,
+		EmbedCover:          config.EmbedCover,
+		SaveCoverFile:       config.SaveCoverFile,
+		AutoAnalyze:         config.AutoAnalyze,
+		AutoQualityFallback: config.AutoQualityFallback,
 	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
@@ -226,6 +227,11 @@ func (a *App) SaveConfig(config backend.Config) error {
 	if a.downloadManager != nil {
 		a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
 		a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
+	}
+	if a.downloader != nil {
+		opts := a.downloader.GetOptions()
+		opts.AutoQualityFallback = config.AutoQualityFallback
+		a.downloader.SetOptions(opts)
 	}
 	return backend.SaveConfig(&config)
 }
@@ -727,15 +733,20 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 	a.config.SaveCoverFile = saveCoverFile
 	a.config.AutoAnalyze = autoAnalyze
 
-	// Update downloader options
+	// Update downloader options (preserve AutoQualityFallback from config)
 	if a.downloader != nil {
+		autoQualityFallback := false
+		if a.config != nil {
+			autoQualityFallback = a.config.AutoQualityFallback
+		}
 		a.downloader.SetOptions(backend.DownloadOptions{
-			Quality:         quality,
-			FileNameFormat:  fileNameFormat,
-			OrganizeFolders: organizeFolders,
-			EmbedCover:      embedCover,
-			SaveCoverFile:   saveCoverFile,
-			AutoAnalyze:     autoAnalyze,
+			Quality:             quality,
+			FileNameFormat:      fileNameFormat,
+			OrganizeFolders:     organizeFolders,
+			EmbedCover:          embedCover,
+			SaveCoverFile:       saveCoverFile,
+			AutoAnalyze:         autoAnalyze,
+			AutoQualityFallback: autoQualityFallback,
 		})
 	}
 
