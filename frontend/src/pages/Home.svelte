@@ -10,6 +10,7 @@
     QueueDownloads,
     QueueSingleDownload,
     QueueArtistAlbum,
+    DownloadArtistAssets,
     GetAppVersion,
     DetectSourceFromURL,
     FetchContentFromURL,
@@ -148,7 +149,8 @@
           creator: result.creator,
           coverUrl: result.coverUrl,
           tracks: result.tracks || [],
-          source: result.source
+          source: result.source,
+          artistId: result.artistId
         });
       } else {
         // Fallback to Tidal-only validation
@@ -163,7 +165,8 @@
           creator: result.creator,
           coverUrl: result.coverUrl,
           tracks: result.tracks || [],
-          source: 'tidal'
+          source: 'tidal',
+          artistId: result.artistId
         });
       }
     } catch (e: any) {
@@ -310,6 +313,24 @@
     for (const album of albums) {
       await downloadArtistAlbum(album.id);
     }
+  }
+
+  let downloadingAssets = $state(false);
+  let assetsResult = $state('');
+
+  async function downloadArtistAssetsHandler() {
+    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    const artistId = String(content?.artistId || '');
+    if (!artistId) { error = 'No artist ID available'; return; }
+    downloadingAssets = true;
+    assetsResult = '';
+    try {
+      const count = await DownloadArtistAssets(artistId, content?.title || '', $downloadFolder);
+      assetsResult = `${count} image${count !== 1 ? 's' : ''} saved`;
+    } catch (e: any) {
+      error = e.message || 'Failed to download artist assets';
+    }
+    downloadingAssets = false;
   }
 </script>
 
@@ -478,7 +499,7 @@
           {/each}
         </div>
 
-        <!-- Download All Albums -->
+        <!-- Download All Albums + Artist Assets -->
         <div class="download-section">
           <button class="btn-primary btn-large" onclick={downloadAllFilteredAlbums} disabled={!folder}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -488,6 +509,22 @@
             </svg>
             Download All {albumTypeFilter === 'all' ? '' : getContentTypeLabel(albumTypeFilter)} Albums
           </button>
+          <button class="btn-secondary" onclick={downloadArtistAssetsHandler} disabled={!folder || downloadingAssets}>
+            {#if downloadingAssets}
+              <span class="spinner small"></span>
+              Downloading...
+            {:else}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Download Artist Images
+            {/if}
+          </button>
+          {#if assetsResult}
+            <span class="assets-result">{assetsResult}</span>
+          {/if}
         </div>
 
       {:else}
@@ -1161,6 +1198,12 @@
     border-color: var(--color-accent);
     background: var(--color-accent-subtle);
     color: var(--color-accent);
+  }
+
+  .assets-result {
+    font-size: 0.8rem;
+    color: #4ade80;
+    align-self: center;
   }
 
   .track-status {

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -359,6 +361,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["coverUrl"] = artist.PictureURL
 		result["albums"] = artist.Albums
 		result["albumCount"] = len(artist.Albums)
+		result["artistId"] = artist.ID
 		result["tracks"] = []backend.TidalTrack{} // empty — tracks loaded per album
 
 	default:
@@ -688,6 +691,75 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 
 	queued := a.downloadManager.QueueMultiple(album.Tracks, albumDir)
 	return queued, nil
+}
+
+// DownloadArtistAssets downloads the artist's profile picture and banner image.
+// Files are saved to {outputDir}/{artistName}/ as profile.jpg, profile_hires.jpg, banner.jpg.
+// Returns the number of files successfully downloaded.
+func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir string) (int, error) {
+	if outputDir == "" {
+		return 0, fmt.Errorf("no output directory specified")
+	}
+
+	name, pictureID, err := a.tidalClient.GetArtistPictureID(artistID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch artist info: %w", err)
+	}
+	if pictureID == "" {
+		return 0, fmt.Errorf("artist has no picture available")
+	}
+
+	// Use fetched name if caller didn't provide one
+	if artistName == "" {
+		artistName = name
+	}
+
+	urls := backend.ArtistImageURLs(pictureID)
+	if len(urls) == 0 {
+		return 0, fmt.Errorf("no image URLs generated")
+	}
+
+	// Save to {outputDir}/{artistName}/
+	destDir := filepath.Join(outputDir, backend.SanitizeFileName(artistName))
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return 0, fmt.Errorf("failed to create artist folder: %w", err)
+	}
+
+	// Map of label → filename
+	fileNames := map[string]string{
+		"profile":       "profile.jpg",
+		"profile_hires": "profile_hires.jpg",
+		"banner":        "banner.jpg",
+	}
+
+	client := &http.Client{}
+	downloaded := 0
+	for label, imgURL := range urls {
+		fname := fileNames[label]
+		destPath := filepath.Join(destDir, fname)
+
+		resp, err := client.Get(imgURL)
+		if err != nil || resp.StatusCode != 200 {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			continue // skip unavailable sizes
+		}
+
+		f, err := os.Create(destPath)
+		if err != nil {
+			resp.Body.Close()
+			continue
+		}
+		_, copyErr := io.Copy(f, resp.Body)
+		f.Close()
+		resp.Body.Close()
+		if copyErr == nil {
+			downloaded++
+		}
+	}
+
+	return downloaded, nil
 }
 
 // QueueSingleDownload queues a single track for download

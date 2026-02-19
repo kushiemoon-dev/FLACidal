@@ -18,6 +18,8 @@ export function ConvertFiles(arg1:Array<string>,arg2:string,arg3:string,arg4:str
 
 export function DeleteFile(arg1:string):Promise<void>;
 
+export function DownloadArtistAssets(arg1:string,arg2:string,arg3:string):Promise<number>;
+
 export function DeleteHistoryRecord(arg1:number):Promise<void>;
 
 export function DetectSourceFromURL(arg1:string):Promise<Record<string, any>>;
