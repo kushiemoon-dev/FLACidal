@@ -450,6 +450,7 @@ export namespace backend {
 	    previewUrl: string;
 	    copyright: string;
 	    label: string;
+	    popularity: number;
 
 	    static createFrom(source: any = {}) {
 	        return new TidalTrack(source);
@@ -473,6 +474,7 @@ export namespace backend {
 	        this.previewUrl = source["previewUrl"] || '';
 	        this.copyright = source["copyright"] || '';
 	        this.label = source["label"] || '';
+	        this.popularity = source["popularity"] || 0;
 	    }
 	}
 	export class MatchResult {
