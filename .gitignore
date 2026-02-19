@@ -54,3 +54,6 @@ coverage.html
 
 # Claude Code
 CLAUDE.md
+
+# AI session tracking (internal context files, not for repo)
+docs/plans/
