@@ -39,6 +39,7 @@
       <button
         class="nav-item"
         class:active={activePage === item.id}
+        data-icon={item.icon}
         onclick={() => onNavigate(item.id)}
         title={item.label}
       >
@@ -81,6 +82,7 @@
       <button
         class="nav-item"
         class:active={activePage === item.id}
+        data-icon={item.icon}
         onclick={() => onNavigate(item.id)}
         title={item.label}
       >
@@ -280,5 +282,106 @@
     color: #000;
     background: #f472b6;
     border-radius: 8px;
+    animation: badge-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* ── SVG icon transition base ────────────────────────────── */
+  .nav-item svg {
+    transition: transform 0.15s ease;
+    transform-origin: center;
+  }
+
+  /* ── Per-icon hover animations ───────────────────────────── */
+
+  /* Home: bounces up */
+  [data-icon="home"]:hover svg {
+    animation: icon-bounce 0.35s ease both;
+  }
+  @keyframes icon-bounce {
+    0%        { transform: translateY(0); }
+    40%       { transform: translateY(-5px); }
+    70%       { transform: translateY(-2px); }
+    100%      { transform: translateY(0); }
+  }
+
+  /* Search: quick scale-pulse (magnify) */
+  [data-icon="search"]:hover svg {
+    animation: icon-magnify 0.3s ease both;
+  }
+  @keyframes icon-magnify {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.18); }
+  }
+
+  /* Download: arrow drops and springs back */
+  [data-icon="download"]:hover svg {
+    animation: icon-drop 0.4s ease both;
+  }
+  @keyframes icon-drop {
+    0%   { transform: translateY(0); }
+    45%  { transform: translateY(4px); }
+    75%  { transform: translateY(1px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* Folder: quick horizontal shake (rattle) */
+  [data-icon="folder"]:hover svg {
+    animation: icon-shake 0.35s ease both;
+  }
+  @keyframes icon-shake {
+    0%, 100% { transform: rotate(0deg); }
+    20%      { transform: rotate(-6deg); }
+    60%      { transform: rotate(6deg); }
+    80%      { transform: rotate(-3deg); }
+  }
+
+  /* Clock: spins one full tick (clockwise quarter-turn) */
+  [data-icon="clock"]:hover svg {
+    animation: icon-tick 0.45s ease both;
+  }
+  @keyframes icon-tick {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(90deg); }
+  }
+
+  /* Terminal: jolts right (like a keypress) */
+  [data-icon="terminal"]:hover svg {
+    animation: icon-jolt 0.3s ease both;
+  }
+  @keyframes icon-jolt {
+    0%   { transform: translateX(0); }
+    35%  { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+
+  /* Settings: spins once on hover; spins slowly when active */
+  [data-icon="settings"]:hover svg {
+    animation: icon-spin 0.5s ease both;
+  }
+  [data-icon="settings"].active svg {
+    animation: icon-spin-slow 4s linear infinite;
+  }
+  @keyframes icon-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(180deg); }
+  }
+  @keyframes icon-spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* Info: gentle pulse */
+  [data-icon="info"]:hover svg {
+    animation: icon-pulse 0.35s ease both;
+  }
+  @keyframes icon-pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+  }
+
+  /* ── Badge pop-in ────────────────────────────────────────── */
+  @keyframes badge-pop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
   }
 </style>
