@@ -97,6 +97,7 @@ func (a *App) startup(ctx context.Context) {
 		AutoAnalyze:          config.AutoAnalyze,
 		AutoQualityFallback:  config.AutoQualityFallback,
 		QualityFallbackOrder: config.QualityOrder,
+		FirstArtistOnly:      config.FirstArtistOnly,
 	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
@@ -233,6 +234,7 @@ func (a *App) SaveConfig(config backend.Config) error {
 		opts := a.downloader.GetOptions()
 		opts.AutoQualityFallback = config.AutoQualityFallback
 		opts.QualityFallbackOrder = config.QualityOrder
+		opts.FirstArtistOnly = config.FirstArtistOnly
 		a.downloader.SetOptions(opts)
 	}
 	if a.downloadManager != nil {
