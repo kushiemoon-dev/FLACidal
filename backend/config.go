@@ -48,12 +48,16 @@ type Config struct {
 	TidalHifiEndpoints  []string `json:"tidalHifiEndpoints,omitempty"`    // Custom Tidal HiFi proxy endpoints (empty = use defaults)
 	QobuzEndpoints      []string `json:"qobuzEndpoints,omitempty"`        // Custom Qobuz API endpoints (empty = use defaults)
 	SourceOrder         []string `json:"sourceOrder,omitempty"`           // Source priority order e.g. ["tidal","qobuz"]
+	QualityOrder        []string `json:"qualityOrder,omitempty"`          // Quality tier priority e.g. ["HI_RES","LOSSLESS","HIGH"]
 
 	// Playlist generation
 	GenerateM3U8 bool `json:"generateM3u8"` // Generate .m3u8 playlist after batch downloads
 
 	// Track filtering
 	SkipUnavailableTracks bool `json:"skipUnavailableTracks"` // Skip tracks not available for streaming
+
+	// Metadata formatting
+	FirstArtistOnly bool `json:"firstArtistOnly"` // Use only the first artist in tags and filenames
 }
 
 var defaultConfig = Config{

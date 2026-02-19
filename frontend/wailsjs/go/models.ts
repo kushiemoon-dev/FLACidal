@@ -58,6 +58,9 @@ export namespace backend {
 	    generateM3u8: boolean;
 	    skipUnavailableTracks: boolean;
 	    autoQualityFallback: boolean;
+	    sourceOrder?: string[];
+	    qualityOrder?: string[];
+	    firstArtistOnly: boolean;
 
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -90,6 +93,9 @@ export namespace backend {
 	        this.generateM3u8 = source["generateM3u8"];
 	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
 	        this.autoQualityFallback = source["autoQualityFallback"];
+	        this.sourceOrder = source["sourceOrder"];
+	        this.qualityOrder = source["qualityOrder"];
+	        this.firstArtistOnly = source["firstArtistOnly"] || false;
 	    }
 	}
 	export class ConversionFormat {

@@ -128,7 +128,9 @@ type DownloadOptions struct {
 	EmbedCover          bool   // Embed cover art in FLAC
 	SaveCoverFile       bool   // Save cover art as .jpg file next to FLAC
 	AutoAnalyze         bool   // Automatically analyze quality after download
-	AutoQualityFallback bool   // Retry with lower quality when requested quality is unavailable
+	AutoQualityFallback  bool     // Retry with lower quality when requested quality is unavailable
+	QualityFallbackOrder []string // Custom quality priority order; nil = use default chain
+	FirstArtistOnly      bool     // Use only the first artist in tags and filenames
 }
 
 // qualityFallbackChain defines the descending quality order used for auto-fallback.
@@ -400,12 +402,17 @@ func (t *TidalHifiService) getStreamURLForQuality(trackID int, quality string) (
 }
 
 // getStreamURLWithFallback tries the configured quality first, then walks down
-// qualityFallbackChain (HI_RES → LOSSLESS → HIGH) until a stream URL is obtained.
+// the quality order until a stream URL is obtained.
 // Returns the StreamInfo and the quality level that succeeded.
 func (t *TidalHifiService) getStreamURLWithFallback(trackID int, startQuality string) (*StreamInfo, string, error) {
-	// Find the starting position in the chain
+	chain := qualityFallbackChain
+	if len(t.options.QualityFallbackOrder) > 0 {
+		chain = t.options.QualityFallbackOrder
+	}
+
+	// Find the starting position
 	startIdx := 0
-	for i, q := range qualityFallbackChain {
+	for i, q := range chain {
 		if q == startQuality {
 			startIdx = i
 			break
@@ -413,7 +420,7 @@ func (t *TidalHifiService) getStreamURLWithFallback(trackID int, startQuality st
 	}
 
 	var lastErr error
-	for _, quality := range qualityFallbackChain[startIdx:] {
+	for _, quality := range chain[startIdx:] {
 		streamInfo, err := t.getStreamURLForQuality(trackID, quality)
 		if err == nil {
 			if quality != startQuality && t.logger != nil {
@@ -500,7 +507,9 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 	}
 
 	artistName := track.Artist.Name
-	if artistName == "" && len(track.Artists) > 0 {
+	if t.options.FirstArtistOnly && len(track.Artists) > 0 {
+		artistName = track.Artists[0].Name
+	} else if artistName == "" && len(track.Artists) > 0 {
 		artistName = track.Artists[0].Name
 	}
 
