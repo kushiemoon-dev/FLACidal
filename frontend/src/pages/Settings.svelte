@@ -31,7 +31,9 @@
     qobuzAppId: '',
     qobuzAppSecret: '',
     qobuzAuthToken: '',
-    preferredSource: 'tidal'
+    preferredSource: 'tidal',
+    generateM3u8: false,
+    skipUnavailableTracks: false
   });
   let isSaving = $state(false);
   let saveMessage = $state('');
@@ -79,6 +81,8 @@
         config.qobuzAppSecret = result.qobuzAppSecret || '';
         config.qobuzAuthToken = result.qobuzAuthToken || '';
         config.preferredSource = result.preferredSource || 'tidal';
+        config.generateM3u8 = result.generateM3u8 || false;
+        config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -134,7 +138,9 @@
         qobuzAppId: config.qobuzAppId,
         qobuzAppSecret: config.qobuzAppSecret,
         qobuzAuthToken: config.qobuzAuthToken,
-        preferredSource: config.preferredSource
+        preferredSource: config.preferredSource,
+        generateM3u8: config.generateM3u8,
+        skipUnavailableTracks: config.skipUnavailableTracks
       });
 
       // Save download options
@@ -175,6 +181,8 @@
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
         config.preferredSource = result.preferredSource || 'tidal';
+        config.generateM3u8 = result.generateM3u8 || false;
+        config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
@@ -389,6 +397,37 @@
           <line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
         <span>When enabled, downloaded files are analyzed to detect if they may be upscaled from lossy sources. Quality warnings will appear in the Terminal log.</span>
+      </div>
+    </section>
+
+    <!-- Playlist Generation Settings -->
+    <section class="settings-section">
+      <h2>Playlist Generation</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="generate-m3u8">Generate M3U8 Playlist</label>
+          <span class="setting-desc">Create a .m3u8 playlist file after batch downloads complete</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.generateM3u8} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="skip-unavailable">Skip Unavailable Tracks</label>
+          <span class="setting-desc">Automatically skip tracks not available for streaming in your region</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </section>
 
