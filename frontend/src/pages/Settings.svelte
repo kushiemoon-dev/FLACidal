@@ -34,7 +34,9 @@
     preferredSource: 'tidal',
     generateM3u8: false,
     skipUnavailableTracks: false,
-    autoQualityFallback: false
+    autoQualityFallback: false,
+    sourceOrder: ['tidal', 'qobuz'] as string[],
+    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[]
   });
   let isSaving = $state(false);
   let saveMessage = $state('');
@@ -85,6 +87,8 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -99,6 +103,14 @@
     } catch (error) {
       console.error('Error loading config:', error);
     }
+  }
+
+  function moveItem(arr: string[], index: number, direction: -1 | 1): string[] {
+    const target = index + direction;
+    if (target < 0 || target >= arr.length) return arr;
+    const next = [...arr];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
   }
 
   async function selectFolder() {
@@ -143,7 +155,9 @@
         preferredSource: config.preferredSource,
         generateM3u8: config.generateM3u8,
         skipUnavailableTracks: config.skipUnavailableTracks,
-        autoQualityFallback: config.autoQualityFallback
+        autoQualityFallback: config.autoQualityFallback,
+        sourceOrder: config.sourceOrder,
+        qualityOrder: config.qualityOrder
       });
 
       // Save download options
@@ -187,6 +201,8 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
@@ -394,6 +410,24 @@
         </div>
       </div>
 
+      <div class="setting-item order-setting">
+        <div class="setting-info">
+          <span class="setting-label">Quality Priority</span>
+          <span class="setting-desc">Order in which quality tiers are attempted (top = preferred)</span>
+        </div>
+        <div class="order-list">
+          {#each config.qualityOrder as tier, i}
+            <div class="order-item">
+              <span class="order-label">{tier}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, 1)} disabled={i === config.qualityOrder.length - 1} aria-label="Move down">↓</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
       <div class="setting-item">
         <div class="setting-info">
           <label for="auto-analyze">Auto-analyze Downloads</label>
@@ -570,16 +604,21 @@
         </div>
       {/if}
 
-      <div class="setting-item">
+      <div class="setting-item order-setting">
         <div class="setting-info">
-          <label for="preferred-source">Preferred Source</label>
-          <span class="setting-desc">Default source when both are available</span>
+          <span class="setting-label">Source Priority</span>
+          <span class="setting-desc">Drag or reorder — first source is tried first for every download</span>
         </div>
-        <div class="setting-control">
-          <select id="preferred-source" bind:value={config.preferredSource} class="select-input">
-            <option value="tidal">Tidal</option>
-            <option value="qobuz">Qobuz</option>
-          </select>
+        <div class="order-list">
+          {#each config.sourceOrder as source, i}
+            <div class="order-item">
+              <span class="order-label">{source === 'tidal' ? 'Tidal' : 'Qobuz'}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, 1)} disabled={i === config.sourceOrder.length - 1} aria-label="Move down">↓</button>
+              </div>
+            </div>
+          {/each}
         </div>
       </div>
 
@@ -1334,5 +1373,72 @@
 
   .text-input::placeholder {
     color: #555;
+  }
+
+  /* Order List */
+  .order-setting {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .order-setting .setting-info {
+    width: 100%;
+  }
+
+  .order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+  }
+
+  .order-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-family: monospace;
+  }
+
+  .order-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .order-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+
+  .order-btn:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .order-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 </style>
