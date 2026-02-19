@@ -32,6 +32,42 @@
   let stats = $derived($queueStats);
   let folder = $derived($downloadFolder);
 
+  // Audio preview state
+  let previewAudio: HTMLAudioElement | null = $state(null);
+  let previewingTrackId: number | null = $state(null);
+  let previewPlaying = $state(false);
+
+  function togglePreview(track: TidalTrack) {
+    if (!previewAudio || !track.previewUrl) return;
+
+    if (previewingTrackId === track.id) {
+      // Same track — toggle play/pause
+      if (previewPlaying) {
+        previewAudio.pause();
+        previewPlaying = false;
+      } else {
+        previewAudio.play();
+        previewPlaying = true;
+      }
+    } else {
+      // New track — swap source and play
+      previewAudio.pause();
+      previewAudio.src = track.previewUrl;
+      previewingTrackId = track.id;
+      previewPlaying = true;
+      previewAudio.play();
+    }
+  }
+
+  function stopPreview() {
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.src = '';
+    }
+    previewingTrackId = null;
+    previewPlaying = false;
+  }
+
   // Detect source when URL changes
   $effect(() => {
     if (tidalUrl.trim()) {
@@ -95,6 +131,7 @@
 
     loading = true;
     error = '';
+    stopPreview();
     currentContent.set(null);
     queueStore.reset();
 
@@ -267,6 +304,9 @@
     }
   }
 </script>
+
+<!-- Shared audio element for track previews -->
+<audio bind:this={previewAudio} onended={() => { previewPlaying = false; previewingTrackId = null; }}></audio>
 
 <div class="home-page">
   <!-- Header -->
@@ -462,6 +502,26 @@
                 {/if}
               </div>
               <span class="track-duration">{formatDuration(track.duration)}</span>
+              {#if track.previewUrl}
+                <button
+                  class="btn-icon preview-btn"
+                  class:active={previewingTrackId === track.id}
+                  onclick={() => togglePreview(track)}
+                  title={previewingTrackId === track.id && previewPlaying ? 'Pause preview' : 'Play 30s preview'}
+                  aria-label={previewingTrackId === track.id && previewPlaying ? 'Pause preview' : 'Play preview'}
+                >
+                  {#if previewingTrackId === track.id && previewPlaying}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="6" y="4" width="4" height="16"/>
+                      <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                  {:else}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                  {/if}
+                </button>
+              {/if}
               <div class="track-status">
                 {#if status?.status === 'completed'}
                   <span class="status-badge success">
@@ -783,6 +843,15 @@
   .btn-icon.download:hover:not(:disabled) {
     color: var(--color-accent);
     background: var(--color-accent-subtle);
+  }
+
+  .btn-icon.preview-btn:hover:not(:disabled) {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .btn-icon.preview-btn.active {
+    color: #3b82f6;
   }
 
   .btn-icon:disabled {
