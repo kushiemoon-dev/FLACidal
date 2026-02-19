@@ -450,7 +450,12 @@
             <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false}>
               <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
               <div class="track-details">
-                <span class="track-title">{track.title}</span>
+                <div class="title-row">
+                  <span class="track-title">{track.title}</span>
+                  {#if track.explicit}
+                    <span class="explicit-badge" title="Explicit content">E</span>
+                  {/if}
+                </div>
                 <span class="track-artist">{track.artists}</span>
                 {#if track.available === false}
                   <span class="unavailable-label" title="Not available for streaming in your region">Unavailable</span>
@@ -966,12 +971,31 @@
     min-width: 0;
   }
 
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
   .track-title {
-    display: block;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .explicit-badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    letter-spacing: 0.5px;
   }
 
   .track-artist {
