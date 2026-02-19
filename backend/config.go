@@ -19,6 +19,7 @@ type Config struct {
 	FileNameFormat      string `json:"fileNameFormat,omitempty"`      // "{artist} - {title}", "{track} - {title}", etc.
 	OrganizeFolders     bool   `json:"organizeFolders,omitempty"`     // Create Artist/Album/ subfolders
 	EmbedCover          bool   `json:"embedCover"`                    // Embed cover art in FLAC
+	SaveCoverFile       bool   `json:"saveCoverFile"`                 // Save cover art as .jpg file next to FLAC
 	ConcurrentDownloads int    `json:"concurrentDownloads,omitempty"` // Number of parallel downloads
 
 	// UI settings
@@ -33,13 +34,25 @@ type Config struct {
 	EmbedLyrics        bool `json:"embedLyrics"`        // Automatically fetch and embed lyrics
 	PreferSyncedLyrics bool `json:"preferSyncedLyrics"` // Prefer synced (LRC) lyrics when available
 
+	// Quality verification settings
+	AutoAnalyze bool `json:"autoAnalyze"` // Automatically analyze quality after download
+
 	// Source settings
-	TidalEnabled    bool   `json:"tidalEnabled"`              // Enable Tidal source
-	QobuzEnabled    bool   `json:"qobuzEnabled"`              // Enable Qobuz source
-	QobuzAppID      string `json:"qobuzAppId,omitempty"`      // Qobuz app ID
-	QobuzAppSecret  string `json:"qobuzAppSecret,omitempty"`  // Qobuz app secret
-	QobuzAuthToken  string `json:"qobuzAuthToken,omitempty"`  // Qobuz user auth token
-	PreferredSource string `json:"preferredSource,omitempty"` // "tidal" or "qobuz"
+	TidalEnabled        bool     `json:"tidalEnabled"`                    // Enable Tidal source
+	QobuzEnabled        bool     `json:"qobuzEnabled"`                    // Enable Qobuz source
+	QobuzAppID          string   `json:"qobuzAppId,omitempty"`            // Qobuz app ID
+	QobuzAppSecret      string   `json:"qobuzAppSecret,omitempty"`        // Qobuz app secret
+	QobuzAuthToken      string   `json:"qobuzAuthToken,omitempty"`        // Qobuz user auth token
+	PreferredSource     string   `json:"preferredSource,omitempty"`       // "tidal" or "qobuz"
+	TidalHifiEndpoints  []string `json:"tidalHifiEndpoints,omitempty"`    // Custom Tidal HiFi proxy endpoints (empty = use defaults)
+	QobuzEndpoints      []string `json:"qobuzEndpoints,omitempty"`        // Custom Qobuz API endpoints (empty = use defaults)
+	SourceOrder         []string `json:"sourceOrder,omitempty"`           // Source priority order e.g. ["tidal","qobuz"]
+
+	// Playlist generation
+	GenerateM3U8 bool `json:"generateM3u8"` // Generate .m3u8 playlist after batch downloads
+
+	// Track filtering
+	SkipUnavailableTracks bool `json:"skipUnavailableTracks"` // Skip tracks not available for streaming
 }
 
 var defaultConfig = Config{
@@ -49,11 +62,13 @@ var defaultConfig = Config{
 	FileNameFormat:      "{artist} - {title}",
 	OrganizeFolders:     false,
 	EmbedCover:          true,
+	SaveCoverFile:       true,
 	ConcurrentDownloads: 4,
 	SoundEffects:        false,
 	SoundVolume:         70,
 	EmbedLyrics:         false,
 	PreferSyncedLyrics:  true,
+	AutoAnalyze:         false,
 	TidalEnabled:        true,
 	QobuzEnabled:        false,
 	PreferredSource:     "tidal",
@@ -158,8 +173,14 @@ func LoadConfigWithEnv() (*Config, error) {
 	if val := os.Getenv("EMBED_COVER"); val != "" {
 		config.EmbedCover = val == "true" || val == "1"
 	}
+	if val := os.Getenv("SAVE_COVER_FILE"); val != "" {
+		config.SaveCoverFile = val == "true" || val == "1"
+	}
 	if val := os.Getenv("EMBED_LYRICS"); val != "" {
 		config.EmbedLyrics = val == "true" || val == "1"
+	}
+	if val := os.Getenv("AUTO_ANALYZE"); val != "" {
+		config.AutoAnalyze = val == "true" || val == "1"
 	}
 	if val := os.Getenv("THEME"); val != "" {
 		config.Theme = val
