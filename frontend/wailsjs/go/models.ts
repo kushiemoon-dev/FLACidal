@@ -57,6 +57,7 @@ export namespace backend {
 	    preferredSource?: string;
 	    generateM3u8: boolean;
 	    skipUnavailableTracks: boolean;
+	    autoQualityFallback: boolean;
 
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -88,6 +89,7 @@ export namespace backend {
 	        this.preferredSource = source["preferredSource"];
 	        this.generateM3u8 = source["generateM3u8"];
 	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
+	        this.autoQualityFallback = source["autoQualityFallback"];
 	    }
 	}
 	export class ConversionFormat {
