@@ -175,6 +175,7 @@ export interface TidalTrack {
   explicit: boolean;
   tidalUrl: string;
   available: boolean;
+  previewUrl: string;
 }
 
 export const currentContent = writable<TidalContent | null>(null);
