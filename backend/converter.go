@@ -73,6 +73,13 @@ var ConversionFormats = []ConversionFormat{
 		Description: "Modern efficient format",
 	},
 	{
+		ID:          "alac",
+		Name:        "ALAC",
+		Extension:   ".m4a",
+		Qualities:   []string{"lossless"},
+		Description: "Apple Lossless (lossless)",
+	},
+	{
 		ID:          "wav",
 		Name:        "WAV",
 		Extension:   ".wav",
@@ -217,6 +224,8 @@ func (c *Converter) Convert(sourcePath string, opts ConversionOptions) (*Convers
 		}
 	case "opus":
 		args = append(args, "-codec:a", "libopus", "-b:a", opts.Quality)
+	case "alac":
+		args = append(args, "-codec:a", "alac")
 	case "wav":
 		args = append(args, "-codec:a", "pcm_s16le")
 	}
