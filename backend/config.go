@@ -35,7 +35,8 @@ type Config struct {
 	PreferSyncedLyrics bool `json:"preferSyncedLyrics"` // Prefer synced (LRC) lyrics when available
 
 	// Quality verification settings
-	AutoAnalyze bool `json:"autoAnalyze"` // Automatically analyze quality after download
+	AutoAnalyze         bool `json:"autoAnalyze"`         // Automatically analyze quality after download
+	AutoQualityFallback bool `json:"autoQualityFallback"` // Retry with lower quality when requested tier is unavailable
 
 	// Source settings
 	TidalEnabled        bool     `json:"tidalEnabled"`                    // Enable Tidal source
