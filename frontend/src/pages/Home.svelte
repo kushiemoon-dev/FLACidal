@@ -9,6 +9,7 @@
     OpenDownloadFolder,
     QueueDownloads,
     QueueSingleDownload,
+    QueueArtistAlbum,
     GetAppVersion,
     DetectSourceFromURL,
     FetchContentFromURL,
@@ -222,7 +223,47 @@
       case 'playlist': return 'Playlist';
       case 'album': return 'Album';
       case 'track': return 'Track';
+      case 'artist': return 'Artist';
       default: return 'Content';
+    }
+  }
+
+  // Artist discography state
+  let albumTypeFilter = $state('all');
+
+  let filteredAlbums = $derived(() => {
+    const albums = (content as any)?.albums || [];
+    if (albumTypeFilter === 'all') return albums;
+    if (albumTypeFilter === 'albums') return albums.filter((a: any) => a.albumType?.toUpperCase() === 'ALBUM');
+    if (albumTypeFilter === 'epssingles') return albums.filter((a: any) => ['EP', 'SINGLE'].includes(a.albumType?.toUpperCase()));
+    if (albumTypeFilter === 'compilations') return albums.filter((a: any) => a.albumType?.toUpperCase() === 'COMPILATION');
+    return albums;
+  });
+
+  function getAlbumTypeLabel(type: string): string {
+    switch (type?.toUpperCase()) {
+      case 'ALBUM': return 'Album';
+      case 'EP': return 'EP';
+      case 'SINGLE': return 'Single';
+      case 'COMPILATION': return 'Compilation';
+      default: return 'Album';
+    }
+  }
+
+  async function downloadArtistAlbum(albumId: number) {
+    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    try {
+      await QueueArtistAlbum(String(albumId), content?.title || '', $downloadFolder);
+    } catch (e: any) {
+      error = e.message || 'Failed to queue album';
+    }
+  }
+
+  async function downloadAllFilteredAlbums() {
+    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    const albums = filteredAlbums();
+    for (const album of albums) {
+      await downloadArtistAlbum(album.id);
     }
   }
 </script>
@@ -325,7 +366,11 @@
           </div>
           <h2>{content.title}</h2>
           <p class="creator">{content.creator}</p>
-          <p class="track-count">{content.tracks?.length || 0} tracks</p>
+          {#if content.type === 'artist'}
+            <p class="track-count">{(content as any).albums?.length || 0} albums</p>
+          {:else}
+            <p class="track-count">{content.tracks?.length || 0} tracks</p>
+          {/if}
         </div>
         <div class="folder-section">
           <button class="btn-secondary" onclick={selectFolder}>
@@ -340,89 +385,149 @@
         </div>
       </div>
 
-      <!-- Track List -->
-      <div class="tracks-container">
-        {#each content.tracks || [] as track, i}
-          {@const status = trackStatuses[track.id]}
-          <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'}>
-            <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
-            <div class="track-details">
-              <span class="track-title">{track.title}</span>
-              <span class="track-artist">{track.artists}</span>
-            </div>
-            <span class="track-duration">{formatDuration(track.duration)}</span>
-            <div class="track-status">
-              {#if status?.status === 'completed'}
-                <span class="status-badge success">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  {formatFileSize(status.result?.fileSize || 0)}
-                </span>
-              {:else if status?.status === 'downloading'}
-                <span class="status-badge downloading">
-                  <span class="spinner small"></span>
-                  Downloading
-                </span>
-              {:else if status?.status === 'queued'}
-                <span class="status-badge queued">Queued</span>
-              {:else if status?.status === 'error'}
-                <span class="status-badge error">Failed</span>
-                <button class="btn-icon" onclick={() => downloadSingleTrack(track)}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                  </svg>
-                </button>
+      {#if content.type === 'artist'}
+        <!-- Artist Album Type Filter -->
+        <div class="album-filter-bar">
+          {#each [['all','All'],['albums','Albums'],['epssingles','EPs & Singles'],['compilations','Compilations']] as [val, label]}
+            <button
+              class="filter-btn"
+              class:active={albumTypeFilter === val}
+              onclick={() => albumTypeFilter = val}
+            >{label}</button>
+          {/each}
+        </div>
+
+        <!-- Album List -->
+        <div class="albums-container">
+          {#each filteredAlbums() as album}
+            <div class="album-row">
+              {#if album.coverUrl}
+                <img src={album.coverUrl} alt="Cover" class="album-thumb" />
               {:else}
-                <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                </button>
+                <div class="album-thumb placeholder"></div>
               {/if}
-            </div>
-          </div>
-        {/each}
-      </div>
-
-      <!-- Download Section -->
-      <div class="download-section">
-        {#if stats.total > 0}
-          <div class="progress-container">
-            <div class="progress-info">
-              <span>{stats.completed}/{stats.total} tracks</span>
-              {#if stats.failed > 0}
-                <span class="error">{stats.failed} failed</span>
+              <div class="album-details">
+                <span class="album-title">{album.title}</span>
+                <span class="album-meta">
+                  {album.artist}
+                  {#if album.releaseDate}· {album.releaseDate.slice(0,4)}{/if}
+                  · {album.trackCount} tracks
+                </span>
+              </div>
+              {#if album.albumType}
+                <span class="album-type-badge">{getAlbumTypeLabel(album.albumType)}</span>
               {/if}
+              <button class="btn-icon download" onclick={() => downloadArtistAlbum(album.id)} disabled={!folder}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
             </div>
-            <div class="progress-bar">
-              <div class="progress-fill" class:complete={stats.completed === stats.total} style="width: {(stats.completed / stats.total) * 100}%"></div>
-            </div>
-          </div>
-        {/if}
+          {/each}
+        </div>
 
-        <button class="btn-primary btn-large" onclick={downloadAllTracks} disabled={stats.downloading > 0 || !folder}>
-          {#if stats.downloading > 0}
-            <span class="spinner"></span>
-            Downloading...
-          {:else if stats.completed === content.tracks?.length}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            All Downloaded
-          {:else}
+        <!-- Download All Albums -->
+        <div class="download-section">
+          <button class="btn-primary btn-large" onclick={downloadAllFilteredAlbums} disabled={!folder}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Download All FLAC
+            Download All {albumTypeFilter === 'all' ? '' : getContentTypeLabel(albumTypeFilter)} Albums
+          </button>
+        </div>
+
+      {:else}
+        <!-- Track List -->
+        <div class="tracks-container">
+          {#each content.tracks || [] as track, i}
+            {@const status = trackStatuses[track.id]}
+            <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false}>
+              <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
+              <div class="track-details">
+                <span class="track-title">{track.title}</span>
+                <span class="track-artist">{track.artists}</span>
+                {#if track.available === false}
+                  <span class="unavailable-label" title="Not available for streaming in your region">Unavailable</span>
+                {/if}
+              </div>
+              <span class="track-duration">{formatDuration(track.duration)}</span>
+              <div class="track-status">
+                {#if status?.status === 'completed'}
+                  <span class="status-badge success">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {formatFileSize(status.result?.fileSize || 0)}
+                  </span>
+                {:else if status?.status === 'downloading'}
+                  <span class="status-badge downloading">
+                    <span class="spinner small"></span>
+                    Downloading
+                  </span>
+                {:else if status?.status === 'queued'}
+                  <span class="status-badge queued">Queued</span>
+                {:else if status?.status === 'error'}
+                  <span class="status-badge error">Failed</span>
+                  <button class="btn-icon" onclick={() => downloadSingleTrack(track)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="23 4 23 10 17 10"/>
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                  </button>
+                {:else}
+                  <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+
+        <!-- Download Section -->
+        <div class="download-section">
+          {#if stats.total > 0}
+            <div class="progress-container">
+              <div class="progress-info">
+                <span>{stats.completed}/{stats.total} tracks</span>
+                {#if stats.failed > 0}
+                  <span class="error">{stats.failed} failed</span>
+                {/if}
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" class:complete={stats.completed === stats.total} style="width: {(stats.completed / stats.total) * 100}%"></div>
+              </div>
+            </div>
           {/if}
-        </button>
-      </div>
+
+          <button class="btn-primary btn-large" onclick={downloadAllTracks} disabled={stats.downloading > 0 || !folder}>
+            {#if stats.downloading > 0}
+              <span class="spinner"></span>
+              Downloading...
+            {:else if stats.completed === content.tracks?.length}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              All Downloaded
+            {:else}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download All FLAC
+            {/if}
+          </button>
+        </div>
+      {/if}
     </div>
   {:else if !loading}
     <!-- Empty State -->
@@ -816,6 +921,21 @@
     background: rgba(244, 114, 182, 0.05);
   }
 
+  .track-row.unavailable-track {
+    opacity: 0.5;
+  }
+
+  .unavailable-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-top: 2px;
+    display: inline-block;
+  }
+
   .track-num {
     width: 28px;
     color: var(--color-text-muted);
@@ -968,5 +1088,98 @@
     margin: 0;
     color: var(--color-text-tertiary);
     font-size: 0.95rem;
+  }
+
+  /* Artist discography */
+  .album-filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0 4px 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 4px;
+  }
+
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    border-radius: 16px;
+    padding: 4px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .filter-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+
+  .albums-container {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .album-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.15s;
+  }
+
+  .album-row:hover {
+    background: var(--color-bg-hover, rgba(255,255,255,0.04));
+  }
+
+  .album-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .album-thumb.placeholder {
+    background: var(--color-bg-secondary);
+  }
+
+  .album-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .album-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .album-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  .album-type-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
   }
 </style>

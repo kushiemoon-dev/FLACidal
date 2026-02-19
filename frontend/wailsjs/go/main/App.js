@@ -42,6 +42,10 @@ export function DetectSourceFromURL(arg1) {
   return window['go']['main']['App']['DetectSourceFromURL'](arg1);
 }
 
+export function ExportFailedDownloads(arg1) {
+  return window['go']['main']['App']['ExportFailedDownloads'](arg1);
+}
+
 export function DownloadTrack(arg1, arg2) {
   return window['go']['main']['App']['DownloadTrack'](arg1, arg2);
 }
@@ -210,6 +214,10 @@ export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }
 
+export function QueueArtistAlbum(arg1, arg2, arg3) {
+  return window['go']['main']['App']['QueueArtistAlbum'](arg1, arg2, arg3);
+}
+
 export function QueueDownloads(arg1, arg2, arg3) {
   return window['go']['main']['App']['QueueDownloads'](arg1, arg2, arg3);
 }
@@ -262,8 +270,8 @@ export function SetDownloadFolder(arg1) {
   return window['go']['main']['App']['SetDownloadFolder'](arg1);
 }
 
-export function SetDownloadOptions(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4);
+export function SetDownloadOptions(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function SetPreferredSource(arg1) {
