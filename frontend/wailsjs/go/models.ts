@@ -447,6 +447,7 @@ export namespace backend {
 	    explicit: boolean;
 	    tidalUrl: string;
 	    available: boolean;
+	    previewUrl: string;
 
 	    static createFrom(source: any = {}) {
 	        return new TidalTrack(source);
@@ -467,6 +468,7 @@ export namespace backend {
 	        this.explicit = source["explicit"];
 	        this.tidalUrl = source["tidalUrl"];
 	        this.available = source["available"] !== false; // default true if absent
+	        this.previewUrl = source["previewUrl"] || '';
 	    }
 	}
 	export class MatchResult {
