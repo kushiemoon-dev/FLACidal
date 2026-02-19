@@ -19,6 +19,7 @@ var (
 	tidalSourcePlaylistRegex = regexp.MustCompile(`tidal\.com/(?:browse/)?playlist/([a-f0-9-]+)`)
 	tidalSourceTrackRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?track/(\d+)`)
 	tidalSourceAlbumRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?album/(\d+)`)
+	tidalSourceArtistRegex   = regexp.MustCompile(`tidal\.com/(?:browse/)?artist/(\d+)`)
 )
 
 // NewTidalSource creates a new Tidal source
@@ -63,6 +64,9 @@ func (t *TidalSource) ParseURL(rawURL string) (id string, contentType string, er
 	}
 	if matches := tidalSourceAlbumRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		return matches[1], "album", nil
+	}
+	if matches := tidalSourceArtistRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1], "artist", nil
 	}
 	return "", "", fmt.Errorf("invalid Tidal URL format")
 }
@@ -208,7 +212,11 @@ func (t *TidalSource) GetStreamURL(trackID string, quality string) (string, erro
 		defer func() { t.service.options.Quality = oldQuality }()
 	}
 
-	return t.service.GetStreamURL(id)
+	streamInfo, err := t.service.GetStreamURL(id)
+	if err != nil {
+		return "", err
+	}
+	return streamInfo.URL, nil
 }
 
 // DownloadTrack downloads a track to the specified directory
