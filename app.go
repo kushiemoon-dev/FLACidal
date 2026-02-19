@@ -89,13 +89,14 @@ func (a *App) startup(ctx context.Context) {
 		fileNameFormat = "{artist} - {title}"
 	}
 	a.downloader.SetOptions(backend.DownloadOptions{
-		Quality:             quality,
-		FileNameFormat:      fileNameFormat,
-		OrganizeFolders:     config.OrganizeFolders,
-		EmbedCover:          config.EmbedCover,
-		SaveCoverFile:       config.SaveCoverFile,
-		AutoAnalyze:         config.AutoAnalyze,
-		AutoQualityFallback: config.AutoQualityFallback,
+		Quality:              quality,
+		FileNameFormat:       fileNameFormat,
+		OrganizeFolders:      config.OrganizeFolders,
+		EmbedCover:           config.EmbedCover,
+		SaveCoverFile:        config.SaveCoverFile,
+		AutoAnalyze:          config.AutoAnalyze,
+		AutoQualityFallback:  config.AutoQualityFallback,
+		QualityFallbackOrder: config.QualityOrder,
 	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
@@ -231,7 +232,11 @@ func (a *App) SaveConfig(config backend.Config) error {
 	if a.downloader != nil {
 		opts := a.downloader.GetOptions()
 		opts.AutoQualityFallback = config.AutoQualityFallback
+		opts.QualityFallbackOrder = config.QualityOrder
 		a.downloader.SetOptions(opts)
+	}
+	if a.downloadManager != nil {
+		a.downloadManager.SetSourceOrder(config.SourceOrder)
 	}
 	return backend.SaveConfig(&config)
 }
@@ -329,6 +334,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["coverUrl"] = album.CoverURL
 		result["tracks"] = album.Tracks
 		result["trackCount"] = len(album.Tracks)
+		result["albumType"] = album.AlbumType
 
 	case "track":
 		track, err := a.tidalClient.GetTrack(id)
