@@ -202,6 +202,10 @@ export function OpenDownloadFolder(arg1) {
   return window['go']['main']['App']['OpenDownloadFolder'](arg1);
 }
 
+export function OpenFLACFilesDialog() {
+  return window['go']['main']['App']['OpenFLACFilesDialog']();
+}
+
 export function OpenInFileManager(arg1) {
   return window['go']['main']['App']['OpenInFileManager'](arg1);
 }

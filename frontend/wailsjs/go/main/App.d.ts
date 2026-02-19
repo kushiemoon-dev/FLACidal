@@ -102,6 +102,8 @@ export function MatchSingleTrack(arg1:backend.TidalTrack):Promise<backend.MatchR
 
 export function OpenDownloadFolder(arg1:string):Promise<void>;
 
+export function OpenFLACFilesDialog():Promise<Array<string>>;
+
 export function OpenInFileManager(arg1:string):Promise<void>;
 
 export function PauseDownloads():Promise<boolean>;
