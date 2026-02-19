@@ -441,6 +441,7 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 	var albumResp struct {
 		ID              int    `json:"id"`
 		Title           string `json:"title"`
+		Type            string `json:"type"`
 		ReleaseDate     string `json:"releaseDate"`
 		NumberOfTracks  int    `json:"numberOfTracks"`
 		Cover           string `json:"cover"`
@@ -465,6 +466,7 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 		ReleaseDate: albumResp.ReleaseDate,
 		TrackCount:  albumResp.NumberOfTracks,
 		CoverURL:    formatTidalImageURL(albumResp.Cover),
+		AlbumType:   albumResp.Type,
 	}
 
 	// Fetch album tracks
