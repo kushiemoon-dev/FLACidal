@@ -357,7 +357,9 @@
         {/if}
         <div class="content-info">
           <div class="badges-row">
-            <span class="badge">{getContentTypeLabel(content.type)}</span>
+            <span class="badge" class:badge-ep={content.albumType === 'EP'} class:badge-single={content.albumType === 'SINGLE'} class:badge-compilation={content.albumType === 'COMPILATION'}>
+              {content.type === 'album' && content.albumType ? getAlbumTypeLabel(content.albumType) : getContentTypeLabel(content.type)}
+            </span>
             {#if content.source}
               <span class="badge source-tag" class:tidal={content.source === 'tidal'} class:qobuz={content.source === 'qobuz'}>
                 {content.source === 'tidal' ? 'Tidal' : content.source === 'qobuz' ? 'Qobuz' : content.source}
@@ -863,6 +865,21 @@
     width: fit-content;
     background: rgba(244, 114, 182, 0.15);
     color: #f472b6;
+  }
+
+  .badge.badge-ep {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+  }
+
+  .badge.badge-single {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+  }
+
+  .badge.badge-compilation {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
   }
 
   .content-info h2 {
