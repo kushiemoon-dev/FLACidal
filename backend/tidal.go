@@ -51,6 +51,9 @@ type TidalTrack struct {
 	TidalURL   string  `json:"tidalUrl"`
 	Available  bool    `json:"available"`  // Whether track is available for streaming
 	PreviewURL string  `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
+	Copyright  string  `json:"copyright,omitempty"`  // Copyright string from album
+	Label      string  `json:"label,omitempty"`      // Record label name
+	Popularity int     `json:"popularity,omitempty"` // Popularity score 0-100
 }
 
 // TidalPlaylist represents a playlist from Tidal
@@ -278,14 +281,15 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 		var itemsResp struct {
 			Items []struct {
 				Item struct {
-					ID             int    `json:"id"`
-					Title          string `json:"title"`
-					Duration       int    `json:"duration"`
-					ISRC           string `json:"isrc"`
-					Explicit       bool   `json:"explicit"`
-					StreamReady      *bool  `json:"streamReady"`    // nil = not in response = assume available
-					AudioPreviewURL  string `json:"audioPreviewUrl"`
-					Album            struct {
+					ID              int    `json:"id"`
+					Title           string `json:"title"`
+					Duration        int    `json:"duration"`
+					ISRC            string `json:"isrc"`
+					Explicit        bool   `json:"explicit"`
+					StreamReady     *bool  `json:"streamReady"`    // nil = not in response = assume available
+					AudioPreviewURL string `json:"audioPreviewUrl"`
+					Popularity      int    `json:"popularity"`
+					Album           struct {
 						ID    int    `json:"id"`
 						Title string `json:"title"`
 						Cover string `json:"cover"`
@@ -334,6 +338,7 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 				TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
 				Available:  available,
 				PreviewURL: track.AudioPreviewURL,
+				Popularity: track.Popularity,
 			})
 		}
 
@@ -369,6 +374,7 @@ func (c *TidalClient) GetTrack(trackID string) (*TidalTrack, error) {
 		Explicit        bool   `json:"explicit"`
 		StreamReady     *bool  `json:"streamReady"`
 		AudioPreviewURL string `json:"audioPreviewUrl"`
+		Popularity      int    `json:"popularity"`
 		Album           struct {
 			ID    int    `json:"id"`
 			Title string `json:"title"`
@@ -411,6 +417,7 @@ func (c *TidalClient) GetTrack(trackID string) (*TidalTrack, error) {
 		TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", trackResp.ID),
 		Available:  trackAvailable,
 		PreviewURL: trackResp.AudioPreviewURL,
+		Popularity: trackResp.Popularity,
 	}, nil
 }
 
@@ -423,6 +430,8 @@ type TidalAlbum struct {
 	TrackCount  int          `json:"trackCount"`
 	CoverURL    string       `json:"coverUrl"`
 	AlbumType   string       `json:"albumType,omitempty"` // "ALBUM", "EP", "SINGLE", "COMPILATION"
+	Copyright   string       `json:"copyright,omitempty"` // Copyright string from Tidal
+	Label       string       `json:"label,omitempty"`     // Record label name
 	Tracks      []TidalTrack `json:"tracks"`
 }
 
@@ -444,15 +453,19 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 	}
 
 	var albumResp struct {
-		ID              int    `json:"id"`
-		Title           string `json:"title"`
-		Type            string `json:"type"`
-		ReleaseDate     string `json:"releaseDate"`
-		NumberOfTracks  int    `json:"numberOfTracks"`
-		Cover           string `json:"cover"`
-		Artists         []struct {
+		ID             int    `json:"id"`
+		Title          string `json:"title"`
+		Type           string `json:"type"`
+		ReleaseDate    string `json:"releaseDate"`
+		NumberOfTracks int    `json:"numberOfTracks"`
+		Cover          string `json:"cover"`
+		Copyright      string `json:"copyright"`
+		Artists        []struct {
 			Name string `json:"name"`
 		} `json:"artists"`
+		Label struct {
+			Name string `json:"name"`
+		} `json:"label"`
 	}
 
 	if err := json.Unmarshal(data, &albumResp); err != nil {
@@ -472,6 +485,8 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 		TrackCount:  albumResp.NumberOfTracks,
 		CoverURL:    formatTidalImageURL(albumResp.Cover),
 		AlbumType:   albumResp.Type,
+		Copyright:   albumResp.Copyright,
+		Label:       albumResp.Label.Name,
 	}
 
 	// Fetch album tracks
@@ -490,6 +505,7 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 			Explicit        bool   `json:"explicit"`
 			StreamReady     *bool  `json:"streamReady"`
 			AudioPreviewURL string `json:"audioPreviewUrl"`
+			Popularity      int    `json:"popularity"`
 			Album           struct {
 				ID    int    `json:"id"`
 				Title string `json:"title"`
@@ -534,6 +550,9 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
 			Available:  trackAvail,
 			PreviewURL: track.AudioPreviewURL,
+			Copyright:  album.Copyright,
+			Label:      album.Label,
+			Popularity: track.Popularity,
 		})
 	}
 

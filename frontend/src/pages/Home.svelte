@@ -268,6 +268,14 @@
   // Artist discography state
   let albumTypeFilter = $state('all');
 
+  // Track sort state
+  let sortByPopularity = $state(false);
+  let displayedTracks = $derived(
+    sortByPopularity
+      ? [...(content?.tracks || [])].sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      : (content?.tracks || [])
+  );
+
   let filteredAlbums = $derived(() => {
     const albums = (content as any)?.albums || [];
     if (albumTypeFilter === 'all') return albums;
@@ -483,9 +491,27 @@
         </div>
 
       {:else}
+        <!-- Sort Controls -->
+        <div class="sort-bar">
+          <button
+            class="sort-btn"
+            class:active={sortByPopularity}
+            onclick={() => sortByPopularity = !sortByPopularity}
+            title={sortByPopularity ? 'Switch to track order' : 'Sort by popularity'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 7 13 7 13 2"/>
+              <polyline points="2 17 11 17 11 22"/>
+              <path d="M22 7L11 18"/>
+              <path d="M2 17L13 6"/>
+            </svg>
+            {sortByPopularity ? 'By Popularity' : 'Track Order'}
+          </button>
+        </div>
+
         <!-- Track List -->
         <div class="tracks-container">
-          {#each content.tracks || [] as track, i}
+          {#each displayedTracks as track, i}
             {@const status = trackStatuses[track.id]}
             <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false}>
               <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
@@ -502,6 +528,14 @@
                 {/if}
               </div>
               <span class="track-duration">{formatDuration(track.duration)}</span>
+              {#if track.popularity > 0}
+                <span class="popularity-badge" title="Popularity: {track.popularity}/100">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                  </svg>
+                  {track.popularity}
+                </span>
+              {/if}
               {#if track.previewUrl}
                 <button
                   class="btn-icon preview-btn"
@@ -1082,6 +1116,51 @@
     font-family: 'JetBrains Mono', monospace;
     width: 45px;
     text-align: right;
+  }
+
+  .popularity-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    width: 36px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .sort-bar {
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 4px;
+  }
+
+  .sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sort-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
+  }
+
+  .sort-btn.active {
+    border-color: var(--color-accent);
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
   }
 
   .track-status {
