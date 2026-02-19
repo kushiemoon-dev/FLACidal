@@ -34,6 +34,7 @@
     preferredSource: 'tidal',
     generateM3u8: false,
     skipUnavailableTracks: false,
+    firstArtistOnly: false,
     autoQualityFallback: false,
     sourceOrder: ['tidal', 'qobuz'] as string[],
     qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[]
@@ -87,6 +88,7 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         downloadFolder.set(config.downloadFolder);
@@ -156,6 +158,7 @@
         generateM3u8: config.generateM3u8,
         skipUnavailableTracks: config.skipUnavailableTracks,
         autoQualityFallback: config.autoQualityFallback,
+        firstArtistOnly: config.firstArtistOnly,
         sourceOrder: config.sourceOrder,
         qualityOrder: config.qualityOrder
       });
@@ -201,6 +204,7 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         // Note: download folder and Qobuz credentials are preserved
@@ -389,6 +393,19 @@
             <option value={'{track}. {title}'}>{'{track}. {title}'}</option>
             <option value={'{track}. {artist} - {title}'}>{'{track}. {artist} - {title}'}</option>
           </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="first-artist-only">First Artist Only</label>
+          <span class="setting-desc">For multi-artist tracks, use only the primary artist in tags and filenames (e.g. "Artist A" instead of "Artist A, Artist B")</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" id="first-artist-only" bind:checked={config.firstArtistOnly} />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
     </section>
