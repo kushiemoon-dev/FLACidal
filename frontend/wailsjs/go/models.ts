@@ -61,6 +61,7 @@ export namespace backend {
 	    sourceOrder?: string[];
 	    qualityOrder?: string[];
 	    firstArtistOnly: boolean;
+	    proxyUrl?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -96,6 +97,7 @@ export namespace backend {
 	        this.sourceOrder = source["sourceOrder"];
 	        this.qualityOrder = source["qualityOrder"];
 	        this.firstArtistOnly = source["firstArtistOnly"] || false;
+	        this.proxyUrl = source["proxyUrl"] || '';
 	    }
 	}
 	export class ConversionFormat {

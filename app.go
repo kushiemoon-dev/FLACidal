@@ -64,6 +64,13 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize Tidal client (uses internal credentials, no user config needed)
 	a.tidalClient = backend.NewTidalClientDefault()
+	if config.ProxyURL != "" {
+		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+		} else {
+			a.logBuffer.Info("Tidal API proxy: " + config.ProxyURL)
+		}
+	}
 	a.logBuffer.Info("Tidal client ready")
 
 	// Initialize Spotify search client (Client Credentials, no login needed)
@@ -76,6 +83,11 @@ func (a *App) startup(ctx context.Context) {
 	a.downloader = backend.NewTidalHifiService()
 	// Attach logger so endpoint rotation events appear in Terminal page
 	a.downloader.SetLogger(a.logBuffer)
+	if config.ProxyURL != "" {
+		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+		}
+	}
 	// Apply custom endpoints if configured
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
@@ -161,6 +173,11 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize Qobuz source
 	a.qobuzSource = backend.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
 	a.qobuzSource.SetLogger(a.logBuffer)
+	if config.ProxyURL != "" {
+		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+		}
+	}
 	if len(config.QobuzEndpoints) > 0 {
 		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured", len(config.QobuzEndpoints)))
@@ -241,6 +258,22 @@ func (a *App) SaveConfig(config backend.Config) error {
 	}
 	if a.downloadManager != nil {
 		a.downloadManager.SetSourceOrder(config.SourceOrder)
+	}
+	// Apply proxy changes immediately (no restart needed)
+	if a.tidalClient != nil {
+		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+		}
+	}
+	if a.downloader != nil {
+		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+		}
+	}
+	if a.qobuzSource != nil {
+		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+		}
 	}
 	return backend.SaveConfig(&config)
 }

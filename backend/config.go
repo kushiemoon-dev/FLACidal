@@ -58,6 +58,9 @@ type Config struct {
 
 	// Metadata formatting
 	FirstArtistOnly bool `json:"firstArtistOnly"` // Use only the first artist in tags and filenames
+
+	// Network
+	ProxyURL string `json:"proxyUrl,omitempty"` // HTTP/SOCKS5 proxy e.g. "socks5://127.0.0.1:1080"
 }
 
 var defaultConfig = Config{
