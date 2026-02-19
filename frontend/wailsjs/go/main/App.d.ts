@@ -22,6 +22,8 @@ export function DeleteHistoryRecord(arg1:number):Promise<void>;
 
 export function DetectSourceFromURL(arg1:string):Promise<Record<string, any>>;
 
+export function ExportFailedDownloads(arg1:string):Promise<string>;
+
 export function DownloadTrack(arg1:number,arg2:string):Promise<backend.DownloadResult>;
 
 export function DownloadTrackFromTidal(arg1:backend.TidalTrack,arg2:string):Promise<backend.DownloadResult>;
@@ -106,6 +108,8 @@ export function PauseDownloads():Promise<boolean>;
 
 export function PreviewRename(arg1:Array<string>,arg2:string):Promise<Array<backend.RenamePreview>>;
 
+export function QueueArtistAlbum(arg1:string,arg2:string,arg3:string):Promise<number>;
+
 export function QueueDownloads(arg1:Array<backend.TidalTrack>,arg2:string,arg3:string):Promise<number>;
 
 export function QueueSingleDownload(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;
@@ -132,7 +136,7 @@ export function SelectDownloadFolder():Promise<string>;
 
 export function SetDownloadFolder(arg1:string):Promise<void>;
 
-export function SetDownloadOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean):Promise<void>;
+export function SetDownloadOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean,arg6:boolean):Promise<void>;
 
 export function SetPreferredSource(arg1:string):Promise<void>;
 
