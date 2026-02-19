@@ -170,6 +170,25 @@ func (t *TidalHifiService) SetLogger(logger *LogBuffer) {
 	t.logger = logger
 }
 
+// SetProxy configures both API and download HTTP clients to use the given proxy.
+// Supported schemes: http://, https://, socks5://.
+// Pass an empty string to remove the proxy.
+func (t *TidalHifiService) SetProxy(proxyURLStr string) error {
+	transport, err := BuildProxyTransport(proxyURLStr)
+	if err != nil {
+		return err
+	}
+	t.client = &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}
+	t.downloadClient = &http.Client{
+		Timeout:   0,
+		Transport: transport,
+	}
+	return nil
+}
+
 // SetEndpoints replaces the endpoint pool with a custom list (e.g. from config).
 // An empty/nil slice reverts to the built-in defaults.
 func (t *TidalHifiService) SetEndpoints(urls []string) {
