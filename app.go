@@ -567,6 +567,20 @@ func (a *App) MatchSingleTrack(track backend.TidalTrack) backend.MatchResult {
 // Download Methods (exposed to frontend)
 // =============================================================================
 
+// OpenFLACFilesDialog opens a multi-file picker filtered to FLAC files.
+func (a *App) OpenFLACFilesDialog() ([]string, error) {
+	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select FLAC Files to Analyze",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "FLAC Audio (*.flac)", Pattern: "*.flac"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return paths, nil
+}
+
 // SelectDownloadFolder opens a folder picker dialog
 func (a *App) SelectDownloadFolder() (string, error) {
 	folder, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
