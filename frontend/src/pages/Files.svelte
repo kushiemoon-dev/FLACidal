@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple } from '../../wailsjs/go/main/App.js';
+  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../wailsjs/go/main/App.js';
+  import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
   import MetadataModal from '../components/MetadataModal.svelte';
   import RenameModal from '../components/RenameModal.svelte';
   import ConvertModal from '../components/ConvertModal.svelte';
@@ -32,6 +33,16 @@
 
   let allSelected = $derived(files.length > 0 && selectedFiles.size === files.length);
   let someSelected = $derived(selectedFiles.size > 0);
+
+  // Drag-and-drop state
+  let isDragOver = $state(false);
+  let dragCounter = 0;
+  let externalAnalysisFiles: string[] = $state([]);
+
+  // Files to analyze: external drops/picks take priority over selection
+  let analysisFileList = $derived(
+    externalAnalysisFiles.length > 0 ? externalAnalysisFiles : Array.from(selectedFiles)
+  );
 
   function toggleSelectAll() {
     if (allSelected) {
@@ -98,9 +109,57 @@
     }
   }
 
+  function handleDragEnter(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      dragCounter++;
+      isDragOver = true;
+    }
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      dragCounter--;
+      if (dragCounter === 0) isDragOver = false;
+    }
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.preventDefault();
+    }
+  }
+
+  function handleDrop() {
+    dragCounter = 0;
+    isDragOver = false;
+  }
+
+  async function openAnalyzeDialog() {
+    const paths = await OpenFLACFilesDialog();
+    if (paths && paths.length > 0) {
+      externalAnalysisFiles = paths;
+      showAnalysisModal = true;
+    }
+  }
+
   onMount(async () => {
     await loadFiles();
     converterAvailable = await IsConverterAvailable();
+
+    // Register Wails OS-level file drop handler
+    OnFileDrop((x, y, paths) => {
+      dragCounter = 0;
+      isDragOver = false;
+      const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
+      if (flacPaths.length > 0) {
+        externalAnalysisFiles = flacPaths;
+        showAnalysisModal = true;
+      }
+    }, false);
+  });
+
+  onDestroy(() => {
+    OnFileDropOff();
   });
 
   async function loadFiles() {
@@ -190,7 +249,25 @@
   }));
 </script>
 
-<div class="files-page">
+<div
+  class="files-page"
+  ondragenter={handleDragEnter}
+  ondragleave={handleDragLeave}
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
+  role="region"
+  aria-label="Files"
+>
+  {#if isDragOver}
+    <div class="drop-overlay">
+      <div class="drop-overlay-inner">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <p>Drop FLAC files to analyze</p>
+      </div>
+    </div>
+  {/if}
   <div class="files-header">
     <div class="header-left">
       <h1>Downloaded Files</h1>
@@ -255,6 +332,12 @@
             <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
           </svg>
           Refresh
+        </button>
+        <button class="action-btn" onclick={openAnalyzeDialog} title="Pick FLAC files to analyze">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Analyze Files...
         </button>
         <button class="action-btn primary" onclick={openFolder}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -451,8 +534,8 @@
 
 {#if showAnalysisModal}
   <AnalysisModal
-    files={Array.from(selectedFiles)}
-    onClose={() => showAnalysisModal = false}
+    files={analysisFileList}
+    onClose={() => { showAnalysisModal = false; externalAnalysisFiles = []; }}
   />
 {/if}
 
@@ -460,6 +543,35 @@
   .files-page {
     padding: 32px;
     max-width: 1200px;
+    position: relative;
+  }
+
+  .drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(244, 114, 182, 0.08);
+    border: 2px dashed rgba(244, 114, 182, 0.5);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    pointer-events: none;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .drop-overlay-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #f472b6;
+  }
+
+  .drop-overlay-inner p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
   }
 
   .files-header {
