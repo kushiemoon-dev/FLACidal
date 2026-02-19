@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,15 +19,31 @@ import (
 // Free Tidal FLAC proxy without credentials (same as mkv-video)
 
 const (
-	tidalHifiAPIBase = "https://vogel.qqdl.site"
+	tidalHifiAPIBase     = "https://vogel.qqdl.site"
+	endpointBlacklistDur = 5 * time.Minute
 )
 
-// TidalHifiService implements FLAC downloading via vogel.qqdl.site
+// defaultTidalHifiEndpoints is the built-in list of Tidal HiFi proxy endpoints.
+// Users can extend this via TidalHifiEndpoints in config.
+var defaultTidalHifiEndpoints = []string{
+	"https://vogel.qqdl.site",
+}
+
+// endpointEntry tracks availability of a single API endpoint.
+type endpointEntry struct {
+	url         string
+	blacklisted bool
+	blacklistAt time.Time
+}
+
+// TidalHifiService implements FLAC downloading via a pool of proxy endpoints
 type TidalHifiService struct {
 	client         *http.Client
 	downloadClient *http.Client // Separate client for downloads (no timeout)
-	baseURL        string
+	endpoints      []*endpointEntry
+	endpointMu     sync.Mutex
 	options        DownloadOptions
+	logger         *LogBuffer // optional — set via SetLogger
 }
 
 // TidalManifest represents the decoded manifest from hifi-api
@@ -79,18 +96,28 @@ type TidalStreamDataResponse struct {
 	Data    TidalStreamResponse `json:"data"`
 }
 
+// StreamInfo contains information about the audio stream returned by Tidal
+type StreamInfo struct {
+	URL          string `json:"url"`
+	AudioQuality string `json:"audioQuality"` // HI_RES, LOSSLESS, HIGH, etc.
+	AudioMode    string `json:"audioMode"`    // STEREO, DOLBY_ATMOS, etc.
+}
+
 // DownloadResult represents the result of a download
 type DownloadResult struct {
-	TrackID   int    `json:"trackId"`
-	Title     string `json:"title"`
-	Artist    string `json:"artist"`
-	Album     string `json:"album"`
-	FilePath  string `json:"filePath"`
-	FileSize  int64  `json:"fileSize"`
-	Quality   string `json:"quality"`
-	CoverURL  string `json:"coverUrl"`
-	Success   bool   `json:"success"`
-	Error     string `json:"error,omitempty"`
+	TrackID         int              `json:"trackId"`
+	Title           string           `json:"title"`
+	Artist          string           `json:"artist"`
+	Album           string           `json:"album"`
+	FilePath        string           `json:"filePath"`
+	FileSize        int64            `json:"fileSize"`
+	Quality         string           `json:"quality"`
+	RequestedQuality string          `json:"requestedQuality,omitempty"` // Quality that was requested
+	QualityMismatch bool             `json:"qualityMismatch,omitempty"`  // True if server returned different quality
+	CoverURL        string           `json:"coverUrl"`
+	Success         bool             `json:"success"`
+	Error           string           `json:"error,omitempty"`
+	Analysis        *AnalysisResult  `json:"analysis,omitempty"` // Auto-analysis result if enabled
 }
 
 // DownloadOptions configures download behavior
@@ -99,6 +126,8 @@ type DownloadOptions struct {
 	FileNameFormat  string // "{artist} - {title}", "{track} - {title}", etc.
 	OrganizeFolders bool   // Create Artist/Album/ subfolders
 	EmbedCover      bool   // Embed cover art in FLAC
+	SaveCoverFile   bool   // Save cover art as .jpg file next to FLAC
+	AutoAnalyze     bool   // Automatically analyze quality after download
 }
 
 // NewTidalHifiService creates a new Tidal HiFi download service
@@ -110,7 +139,7 @@ func NewTidalHifiService() *TidalHifiService {
 		IdleConnTimeout:     90 * time.Second,
 	}
 
-	return &TidalHifiService{
+	svc := &TidalHifiService{
 		client: &http.Client{
 			Timeout: 30 * time.Second, // For API calls only
 		},
@@ -118,14 +147,142 @@ func NewTidalHifiService() *TidalHifiService {
 			Timeout:   0, // No timeout for downloads
 			Transport: downloadTransport,
 		},
-		baseURL: tidalHifiAPIBase,
 		options: DownloadOptions{
 			Quality:         "LOSSLESS",
 			FileNameFormat:  "{artist} - {title}",
 			OrganizeFolders: false,
 			EmbedCover:      true,
+			SaveCoverFile:   true,
 		},
 	}
+	svc.initEndpoints(nil) // uses defaultTidalHifiEndpoints
+	return svc
+}
+
+// SetLogger attaches a log buffer so endpoint rotation events are visible in the Terminal page.
+func (t *TidalHifiService) SetLogger(logger *LogBuffer) {
+	t.logger = logger
+}
+
+// SetEndpoints replaces the endpoint pool with a custom list (e.g. from config).
+// An empty/nil slice reverts to the built-in defaults.
+func (t *TidalHifiService) SetEndpoints(urls []string) {
+	t.initEndpoints(urls)
+}
+
+// initEndpoints (re)initialises the endpoint pool.
+func (t *TidalHifiService) initEndpoints(urls []string) {
+	if len(urls) == 0 {
+		urls = defaultTidalHifiEndpoints
+	}
+	t.endpointMu.Lock()
+	defer t.endpointMu.Unlock()
+	t.endpoints = make([]*endpointEntry, len(urls))
+	for i, u := range urls {
+		t.endpoints[i] = &endpointEntry{url: u}
+	}
+}
+
+// getOrderedEndpoints returns endpoint URLs to try: non-blacklisted first,
+// then expired blacklists. Must be called with endpointMu held.
+func (t *TidalHifiService) getOrderedEndpoints() []string {
+	now := time.Now()
+	active := []string{}
+	expired := []string{}
+	for _, ep := range t.endpoints {
+		if !ep.blacklisted {
+			active = append(active, ep.url)
+		} else if now.After(ep.blacklistAt.Add(endpointBlacklistDur)) {
+			// Blacklist has expired — treat as available again
+			ep.blacklisted = false
+			active = append(active, ep.url)
+		} else {
+			expired = append(expired, ep.url)
+		}
+	}
+	// Return active first, then still-blacklisted as final fallback
+	return append(active, expired...)
+}
+
+// blacklistEndpoint marks an endpoint as temporarily unavailable.
+func (t *TidalHifiService) blacklistEndpoint(rawURL string) {
+	t.endpointMu.Lock()
+	defer t.endpointMu.Unlock()
+	for _, ep := range t.endpoints {
+		if ep.url == rawURL {
+			ep.blacklisted = true
+			ep.blacklistAt = time.Now()
+			return
+		}
+	}
+}
+
+// selectEndpoint returns the first usable endpoint URL.
+func (t *TidalHifiService) selectEndpoint() string {
+	t.endpointMu.Lock()
+	defer t.endpointMu.Unlock()
+	ordered := t.getOrderedEndpoints()
+	if len(ordered) > 0 {
+		return ordered[0]
+	}
+	return tidalHifiAPIBase
+}
+
+// tryAPIRequest performs a single GET request against one endpoint+path.
+func (t *TidalHifiService) tryAPIRequest(endpoint, path string) ([]byte, error) {
+	req, err := http.NewRequest("GET", endpoint+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return nil, fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// makeAPIRequest tries each endpoint in rotation until one succeeds.
+// Failing endpoints are temporarily blacklisted for endpointBlacklistDur.
+func (t *TidalHifiService) makeAPIRequest(path string) ([]byte, error) {
+	t.endpointMu.Lock()
+	toTry := t.getOrderedEndpoints()
+	t.endpointMu.Unlock()
+
+	if len(toTry) == 0 {
+		toTry = []string{tidalHifiAPIBase}
+	}
+
+	var lastErr error
+	var prevEndpoint string
+
+	for _, endpoint := range toTry {
+		body, err := t.tryAPIRequest(endpoint, path)
+		if err == nil {
+			return body, nil
+		}
+
+		lastErr = err
+		t.blacklistEndpoint(endpoint)
+
+		if t.logger != nil {
+			if prevEndpoint != "" {
+				t.logger.Warn(fmt.Sprintf("switching Tidal endpoint: %s → %s (reason: %v)", prevEndpoint, endpoint, err))
+			} else {
+				t.logger.Warn(fmt.Sprintf("Tidal endpoint %s failed: %v", endpoint, err))
+			}
+		}
+		prevEndpoint = endpoint
+	}
+
+	return nil, fmt.Errorf("all Tidal endpoints failed: %v", lastErr)
 }
 
 // SetOptions updates download options
@@ -140,7 +297,8 @@ func (t *TidalHifiService) GetOptions() DownloadOptions {
 
 // IsAvailable checks if the service is reachable
 func (t *TidalHifiService) IsAvailable() bool {
-	resp, err := t.client.Head(t.baseURL)
+	endpoint := t.selectEndpoint()
+	resp, err := t.client.Head(endpoint)
 	if err != nil {
 		return false
 	}
@@ -150,23 +308,9 @@ func (t *TidalHifiService) IsAvailable() bool {
 
 // GetTrackByID fetches track info by Tidal ID
 func (t *TidalHifiService) GetTrackByID(trackID int) (*TidalHifiTrackResponse, error) {
-	infoURL := fmt.Sprintf("%s/info/?id=%d", t.baseURL, trackID)
-
-	req, err := http.NewRequest("GET", infoURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := t.client.Do(req)
+	body, err := t.makeAPIRequest(fmt.Sprintf("/info/?id=%d", trackID))
 	if err != nil {
 		return nil, fmt.Errorf("info request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read info response: %w", err)
 	}
 
 	// Try v2.0 wrapper format first
@@ -189,91 +333,68 @@ func (t *TidalHifiService) GetTrackByID(trackID int) (*TidalHifiTrackResponse, e
 	return &trackInfo, nil
 }
 
-// GetStreamURL fetches the FLAC stream URL for a track
-func (t *TidalHifiService) GetStreamURL(trackID int) (string, error) {
+// GetStreamURL fetches the FLAC stream URL for a track and returns stream info
+func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 	quality := t.options.Quality
 	if quality == "" {
 		quality = "LOSSLESS"
 	}
-	streamURL := fmt.Sprintf("%s/track/?id=%d&quality=%s", t.baseURL, trackID, quality)
 
-	req, err := http.NewRequest("GET", streamURL, nil)
+	body, err := t.makeAPIRequest(fmt.Sprintf("/track/?id=%d&quality=%s", trackID, quality))
 	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := t.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("stream request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read stream response: %w", err)
+		return nil, fmt.Errorf("stream request failed: %w", err)
 	}
 
 	// Try v2.0 wrapper format first
 	var streamDataResp TidalStreamDataResponse
 	if err := json.Unmarshal(body, &streamDataResp); err != nil {
-		return "", fmt.Errorf("failed to parse stream response: %w", err)
+		return nil, fmt.Errorf("failed to parse stream response: %w", err)
 	}
 
+	// Extract quality info from response
+	audioQuality := streamDataResp.Data.AudioQuality
+	audioMode := streamDataResp.Data.AudioMode
 	manifestBase64 := streamDataResp.Data.Manifest
+
 	if manifestBase64 == "" {
 		// Fallback: try direct format
 		var streamResp TidalStreamResponse
 		if err := json.Unmarshal(body, &streamResp); err != nil {
-			return "", fmt.Errorf("failed to parse stream response (direct): %w", err)
+			return nil, fmt.Errorf("failed to parse stream response (direct): %w", err)
 		}
 		manifestBase64 = streamResp.Manifest
+		audioQuality = streamResp.AudioQuality
+		audioMode = streamResp.AudioMode
 	}
 
 	if manifestBase64 == "" {
-		return "", fmt.Errorf("no manifest in stream response")
+		return nil, fmt.Errorf("no manifest in stream response")
 	}
 
 	// Decode base64 manifest
 	manifestBytes, err := base64.StdEncoding.DecodeString(manifestBase64)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode manifest: %w", err)
+		return nil, fmt.Errorf("failed to decode manifest: %w", err)
 	}
 
 	var manifest TidalManifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return "", fmt.Errorf("failed to parse manifest: %w", err)
+		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
 	if len(manifest.URLs) == 0 {
-		return "", fmt.Errorf("no download URLs in manifest")
+		return nil, fmt.Errorf("no download URLs in manifest")
 	}
 
-	return manifest.URLs[0], nil
+	return &StreamInfo{
+		URL:          manifest.URLs[0],
+		AudioQuality: audioQuality,
+		AudioMode:    audioMode,
+	}, nil
 }
 
-// SearchTrack searches for a track on Tidal via vogel
-func (t *TidalHifiService) SearchTrack(query string) (*TidalHifiTrackResponse, error) {
-	searchURL := fmt.Sprintf("%s/search/?s=%s", t.baseURL, url.QueryEscape(query))
-
-	req, err := http.NewRequest("GET", searchURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := t.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("search request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read search response: %w", err)
-	}
-
-	// Parse response - try different formats
+// parseSearchBody extracts track items from a Tidal search response body.
+func parseSearchBody(body []byte) ([]TidalHifiTrackResponse, error) {
 	var result struct {
 		Version string `json:"version,omitempty"`
 		Data    struct {
@@ -283,22 +404,29 @@ func (t *TidalHifiService) SearchTrack(query string) (*TidalHifiTrackResponse, e
 			Items []TidalHifiTrackResponse `json:"items"`
 		} `json:"tracks,omitempty"`
 	}
-
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
-
-	var items []TidalHifiTrackResponse
 	if len(result.Data.Items) > 0 {
-		items = result.Data.Items
-	} else if len(result.Tracks.Items) > 0 {
-		items = result.Tracks.Items
+		return result.Data.Items, nil
+	}
+	return result.Tracks.Items, nil
+}
+
+// SearchTrack searches for a track on Tidal via vogel
+func (t *TidalHifiService) SearchTrack(query string) (*TidalHifiTrackResponse, error) {
+	body, err := t.makeAPIRequest("/search/?s=" + url.QueryEscape(query))
+	if err != nil {
+		return nil, fmt.Errorf("search request failed: %w", err)
 	}
 
+	items, err := parseSearchBody(body)
+	if err != nil {
+		return nil, err
+	}
 	if len(items) == 0 {
 		return nil, fmt.Errorf("no tracks found for query: %s", query)
 	}
-
 	return &items[0], nil
 }
 
@@ -308,51 +436,18 @@ func (t *TidalHifiService) SearchTracks(query string, limit int) ([]TidalHifiTra
 		limit = 20
 	}
 
-	searchURL := fmt.Sprintf("%s/search/?s=%s", t.baseURL, url.QueryEscape(query))
-
-	req, err := http.NewRequest("GET", searchURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := t.client.Do(req)
+	body, err := t.makeAPIRequest("/search/?s=" + url.QueryEscape(query))
 	if err != nil {
 		return nil, fmt.Errorf("search request failed: %w", err)
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	items, err := parseSearchBody(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read search response: %w", err)
+		return nil, err
 	}
-
-	// Parse response - try different formats
-	var result struct {
-		Version string `json:"version,omitempty"`
-		Data    struct {
-			Items []TidalHifiTrackResponse `json:"items"`
-		} `json:"data,omitempty"`
-		Tracks struct {
-			Items []TidalHifiTrackResponse `json:"items"`
-		} `json:"tracks,omitempty"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse search response: %w", err)
-	}
-
-	var items []TidalHifiTrackResponse
-	if len(result.Data.Items) > 0 {
-		items = result.Data.Items
-	} else if len(result.Tracks.Items) > 0 {
-		items = result.Tracks.Items
-	}
-
 	if len(items) > limit {
 		items = items[:limit]
 	}
-
 	return items, nil
 }
 
@@ -378,7 +473,6 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 	result.Title = track.Title
 	result.Artist = artistName
 	result.Album = track.Album.Title
-	result.Quality = "FLAC LOSSLESS"
 
 	coverURL := ""
 	if track.Album.Cover != "" {
@@ -387,11 +481,26 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 		result.CoverURL = coverURL
 	}
 
-	// Get stream URL
-	streamURL, err := t.GetStreamURL(trackID)
+	// Get stream URL and quality info
+	streamInfo, err := t.GetStreamURL(trackID)
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to get stream URL: %v", err)
 		return result, err
+	}
+
+	// Use the actual quality from the server response
+	requestedQuality := t.options.Quality
+	if requestedQuality == "" {
+		requestedQuality = "LOSSLESS"
+	}
+	result.RequestedQuality = requestedQuality
+	result.Quality = streamInfo.AudioQuality
+
+	// Check for quality mismatch and log warning
+	if streamInfo.AudioQuality != "" && streamInfo.AudioQuality != requestedQuality {
+		result.QualityMismatch = true
+		println(fmt.Sprintf("Warning: requested %s but got %s for track %d (%s - %s)",
+			requestedQuality, streamInfo.AudioQuality, trackID, artistName, track.Title))
 	}
 
 	// Determine output path based on options
@@ -426,7 +535,7 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 	}
 
 	// Download the FLAC file
-	if err := t.downloadFile(streamURL, outputPath); err != nil {
+	if err := t.downloadFile(streamInfo.URL, outputPath); err != nil {
 		result.Error = fmt.Sprintf("download failed: %v", err)
 		return result, err
 	}
@@ -449,6 +558,29 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 	if err := tagger.TagFile(outputPath, meta); err != nil {
 		// Log but don't fail - file is still downloaded
 		println("Warning: failed to tag file:", err.Error())
+	}
+
+	// Save cover as separate .jpg file if enabled
+	if t.options.SaveCoverFile && coverURL != "" {
+		coverPath := strings.TrimSuffix(outputPath, ".flac") + ".jpg"
+		if err := t.saveCoverFile(coverURL, coverPath); err != nil {
+			// Log but don't fail - FLAC is still downloaded
+			println("Warning: failed to save cover file:", err.Error())
+		}
+	}
+
+	// Auto-analyze the downloaded file if enabled
+	if t.options.AutoAnalyze {
+		analysis, err := AnalyzeFLAC(outputPath)
+		if err == nil {
+			result.Analysis = analysis
+			if !analysis.IsTrueLossless {
+				println(fmt.Sprintf("Warning: %s may be upscaled from lossy source (verdict: %s)",
+					outputPath, analysis.VerdictLabel))
+			}
+		} else {
+			println("Warning: failed to analyze file:", err.Error())
+		}
 	}
 
 	// Get file size
@@ -491,6 +623,31 @@ func (t *TidalHifiService) downloadFile(downloadURL, outputPath string) error {
 	}
 
 	return nil
+}
+
+// saveCoverFile downloads and saves cover art as a separate .jpg file
+func (t *TidalHifiService) saveCoverFile(coverURL, outputPath string) error {
+	// Skip if file already exists
+	if _, err := os.Stat(outputPath); err == nil {
+		return nil
+	}
+
+	resp, err := http.Get(coverURL)
+	if err != nil {
+		return fmt.Errorf("failed to download cover: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("cover server returned %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read cover data: %w", err)
+	}
+
+	return os.WriteFile(outputPath, data, 0644)
 }
 
 // SanitizeFileName removes invalid characters from filenames
