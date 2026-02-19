@@ -37,7 +37,8 @@
     firstArtistOnly: false,
     autoQualityFallback: false,
     sourceOrder: ['tidal', 'qobuz'] as string[],
-    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[]
+    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
+    proxyUrl: ''
   });
   let isSaving = $state(false);
   let saveMessage = $state('');
@@ -91,6 +92,7 @@
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
+        config.proxyUrl = result.proxyUrl || '';
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -160,7 +162,8 @@
         autoQualityFallback: config.autoQualityFallback,
         firstArtistOnly: config.firstArtistOnly,
         sourceOrder: config.sourceOrder,
-        qualityOrder: config.qualityOrder
+        qualityOrder: config.qualityOrder,
+        proxyUrl: config.proxyUrl || ''
       });
 
       // Save download options
@@ -646,6 +649,26 @@
           <line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
         <span>The source is automatically detected from the URL you paste. Tidal works without login.</span>
+      </div>
+    </section>
+
+    <!-- Network Section -->
+    <section class="settings-section">
+      <h2>Network</h2>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <span>HTTP / SOCKS5 Proxy</span>
+          <span class="setting-desc">Route all requests through a proxy — useful in restricted regions. Supports <code>http://</code>, <code>https://</code>, and <code>socks5://</code> URLs. Leave empty to disable.</span>
+        </div>
+        <div class="setting-control wide">
+          <input
+            type="text"
+            class="text-input"
+            bind:value={config.proxyUrl}
+            placeholder="e.g. socks5://127.0.0.1:1080"
+          />
+        </div>
       </div>
     </section>
 
