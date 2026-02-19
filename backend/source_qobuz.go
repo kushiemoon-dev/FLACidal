@@ -13,21 +13,39 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
-// QobuzSource implements MusicSource interface for Qobuz
-type QobuzSource struct {
-	client     *http.Client
-	appID      string
-	appSecret  string
-	userAuthToken string
-	available  bool
+const (
+	qobuzAPIBase           = "https://www.qobuz.com/api.json/0.2"
+	qobuzEndpointBlacklist = 5 * time.Minute
+)
+
+// defaultQobuzEndpoints is the built-in list of Qobuz API base URLs.
+// Users can extend this via QobuzEndpoints in config.
+var defaultQobuzEndpoints = []string{
+	"https://www.qobuz.com/api.json/0.2",
 }
 
-const (
-	qobuzAPIBase = "https://www.qobuz.com/api.json/0.2"
-)
+// qobuzEndpointEntry tracks availability of a single Qobuz API endpoint.
+type qobuzEndpointEntry struct {
+	url         string
+	blacklisted bool
+	blacklistAt time.Time
+}
+
+// QobuzSource implements MusicSource interface for Qobuz
+type QobuzSource struct {
+	client        *http.Client
+	appID         string
+	appSecret     string
+	userAuthToken string
+	available     bool
+	endpoints     []*qobuzEndpointEntry
+	endpointMu    sync.Mutex
+	logger        *LogBuffer // optional
+}
 
 // Qobuz URL patterns
 var (
@@ -115,7 +133,7 @@ type qobuzFileURLResponse struct {
 
 // NewQobuzSource creates a new Qobuz source
 func NewQobuzSource(appID, appSecret string) *QobuzSource {
-	return &QobuzSource{
+	q := &QobuzSource{
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -123,6 +141,152 @@ func NewQobuzSource(appID, appSecret string) *QobuzSource {
 		appSecret: appSecret,
 		available: appID != "" && appSecret != "",
 	}
+	q.initEndpoints(nil)
+	return q
+}
+
+// SetLogger attaches a log buffer so endpoint rotation events appear in the Terminal page.
+func (q *QobuzSource) SetLogger(logger *LogBuffer) {
+	q.logger = logger
+}
+
+// SetEndpoints replaces the endpoint pool with a custom list.
+// An empty/nil slice reverts to the built-in defaults.
+func (q *QobuzSource) SetEndpoints(urls []string) {
+	q.initEndpoints(urls)
+}
+
+// initEndpoints (re)initialises the endpoint pool.
+func (q *QobuzSource) initEndpoints(urls []string) {
+	if len(urls) == 0 {
+		urls = defaultQobuzEndpoints
+	}
+	q.endpointMu.Lock()
+	defer q.endpointMu.Unlock()
+	q.endpoints = make([]*qobuzEndpointEntry, len(urls))
+	for i, u := range urls {
+		q.endpoints[i] = &qobuzEndpointEntry{url: u}
+	}
+}
+
+// getOrderedQobuzEndpoints returns endpoint URLs to try: non-blacklisted first,
+// then expired blacklists. Must be called with endpointMu held.
+func (q *QobuzSource) getOrderedQobuzEndpoints() []string {
+	now := time.Now()
+	active := []string{}
+	expired := []string{}
+	for _, ep := range q.endpoints {
+		if !ep.blacklisted {
+			active = append(active, ep.url)
+		} else if now.After(ep.blacklistAt.Add(qobuzEndpointBlacklist)) {
+			ep.blacklisted = false
+			active = append(active, ep.url)
+		} else {
+			expired = append(expired, ep.url)
+		}
+	}
+	return append(active, expired...)
+}
+
+// blacklistQobuzEndpoint marks an endpoint as temporarily unavailable.
+func (q *QobuzSource) blacklistQobuzEndpoint(rawURL string) {
+	q.endpointMu.Lock()
+	defer q.endpointMu.Unlock()
+	for _, ep := range q.endpoints {
+		if ep.url == rawURL {
+			ep.blacklisted = true
+			ep.blacklistAt = time.Now()
+			return
+		}
+	}
+}
+
+// tryQobuzRequest performs a single GET request against one endpoint.
+func (q *QobuzSource) tryQobuzRequest(baseURL, endpoint string, params url.Values) ([]byte, error) {
+	if params == nil {
+		params = url.Values{}
+	}
+	params.Set("app_id", q.appID)
+
+	reqURL := fmt.Sprintf("%s/%s?%s", baseURL, endpoint, params.Encode())
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	if q.userAuthToken != "" {
+		req.Header.Set("X-User-Auth-Token", q.userAuthToken)
+	}
+
+	resp, err := q.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return nil, fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Qobuz API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// makeQobuzRequest tries each endpoint in rotation until one succeeds.
+func (q *QobuzSource) makeQobuzRequest(endpoint string, params url.Values) ([]byte, error) {
+	q.endpointMu.Lock()
+	toTry := q.getOrderedQobuzEndpoints()
+	q.endpointMu.Unlock()
+
+	if len(toTry) == 0 {
+		toTry = []string{qobuzAPIBase}
+	}
+
+	var lastErr error
+	var prevBase string
+
+	for _, base := range toTry {
+		body, err := q.tryQobuzRequest(base, endpoint, params)
+		if err == nil {
+			return body, nil
+		}
+
+		// Only rotate on server-side errors (5xx / connection failures)
+		// 4xx errors (auth, not found) are not endpoint problems
+		if isEndpointError(err) {
+			lastErr = err
+			q.blacklistQobuzEndpoint(base)
+			if q.logger != nil {
+				if prevBase != "" {
+					q.logger.Warn(fmt.Sprintf("switching Qobuz endpoint: %s → %s (reason: %v)", prevBase, base, err))
+				} else {
+					q.logger.Warn(fmt.Sprintf("Qobuz endpoint %s failed: %v", base, err))
+				}
+			}
+			prevBase = base
+			continue
+		}
+		// Non-endpoint error (auth/not-found): return immediately
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("all Qobuz endpoints failed: %v", lastErr)
+}
+
+// isEndpointError returns true when the error is a network/server error
+// that justifies trying a different endpoint.
+func isEndpointError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "server returned 5") ||
+		strings.Contains(msg, "request failed") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host")
 }
 
 // Name returns the source identifier
@@ -168,37 +332,9 @@ func (q *QobuzSource) CanHandleURL(rawURL string) bool {
 	return err == nil
 }
 
-// makeRequest performs an authenticated API request
+// makeRequest performs an authenticated API request with endpoint rotation.
 func (q *QobuzSource) makeRequest(endpoint string, params url.Values) ([]byte, error) {
-	if params == nil {
-		params = url.Values{}
-	}
-	params.Set("app_id", q.appID)
-
-	reqURL := fmt.Sprintf("%s/%s?%s", qobuzAPIBase, endpoint, params.Encode())
-
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	if q.userAuthToken != "" {
-		req.Header.Set("X-User-Auth-Token", q.userAuthToken)
-	}
-
-	resp, err := q.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Qobuz API error %d: %s", resp.StatusCode, string(body))
-	}
-
-	return io.ReadAll(resp.Body)
+	return q.makeQobuzRequest(endpoint, params)
 }
 
 // GetTrack fetches track information by ID
@@ -454,6 +590,71 @@ func (q *QobuzSource) DownloadTrack(trackID string, outputDir string, options Do
 		CoverURL: track.CoverURL,
 		Success:  true,
 	}, nil
+}
+
+// qobuzSearchResponse wraps the catalog/search tracks result.
+type qobuzSearchResponse struct {
+	Tracks struct {
+		Items []qobuzTrackResponse `json:"items"`
+	} `json:"tracks"`
+}
+
+// SearchTrackByISRC searches Qobuz for a track matching the given ISRC.
+func (q *QobuzSource) SearchTrackByISRC(isrc string) (*SourceTrack, error) {
+	if isrc == "" {
+		return nil, fmt.Errorf("ISRC is empty")
+	}
+	params := url.Values{}
+	params.Set("query", isrc)
+	params.Set("type", "tracks")
+	params.Set("limit", "5")
+
+	body, err := q.makeRequest("catalog/search", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result qobuzSearchResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	for _, item := range result.Tracks.Items {
+		if strings.EqualFold(item.ISRC, isrc) {
+			return q.convertTrack(&item), nil
+		}
+	}
+	if len(result.Tracks.Items) > 0 {
+		return q.convertTrack(&result.Tracks.Items[0]), nil
+	}
+	return nil, fmt.Errorf("no Qobuz track found for ISRC %s", isrc)
+}
+
+// SearchTrackByTitleArtist searches Qobuz by title and artist name.
+func (q *QobuzSource) SearchTrackByTitleArtist(title, artist string) (*SourceTrack, error) {
+	query := title
+	if artist != "" {
+		query = artist + " " + title
+	}
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("type", "tracks")
+	params.Set("limit", "5")
+
+	body, err := q.makeRequest("catalog/search", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result qobuzSearchResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	if len(result.Tracks.Items) == 0 {
+		return nil, fmt.Errorf("no Qobuz track found for '%s - %s'", artist, title)
+	}
+	return q.convertTrack(&result.Tracks.Items[0]), nil
 }
 
 // buildFilename creates a filename from template
