@@ -50,6 +50,7 @@ type TidalTrack struct {
 	Explicit   bool    `json:"explicit"`
 	TidalURL   string  `json:"tidalUrl"`
 	Available  bool    `json:"available"`  // Whether track is available for streaming
+	PreviewURL string  `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
 }
 
 // TidalPlaylist represents a playlist from Tidal
@@ -282,8 +283,9 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 					Duration       int    `json:"duration"`
 					ISRC           string `json:"isrc"`
 					Explicit       bool   `json:"explicit"`
-					StreamReady    *bool  `json:"streamReady"`    // nil = not in response = assume available
-					Album          struct {
+					StreamReady      *bool  `json:"streamReady"`    // nil = not in response = assume available
+					AudioPreviewURL  string `json:"audioPreviewUrl"`
+					Album            struct {
 						ID    int    `json:"id"`
 						Title string `json:"title"`
 						Cover string `json:"cover"`
@@ -318,19 +320,20 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 			available := track.StreamReady == nil || *track.StreamReady
 
 			allTracks = append(allTracks, TidalTrack{
-				ID:        track.ID,
-				Title:     track.Title,
-				Artist:    mainArtist,
-				Artists:   artistStr,
-				Album:     track.Album.Title,
-				AlbumID:   track.Album.ID,
-				ISRC:      track.ISRC,
-				Duration:  track.Duration,
-				TrackNum:  track.TrackNumber,
-				CoverURL:  formatTidalImageURL(track.Album.Cover),
-				Explicit:  track.Explicit,
-				TidalURL:  fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
-				Available: available,
+				ID:         track.ID,
+				Title:      track.Title,
+				Artist:     mainArtist,
+				Artists:    artistStr,
+				Album:      track.Album.Title,
+				AlbumID:    track.Album.ID,
+				ISRC:       track.ISRC,
+				Duration:   track.Duration,
+				TrackNum:   track.TrackNumber,
+				CoverURL:   formatTidalImageURL(track.Album.Cover),
+				Explicit:   track.Explicit,
+				TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
+				Available:  available,
+				PreviewURL: track.AudioPreviewURL,
 			})
 		}
 
@@ -359,13 +362,14 @@ func (c *TidalClient) GetTrack(trackID string) (*TidalTrack, error) {
 	}
 
 	var trackResp struct {
-		ID          int    `json:"id"`
-		Title       string `json:"title"`
-		Duration    int    `json:"duration"`
-		ISRC        string `json:"isrc"`
-		Explicit    bool   `json:"explicit"`
-		StreamReady *bool  `json:"streamReady"`
-		Album       struct {
+		ID              int    `json:"id"`
+		Title           string `json:"title"`
+		Duration        int    `json:"duration"`
+		ISRC            string `json:"isrc"`
+		Explicit        bool   `json:"explicit"`
+		StreamReady     *bool  `json:"streamReady"`
+		AudioPreviewURL string `json:"audioPreviewUrl"`
+		Album           struct {
 			ID    int    `json:"id"`
 			Title string `json:"title"`
 			Cover string `json:"cover"`
@@ -393,19 +397,20 @@ func (c *TidalClient) GetTrack(trackID string) (*TidalTrack, error) {
 
 	trackAvailable := trackResp.StreamReady == nil || *trackResp.StreamReady
 	return &TidalTrack{
-		ID:        trackResp.ID,
-		Title:     trackResp.Title,
-		Artist:    mainArtist,
-		Artists:   artistStr,
-		Album:     trackResp.Album.Title,
-		AlbumID:   trackResp.Album.ID,
-		ISRC:      trackResp.ISRC,
-		Duration:  trackResp.Duration,
-		TrackNum:  trackResp.TrackNumber,
-		CoverURL:  formatTidalImageURL(trackResp.Album.Cover),
-		Explicit:  trackResp.Explicit,
-		TidalURL:  fmt.Sprintf("https://tidal.com/browse/track/%d", trackResp.ID),
-		Available: trackAvailable,
+		ID:         trackResp.ID,
+		Title:      trackResp.Title,
+		Artist:     mainArtist,
+		Artists:    artistStr,
+		Album:      trackResp.Album.Title,
+		AlbumID:    trackResp.Album.ID,
+		ISRC:       trackResp.ISRC,
+		Duration:   trackResp.Duration,
+		TrackNum:   trackResp.TrackNumber,
+		CoverURL:   formatTidalImageURL(trackResp.Album.Cover),
+		Explicit:   trackResp.Explicit,
+		TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", trackResp.ID),
+		Available:  trackAvailable,
+		PreviewURL: trackResp.AudioPreviewURL,
 	}, nil
 }
 
@@ -478,13 +483,14 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 
 	var tracksResp struct {
 		Items []struct {
-			ID          int    `json:"id"`
-			Title       string `json:"title"`
-			Duration    int    `json:"duration"`
-			ISRC        string `json:"isrc"`
-			Explicit    bool   `json:"explicit"`
-			StreamReady *bool  `json:"streamReady"`
-			Album       struct {
+			ID              int    `json:"id"`
+			Title           string `json:"title"`
+			Duration        int    `json:"duration"`
+			ISRC            string `json:"isrc"`
+			Explicit        bool   `json:"explicit"`
+			StreamReady     *bool  `json:"streamReady"`
+			AudioPreviewURL string `json:"audioPreviewUrl"`
+			Album           struct {
 				ID    int    `json:"id"`
 				Title string `json:"title"`
 				Cover string `json:"cover"`
@@ -514,19 +520,20 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 
 		trackAvail := track.StreamReady == nil || *track.StreamReady
 		album.Tracks = append(album.Tracks, TidalTrack{
-			ID:        track.ID,
-			Title:     track.Title,
-			Artist:    mainArtist,
-			Artists:   artistStr,
-			Album:     track.Album.Title,
-			AlbumID:   track.Album.ID,
-			ISRC:      track.ISRC,
-			Duration:  track.Duration,
-			TrackNum:  track.TrackNumber,
-			CoverURL:  formatTidalImageURL(track.Album.Cover),
-			Explicit:  track.Explicit,
-			TidalURL:  fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
-			Available: trackAvail,
+			ID:         track.ID,
+			Title:      track.Title,
+			Artist:     mainArtist,
+			Artists:    artistStr,
+			Album:      track.Album.Title,
+			AlbumID:    track.Album.ID,
+			ISRC:       track.ISRC,
+			Duration:   track.Duration,
+			TrackNum:   track.TrackNumber,
+			CoverURL:   formatTidalImageURL(track.Album.Cover),
+			Explicit:   track.Explicit,
+			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
+			Available:  trackAvail,
+			PreviewURL: track.AudioPreviewURL,
 		})
 	}
 
