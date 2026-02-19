@@ -710,6 +710,7 @@
 <!-- Reset Confirmation Modal -->
 {#if showResetConfirm}
   <div class="modal-overlay" onclick={() => showResetConfirm = false} onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true" tabindex="-1">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
       <div class="modal-icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
