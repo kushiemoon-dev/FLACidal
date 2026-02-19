@@ -1,6 +1,6 @@
 <script lang="ts">
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
-  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads } from '../../wailsjs/go/main/App.js';
+  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/main/App.js';
 
   let queue = $derived($queueStore);
   let folder = $derived($downloadFolder);
@@ -41,6 +41,14 @@
       console.log(`Retrying ${count} failed downloads`);
     } catch (error) {
       console.error('Retry all failed error:', error);
+    }
+  }
+
+  async function exportFailed(format: 'txt' | 'csv') {
+    try {
+      await ExportFailedDownloads(format);
+    } catch (error) {
+      console.error('Export failed downloads error:', error);
     }
   }
 
@@ -145,6 +153,14 @@
           <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
         </svg>
         Retry Failed ({$queueStats.failed})
+      </button>
+      <button class="action-btn" onclick={() => exportFailed('txt')} disabled={$queueStats.failed === 0}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export Failed
       </button>
       <button class="action-btn" onclick={clearCompleted} disabled={$queueStats.completed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
