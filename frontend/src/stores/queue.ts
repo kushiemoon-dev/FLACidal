@@ -158,6 +158,7 @@ export interface TidalContent {
   coverUrl: string;
   tracks: TidalTrack[];
   source?: 'tidal' | 'qobuz';
+  albumType?: string; // "ALBUM", "EP", "SINGLE", "COMPILATION"
 }
 
 export interface TidalTrack {
