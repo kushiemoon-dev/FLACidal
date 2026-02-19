@@ -52,9 +52,11 @@ type DownloadJob struct {
 	OutputDir  string             `json:"outputDir"`
 	Title      string             `json:"title"`
 	Artist     string             `json:"artist"`
-	ISRC       string             `json:"isrc,omitempty"`     // Used for cross-source fallback matching
-	Duration   int                `json:"duration,omitempty"` // Track duration in seconds (for M3U8)
-	Error      string             `json:"error,omitempty"`    // Error message if download failed
+	ISRC       string             `json:"isrc,omitempty"`      // Used for cross-source fallback matching
+	Duration   int                `json:"duration,omitempty"`  // Track duration in seconds (for M3U8)
+	Error      string             `json:"error,omitempty"`     // Error message if download failed
+	Copyright  string             `json:"copyright,omitempty"` // Copyright string to embed in tags
+	Label      string             `json:"label,omitempty"`     // Record label to embed in tags
 	ctx        context.Context    // For cancellation
 	cancelFunc context.CancelFunc // Cancel function
 }
@@ -210,7 +212,7 @@ func (dm *DownloadManager) processJob(job *DownloadJob) {
 	dm.mu.Unlock()
 
 	// Download — try primary (Tidal) first, then fallback sources
-	result, err := dm.service.DownloadTrack(job.TrackID, job.OutputDir)
+	result, err := dm.service.DownloadTrack(job.TrackID, job.OutputDir, job.Copyright, job.Label)
 	if (err != nil || (result != nil && !result.Success)) && dm.qobuzFallbackEnabled() && job.ISRC != "" {
 		result, err = dm.downloadViaQobuzFallback(job, result)
 	}
@@ -381,11 +383,11 @@ func (dm *DownloadManager) QueueDownload(trackID int, outputDir, title, artist s
 
 // QueueDownloadWithISRC adds a track with ISRC metadata (used for cross-source fallback).
 func (dm *DownloadManager) QueueDownloadWithISRC(trackID int, outputDir, title, artist, isrc string) error {
-	return dm.queueDownloadFull(trackID, outputDir, title, artist, isrc, 0)
+	return dm.queueDownloadFull(trackID, outputDir, title, artist, isrc, 0, "", "")
 }
 
 // queueDownloadFull is the internal full-parameter queuing function.
-func (dm *DownloadManager) queueDownloadFull(trackID int, outputDir, title, artist, isrc string, duration int) error {
+func (dm *DownloadManager) queueDownloadFull(trackID int, outputDir, title, artist, isrc string, duration int, copyright, label string) error {
 	dm.mu.RLock()
 	if !dm.running {
 		dm.mu.RUnlock()
@@ -403,6 +405,8 @@ func (dm *DownloadManager) queueDownloadFull(trackID int, outputDir, title, arti
 		Artist:     artist,
 		ISRC:       isrc,
 		Duration:   duration,
+		Copyright:  copyright,
+		Label:      label,
 		ctx:        ctx,
 		cancelFunc: cancelFunc,
 	}
@@ -426,7 +430,7 @@ func (dm *DownloadManager) QueueMultiple(tracks []TidalTrack, outputDir string) 
 		if dm.skipUnavailable && !track.Available {
 			continue
 		}
-		err := dm.queueDownloadFull(track.ID, outputDir, track.Title, track.Artist, track.ISRC, track.Duration)
+		err := dm.queueDownloadFull(track.ID, outputDir, track.Title, track.Artist, track.ISRC, track.Duration, track.Copyright, track.Label)
 		if err == nil {
 			queued++
 		}

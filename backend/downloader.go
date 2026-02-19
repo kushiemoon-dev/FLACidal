@@ -493,7 +493,7 @@ func (t *TidalHifiService) SearchTracks(query string, limit int) ([]TidalHifiTra
 }
 
 // DownloadTrack downloads a single track to the specified directory
-func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*DownloadResult, error) {
+func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string, copyright, label string) (*DownloadResult, error) {
 	result := &DownloadResult{
 		TrackID: trackID,
 		Success: false,
@@ -600,6 +600,8 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string) (*Downlo
 		Album:       track.Album.Title,
 		TrackNumber: track.TrackNumber,
 		ISRC:        track.ISRC,
+		Copyright:   copyright,
+		Label:       label,
 	}
 
 	// Only embed cover if option is enabled
