@@ -90,6 +90,27 @@
       console.error('Toggle pause error:', error);
     }
   }
+
+  let statusFilter = $state('all');
+
+  const filters: { value: string; label: string }[] = [
+    { value: 'all',        label: 'All' },
+    { value: 'queued',     label: 'Queued' },
+    { value: 'downloading',label: 'Downloading' },
+    { value: 'completed',  label: 'Completed' },
+    { value: 'error',      label: 'Failed' },
+    { value: 'cancelled',  label: 'Cancelled' },
+  ];
+
+  const filteredItems = $derived(
+    statusFilter === 'all'
+      ? $queueItems
+      : $queueItems.filter(item =>
+          statusFilter === 'queued'
+            ? item.status === 'pending' || item.status === 'queued'
+            : item.status === statusFilter
+        )
+  );
 </script>
 
 <div class="queue-page">
@@ -187,6 +208,18 @@
     </div>
   </div>
 
+  {#if $queueItems.length > 0}
+    <div class="filter-bar">
+      {#each filters as f}
+        <button
+          class="filter-btn"
+          class:active={statusFilter === f.value}
+          onclick={() => statusFilter = f.value}
+        >{f.label}</button>
+      {/each}
+    </div>
+  {/if}
+
   {#if $queueItems.length === 0}
     <div class="empty-state">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -197,9 +230,18 @@
       <p>No downloads in queue</p>
       <span class="hint">Add tracks from Home or Search to start downloading</span>
     </div>
+  {:else if filteredItems.length === 0}
+    <div class="empty-state">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <p>No {filters.find(f => f.value === statusFilter)?.label.toLowerCase()} items</p>
+      <span class="hint">Try a different filter</span>
+    </div>
   {:else}
     <div class="queue-list">
-      {#each $queueItems as item (item.trackId)}
+      {#each filteredItems as item (item.trackId)}
         <div class="queue-item {getStatusClass(item.status)}">
           <div class="item-status">
             {#if item.status === 'downloading'}
@@ -594,5 +636,36 @@
   .item-btn.cancel:hover {
     border-color: #f59e0b;
     color: #f59e0b;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .filter-btn.active {
+    background: rgba(244, 114, 182, 0.15);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 </style>
