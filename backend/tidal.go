@@ -100,6 +100,25 @@ func NewTidalClientDefault() *TidalClient {
 	}
 }
 
+// SetProxy configures the Tidal API client to route requests through a proxy.
+// Supported schemes: http://, https://, socks5://.
+// Pass an empty string to remove the proxy.
+func (c *TidalClient) SetProxy(proxyURLStr string) error {
+	transport, err := BuildProxyTransport(proxyURLStr)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.httpClient = &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport, // nil = default transport (no proxy)
+	}
+	// Force re-authentication on next request with new transport
+	c.accessToken = ""
+	return nil
+}
+
 // ParseTidalURL extracts ID and type from a Tidal URL
 func ParseTidalURL(rawURL string) (id string, contentType string, err error) {
 	if matches := tidalPlaylistRegex.FindStringSubmatch(rawURL); len(matches) > 1 {

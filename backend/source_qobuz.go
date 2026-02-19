@@ -156,6 +156,21 @@ func (q *QobuzSource) SetEndpoints(urls []string) {
 	q.initEndpoints(urls)
 }
 
+// SetProxy configures the Qobuz HTTP client to use the given proxy URL.
+// Supported schemes: http://, https://, socks5://.
+// Pass an empty string to remove the proxy.
+func (q *QobuzSource) SetProxy(proxyURLStr string) error {
+	transport, err := BuildProxyTransport(proxyURLStr)
+	if err != nil {
+		return err
+	}
+	q.client = &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}
+	return nil
+}
+
 // initEndpoints (re)initialises the endpoint pool.
 func (q *QobuzSource) initEndpoints(urls []string) {
 	if len(urls) == 0 {
