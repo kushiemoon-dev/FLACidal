@@ -3,6 +3,7 @@
   import { downloadFolder } from '../stores/queue';
   import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor } from '../stores/theme';
   import { updateAudioSettings, testSound } from '../stores/audio';
+  import { toastStore } from '../stores/toast';
   import {
     GetConfig,
     SaveConfig,
@@ -41,7 +42,6 @@
     proxyUrl: ''
   });
   let isSaving = $state(false);
-  let saveMessage = $state('');
   let showResetConfirm = $state(false);
   let isResetting = $state(false);
 
@@ -132,7 +132,6 @@
 
   async function saveConfig() {
     isSaving = true;
-    saveMessage = '';
 
     try {
       // Save full config including theme, accent color, and sound settings
@@ -175,11 +174,10 @@
         config.saveCoverFile,
         config.autoAnalyze
       );
-      saveMessage = 'Settings saved!';
-      setTimeout(() => saveMessage = '', 3000);
+      toastStore.show('Settings saved!');
     } catch (error) {
       console.error('Error saving config:', error);
-      saveMessage = 'Error saving settings';
+      toastStore.show('Error saving settings', 'error');
     } finally {
       isSaving = false;
     }
@@ -213,12 +211,11 @@
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
-        saveMessage = 'Settings reset to defaults!';
-        setTimeout(() => saveMessage = '', 3000);
+        toastStore.show('Settings reset to defaults!');
       }
     } catch (error) {
       console.error('Error resetting:', error);
-      saveMessage = 'Error resetting settings';
+      toastStore.show('Error resetting settings', 'error');
     } finally {
       isResetting = false;
       showResetConfirm = false;
@@ -687,7 +684,7 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 1.0.0</span>
+            <span class="version">Version 2.0.0</span>
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
@@ -696,9 +693,6 @@
   </div>
 
   <div class="settings-footer">
-    {#if saveMessage}
-      <span class="save-message" class:error={saveMessage.includes('Error')}>{saveMessage}</span>
-    {/if}
     <button
       class="reset-btn"
       onclick={() => showResetConfirm = true}
@@ -1156,15 +1150,6 @@
     margin-top: 32px;
     padding-top: 24px;
     border-top: 1px solid var(--color-border);
-  }
-
-  .save-message {
-    font-size: 14px;
-    color: var(--color-success);
-  }
-
-  .save-message.error {
-    color: var(--color-error);
   }
 
   .save-btn {

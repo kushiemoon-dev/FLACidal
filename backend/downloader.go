@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -27,6 +28,16 @@ const (
 // Users can extend this via TidalHifiEndpoints in config.
 var defaultTidalHifiEndpoints = []string{
 	"https://vogel.qqdl.site",
+}
+
+// defaultMetadataEndpoints are hifi-api v2.4 proxy endpoints that support
+// album/playlist/mix metadata fetching (/album/, /playlist/, /mix/ paths).
+// These are tried in order; the primary download endpoints above do not support
+// these metadata paths.
+var defaultMetadataEndpoints = []string{
+	"https://hifi-one.spotisaver.net",
+	"https://hifi-two.spotisaver.net",
+	"https://triton.squid.wtf",
 }
 
 // endpointEntry tracks availability of a single API endpoint.
@@ -331,6 +342,38 @@ func (t *TidalHifiService) IsAvailable() bool {
 	return resp.StatusCode < 500
 }
 
+// GetTrackAsTidalTrack fetches track info by Tidal ID and returns a TidalTrack.
+// Used by FetchTidalContent when Tidal v1 client credentials are revoked.
+func (t *TidalHifiService) GetTrackAsTidalTrack(trackID int) (*TidalTrack, error) {
+	info, err := t.GetTrackByID(trackID)
+	if err != nil {
+		return nil, err
+	}
+
+	mainArtist := info.Artist.Name
+	var artistNames []string
+	for _, a := range info.Artists {
+		artistNames = append(artistNames, a.Name)
+	}
+	if mainArtist == "" && len(info.Artists) > 0 {
+		mainArtist = info.Artists[0].Name
+	}
+
+	return &TidalTrack{
+		ID:       info.ID,
+		Title:    info.Title,
+		Artist:   mainArtist,
+		Artists:  strings.Join(artistNames, ", "),
+		Album:    info.Album.Title,
+		ISRC:     info.ISRC,
+		Duration: info.Duration,
+		TrackNum: info.TrackNumber,
+		CoverURL: formatTidalImageURL(info.Album.Cover),
+		Explicit: info.Explicit,
+		TidalURL: fmt.Sprintf("https://tidal.com/browse/track/%d", info.ID),
+	}, nil
+}
+
 // GetTrackByID fetches track info by Tidal ID
 func (t *TidalHifiService) GetTrackByID(trackID int) (*TidalHifiTrackResponse, error) {
 	body, err := t.makeAPIRequest(fmt.Sprintf("/info/?id=%d", trackID))
@@ -509,6 +552,338 @@ func (t *TidalHifiService) SearchTracks(query string, limit int) ([]TidalHifiTra
 		items = items[:limit]
 	}
 	return items, nil
+}
+
+// makeMetadataRequest tries each v2.4 metadata endpoint for album/playlist/mix paths.
+// Only HTTP 200 responses are considered successful — 4xx responses indicate the
+// endpoint does not support the requested path and cause fallthrough to the next.
+func (t *TidalHifiService) makeMetadataRequest(path string) ([]byte, error) {
+	var lastErr error
+	for _, endpoint := range defaultMetadataEndpoints {
+		req, err := http.NewRequest("GET", endpoint+path, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+		resp, err := t.client.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("request to %s failed: %w", endpoint, err)
+			if t.logger != nil {
+				t.logger.Warn(fmt.Sprintf("metadata endpoint %s failed: %v", endpoint, err))
+			}
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode == 200 {
+			return body, nil
+		}
+		lastErr = fmt.Errorf("%s returned %d", endpoint, resp.StatusCode)
+		if t.logger != nil {
+			t.logger.Warn(fmt.Sprintf("metadata endpoint %s returned %d, trying next", endpoint, resp.StatusCode))
+		}
+	}
+	return nil, fmt.Errorf("all metadata endpoints failed: %v", lastErr)
+}
+
+// GetAlbumFromProxy fetches album metadata and tracks via the v2.4 proxy endpoint pool.
+// Used instead of TidalClient.GetAlbum (Tidal v1 client credentials are revoked).
+func (t *TidalHifiService) GetAlbumFromProxy(albumID string) (*TidalAlbum, error) {
+	body, err := t.makeMetadataRequest("/album/?id=" + albumID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch album: %w", err)
+	}
+
+	var resp struct {
+		Data struct {
+			ID          int    `json:"id"`
+			Title       string `json:"title"`
+			Cover       string `json:"cover"`
+			ReleaseDate string `json:"releaseDate"`
+			Type        string `json:"type"`
+			Copyright   string `json:"copyright"`
+			Artists     []struct {
+				Name string `json:"name"`
+				Type string `json:"type"`
+			} `json:"artists"`
+			Label struct {
+				Name string `json:"name"`
+			} `json:"label"`
+			Items []struct {
+				Item struct {
+					ID          int    `json:"id"`
+					Title       string `json:"title"`
+					Duration    int    `json:"duration"`
+					ISRC        string `json:"isrc"`
+					Explicit    bool   `json:"explicit"`
+					StreamReady *bool  `json:"streamReady"`
+					Popularity  int    `json:"popularity"`
+					TrackNumber int    `json:"trackNumber"`
+					Artists     []struct {
+						Name string `json:"name"`
+					} `json:"artists"`
+					Album struct {
+						ID    int    `json:"id"`
+						Title string `json:"title"`
+						Cover string `json:"cover"`
+					} `json:"album"`
+				} `json:"item"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse album response: %w", err)
+	}
+
+	d := resp.Data
+	artistName := ""
+	for _, a := range d.Artists {
+		if a.Type == "MAIN" || artistName == "" {
+			artistName = a.Name
+		}
+	}
+
+	tracks := make([]TidalTrack, 0, len(d.Items))
+	for _, it := range d.Items {
+		tr := it.Item
+		var artistNames []string
+		for _, a := range tr.Artists {
+			artistNames = append(artistNames, a.Name)
+		}
+		mainArtist := ""
+		if len(tr.Artists) > 0 {
+			mainArtist = tr.Artists[0].Name
+		}
+		available := tr.StreamReady == nil || *tr.StreamReady
+		tracks = append(tracks, TidalTrack{
+			ID:         tr.ID,
+			Title:      tr.Title,
+			Artist:     mainArtist,
+			Artists:    strings.Join(artistNames, ", "),
+			Album:      tr.Album.Title,
+			AlbumID:    tr.Album.ID,
+			ISRC:       tr.ISRC,
+			Duration:   tr.Duration,
+			TrackNum:   tr.TrackNumber,
+			CoverURL:   formatTidalImageURL(tr.Album.Cover),
+			Explicit:   tr.Explicit,
+			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", tr.ID),
+			Available:  available,
+			Popularity: tr.Popularity,
+		})
+	}
+
+	return &TidalAlbum{
+		ID:          d.ID,
+		Title:       d.Title,
+		Artist:      artistName,
+		ReleaseDate: d.ReleaseDate,
+		TrackCount:  len(tracks),
+		CoverURL:    formatTidalImageURL(d.Cover),
+		AlbumType:   d.Type,
+		Copyright:   d.Copyright,
+		Label:       d.Label.Name,
+		Tracks:      tracks,
+	}, nil
+}
+
+// GetPlaylistFromProxy fetches playlist metadata and tracks via the v2.4 proxy endpoint pool.
+// Used instead of TidalClient.GetPlaylist (Tidal v1 client credentials are revoked).
+func (t *TidalHifiService) GetPlaylistFromProxy(playlistUUID string) (*TidalPlaylist, error) {
+	body, err := t.makeMetadataRequest("/playlist/?id=" + playlistUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch playlist: %w", err)
+	}
+
+	// Playlist response uses "playlist" key (not "data"), and "items" is at root level.
+	var resp struct {
+		Playlist struct {
+			UUID        string `json:"uuid"`
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			Creator     struct {
+				Name string `json:"name"`
+			} `json:"creator"`
+			Image       string `json:"image"`
+			SquareImage string `json:"squareImage"`
+		} `json:"playlist"`
+		Items []struct {
+			Item struct {
+				ID          int    `json:"id"`
+				Title       string `json:"title"`
+				Duration    int    `json:"duration"`
+				ISRC        string `json:"isrc"`
+				Explicit    bool   `json:"explicit"`
+				StreamReady *bool  `json:"streamReady"`
+				Popularity  int    `json:"popularity"`
+				TrackNumber int    `json:"trackNumber"`
+				Artists     []struct {
+					Name string `json:"name"`
+				} `json:"artists"`
+				Album struct {
+					ID    int    `json:"id"`
+					Title string `json:"title"`
+					Cover string `json:"cover"`
+				} `json:"album"`
+			} `json:"item"`
+		} `json:"items"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse playlist response: %w", err)
+	}
+
+	p := resp.Playlist
+	coverImage := p.SquareImage
+	if coverImage == "" {
+		coverImage = p.Image
+	}
+	creatorName := p.Creator.Name
+	if creatorName == "" {
+		creatorName = "Tidal Playlist"
+	}
+	uuid := p.UUID
+	if uuid == "" {
+		uuid = playlistUUID
+	}
+
+	tracks := make([]TidalTrack, 0, len(resp.Items))
+	for _, it := range resp.Items {
+		tr := it.Item
+		var artistNames []string
+		for _, a := range tr.Artists {
+			artistNames = append(artistNames, a.Name)
+		}
+		mainArtist := ""
+		if len(tr.Artists) > 0 {
+			mainArtist = tr.Artists[0].Name
+		}
+		available := tr.StreamReady == nil || *tr.StreamReady
+		tracks = append(tracks, TidalTrack{
+			ID:         tr.ID,
+			Title:      tr.Title,
+			Artist:     mainArtist,
+			Artists:    strings.Join(artistNames, ", "),
+			Album:      tr.Album.Title,
+			AlbumID:    tr.Album.ID,
+			ISRC:       tr.ISRC,
+			Duration:   tr.Duration,
+			TrackNum:   tr.TrackNumber,
+			CoverURL:   formatTidalImageURL(tr.Album.Cover),
+			Explicit:   tr.Explicit,
+			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", tr.ID),
+			Available:  available,
+			Popularity: tr.Popularity,
+		})
+	}
+
+	return &TidalPlaylist{
+		UUID:        uuid,
+		Title:       p.Title,
+		Description: p.Description,
+		Creator:     creatorName,
+		CoverURL:    formatTidalImageURL(coverImage),
+		TrackCount:  len(tracks),
+		Tracks:      tracks,
+	}, nil
+}
+
+// GetMixFromProxy fetches mix metadata and tracks via the v2.4 proxy endpoint pool.
+// Used instead of TidalClient.GetMix (Tidal v1 client credentials are revoked).
+func (t *TidalHifiService) GetMixFromProxy(mixID string) (*TidalPlaylist, error) {
+	body, err := t.makeMetadataRequest("/mix/?id=" + mixID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch mix: %w", err)
+	}
+
+	var resp struct {
+		Mix struct {
+			ID       string `json:"id"`
+			Title    string `json:"title"`
+			SubTitle string `json:"subTitle"`
+			Images   map[string]struct {
+				URL string `json:"url"`
+			} `json:"images"`
+		} `json:"mix"`
+		Items []struct {
+			ID          int    `json:"id"`
+			Title       string `json:"title"`
+			Duration    int    `json:"duration"`
+			ISRC        string `json:"isrc"`
+			Explicit    bool   `json:"explicit"`
+			StreamReady *bool  `json:"streamReady"`
+			Popularity  int    `json:"popularity"`
+			TrackNumber int    `json:"trackNumber"`
+			Artists     []struct {
+				Name string `json:"name"`
+			} `json:"artists"`
+			Album struct {
+				ID    int    `json:"id"`
+				Title string `json:"title"`
+				Cover string `json:"cover"`
+			} `json:"album"`
+		} `json:"items"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse mix response: %w", err)
+	}
+
+	// Extract cover URL — prefer MEDIUM, then LARGE, then SMALL
+	coverURL := ""
+	for _, size := range []string{"MEDIUM", "LARGE", "SMALL"} {
+		if img, ok := resp.Mix.Images[size]; ok && img.URL != "" {
+			coverURL = img.URL
+			break
+		}
+	}
+
+	mixTitle := resp.Mix.Title
+	if mixTitle == "" {
+		mixTitle = "Tidal Mix"
+	}
+
+	tracks := make([]TidalTrack, 0, len(resp.Items))
+	for _, tr := range resp.Items {
+		var artistNames []string
+		for _, a := range tr.Artists {
+			artistNames = append(artistNames, a.Name)
+		}
+		mainArtist := ""
+		if len(tr.Artists) > 0 {
+			mainArtist = tr.Artists[0].Name
+		}
+		available := tr.StreamReady == nil || *tr.StreamReady
+		tracks = append(tracks, TidalTrack{
+			ID:         tr.ID,
+			Title:      tr.Title,
+			Artist:     mainArtist,
+			Artists:    strings.Join(artistNames, ", "),
+			Album:      tr.Album.Title,
+			AlbumID:    tr.Album.ID,
+			ISRC:       tr.ISRC,
+			Duration:   tr.Duration,
+			TrackNum:   tr.TrackNumber,
+			CoverURL:   formatTidalImageURL(tr.Album.Cover),
+			Explicit:   tr.Explicit,
+			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", tr.ID),
+			Available:  available,
+			Popularity: tr.Popularity,
+		})
+	}
+
+	return &TidalPlaylist{
+		UUID:       mixID,
+		Title:      mixTitle,
+		Creator:    "Tidal Mix",
+		CoverURL:   coverURL,
+		TrackCount: len(tracks),
+		Tracks:     tracks,
+	}, nil
 }
 
 // DownloadTrack downloads a single track to the specified directory
@@ -787,34 +1162,25 @@ type DownloadedFileInfo struct {
 	Album   string `json:"album"`
 }
 
-// ListFLACFiles lists all FLAC files in the given directory
+// ListFLACFiles lists all FLAC files in the given directory recursively
 func ListFLACFiles(folder string) ([]DownloadedFileInfo, error) {
 	var files []DownloadedFileInfo
-
-	entries, err := os.ReadDir(folder)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		if !strings.HasSuffix(strings.ToLower(name), ".flac") {
-			continue
-		}
-
-		info, err := entry.Info()
+	err := filepath.WalkDir(folder, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			continue
+			return nil // skip unreadable entries
 		}
-
-		filePath := filepath.Join(folder, name)
-
-		// Try to parse metadata from filename (format: "Artist - Title.flac")
-		title, artist, album := "", "", ""
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ".flac") {
+			return nil
+		}
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return nil
+		}
+		title, artist := "", ""
 		baseName := strings.TrimSuffix(name, ".flac")
 		if parts := strings.SplitN(baseName, " - ", 2); len(parts) == 2 {
 			artist = parts[0]
@@ -822,19 +1188,17 @@ func ListFLACFiles(folder string) ([]DownloadedFileInfo, error) {
 		} else {
 			title = baseName
 		}
-
 		files = append(files, DownloadedFileInfo{
-			Path:    filePath,
+			Path:    path,
 			Name:    name,
 			Size:    info.Size(),
 			ModTime: info.ModTime().Format("2006-01-02T15:04:05Z07:00"),
 			Title:   title,
 			Artist:  artist,
-			Album:   album,
 		})
-	}
-
-	return files, nil
+		return nil
+	})
+	return files, err
 }
 
 // DeleteFile deletes a file from the filesystem

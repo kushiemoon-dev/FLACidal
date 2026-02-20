@@ -589,7 +589,7 @@
   }
 
   .folder-path {
-    color: #666;
+    color: var(--color-text-tertiary);
     font-size: 14px;
     margin: 0;
     font-family: monospace;
@@ -636,19 +636,19 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-btn:hover {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .action-btn.primary {
@@ -668,7 +668,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #444;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
@@ -680,7 +680,7 @@
   .empty-state p {
     margin: 0;
     font-size: 16px;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .empty-state .hint {
@@ -691,8 +691,8 @@
   .loader {
     width: 40px;
     height: 40px;
-    border: 3px solid #222;
-    border-top-color: #f472b6;
+    border: 3px solid var(--color-border-subtle);
+    border-top-color: var(--color-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 16px;
@@ -703,8 +703,8 @@
   }
 
   .files-table {
-    background: #111;
-    border: 1px solid #1a1a1a;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     overflow: hidden;
   }
@@ -714,14 +714,14 @@
     grid-template-columns: 36px 1fr 150px 150px 80px 100px 110px;
     gap: 16px;
     padding: 12px 16px;
-    background: #0a0a0a;
-    border-bottom: 1px solid #1a1a1a;
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .th {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
     text-align: left;
     background: transparent;
@@ -734,11 +734,11 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 
   .th.sortable:hover {
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .table-body {
@@ -752,7 +752,7 @@
     gap: 16px;
     padding: 12px 16px;
     align-items: center;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
   }
 
@@ -770,7 +770,7 @@
 
   .cell {
     font-size: 14px;
-    color: #888;
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -791,7 +791,7 @@
 
   .file-name {
     font-weight: 500;
-    color: #fff;
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -799,7 +799,7 @@
 
   .file-path {
     font-size: 12px;
-    color: #555;
+    color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -808,10 +808,11 @@
   .cell.size {
     font-family: monospace;
     font-size: 13px;
+    font-variant-numeric: tabular-nums;
   }
 
   .cell.date {
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 
   .cell.actions {
@@ -827,16 +828,16 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .file-btn:hover {
-    background: #1a1a1a;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
   }
 
   .file-btn.danger:hover {
@@ -853,12 +854,12 @@
     display: flex;
     gap: 24px;
     padding: 16px 0;
-    color: #555;
+    color: var(--color-text-muted);
     font-size: 14px;
   }
 
   .total-size {
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .selection-count {
@@ -881,7 +882,7 @@
   .custom-checkbox {
     width: 18px;
     height: 18px;
-    border: 2px solid #444;
+    border: 2px solid var(--color-text-muted);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -890,7 +891,7 @@
   }
 
   .custom-checkbox:hover {
-    border-color: #666;
+    border-color: var(--color-text-tertiary);
   }
 
   .custom-checkbox.checked {
