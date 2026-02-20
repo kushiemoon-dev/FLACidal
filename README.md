@@ -1,47 +1,55 @@
 <div align="center">
 
-[![Download](https://img.shields.io/badge/Download-Latest-blue?style=for-the-badge&logo=codeberg)](https://codeberg.org/KushieMoon-dev/FLACidal/releases)
-[![GitHub](https://img.shields.io/badge/GitHub-Mirror-181717?style=for-the-badge&logo=github)](https://github.com/kushiemoon-dev/FLACidal/releases)
+<img src="banner.png" alt="FLACidal" width="600">
 
-<img src="assets/banner.png" width="600" alt="FLACidal">
+### Download lossless FLAC music from Tidal & Qobuz
 
-_Download lossless FLAC music from Tidal & Qobuz_
+[![GitHub Release](https://img.shields.io/github/v/release/kushiemoon-dev/FLACidal?style=flat-square&color=e5a00d)](https://github.com/kushiemoon-dev/FLACidal/releases/latest)
+[![Codeberg](https://img.shields.io/badge/Codeberg-FLACidal-2185D0?style=flat-square&logo=codeberg&logoColor=white)](https://codeberg.org/KushieMoon-dev/FLACidal)
+[![License](https://img.shields.io/github/license/kushiemoon-dev/FLACidal?style=flat-square&color=gray)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 
-![Windows 10+](https://img.shields.io/badge/Windows-10+-0078D6?style=for-the-badge&logo=windows)
-![macOS 10.13+](https://img.shields.io/badge/macOS-10.13+-000000?style=for-the-badge&logo=apple)
-![Linux](https://img.shields.io/badge/Linux-Any-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![Windows](https://img.shields.io/badge/Windows-10+-0078D6?style=flat-square&logo=windows&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-10.13+-000000?style=flat-square&logo=apple&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-any-FCC624?style=flat-square&logo=linux&logoColor=black)
 
 </div>
 
 ---
 
+## Overview
+
+**FLACidal** is a desktop application that downloads lossless FLAC audio directly from Tidal and Qobuz — no account credentials required. Paste a URL, choose a folder, and get Hi-Res 24-bit or Lossless 16-bit FLAC files with full metadata, embedded cover art, and customizable filename templates.
+
 <div align="center">
-<img src="assets/screenshot.png" alt="FLACidal Screenshot" width="800">
+<img src="screenshot.png" alt="FLACidal Screenshot" width="800">
 </div>
 
 ---
 
 ## Features
 
-| Download | Tools & UI |
-|----------|------------|
-| Tidal & Qobuz support | Built-in Tidal search |
-| HI_RES 24-bit & LOSSLESS 16-bit | Queue with real-time progress |
-| Playlists, albums, single tracks | Download history & re-download |
-| Up to 10 parallel downloads | Integrated file manager |
-| Auto Vorbis comment tagging | FLAC quality analyzer |
-| Embedded cover art | HTTP & SOCKS5 proxy support |
-| Custom filename templates | Artist profile picture download |
+- **Hi-Res & Lossless** — 24-bit up to 192 kHz (HI_RES) and 16-bit 44.1 kHz (LOSSLESS)
+- **Tidal & Qobuz** — Full support for playlists, albums, tracks, mixes, and artist pages
+- **Concurrent Downloads** — Up to 10 parallel downloads with real-time queue progress
+- **Smart Metadata** — Automatic Vorbis comment tagging with embedded cover art
+- **Built-in Search** — Search Tidal directly within the app without opening a browser
+- **File Manager** — Download history, re-download support, and FLAC quality analyzer
+- **Custom Templates** — Define your own filename format (e.g. `{artist} - {title}`)
+- **Artist Artwork** — Download artist profile pictures alongside music
+- **Proxy Support** — HTTP and SOCKS5 proxy for all outbound requests
 
 ---
 
 ## Download
 
-| Platform | Download |
-|----------|----------|
-| Windows (x64) | [flacidal.exe](https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.exe) |
-| macOS (Universal) | [flacidal.dmg](https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.dmg) |
-| Linux (x64) | [flacidal.AppImage](https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.AppImage) |
+**[⬇ Download Latest Release](https://github.com/kushiemoon-dev/FLACidal/releases/latest)**
+
+| Platform | File |
+|----------|------|
+| Windows x64 | `flacidal.exe` |
+| macOS Universal | `flacidal.dmg` |
+| Linux x64 | `flacidal.AppImage` |
 
 All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal/releases)
 
@@ -49,7 +57,7 @@ All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) ·
 
 ## Usage
 
-1. Launch the application
+1. Launch **FLACidal**
 2. Paste a Tidal or Qobuz URL into the input field
 3. Select your download folder
 4. Click **Download All FLAC**
@@ -58,8 +66,8 @@ All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) ·
 
 | Service | Supported Types |
 |---------|----------------|
-| **Tidal** | Playlist, Album, Track, Mix, Artist |
-| **Qobuz** | Album, Playlist, Track |
+| **Tidal** | Playlist · Album · Track · Mix · Artist |
+| **Qobuz** | Album · Playlist · Track |
 
 ---
 
@@ -77,38 +85,21 @@ All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) ·
 
 ## Configuration
 
-Settings location: `~/.flacidal/config.json`
+Settings are stored at `~/.flacidal/config.json`.
 
 | Setting | Default | Options |
 |---------|---------|---------|
-| Quality | `LOSSLESS` | `HI_RES`, `LOSSLESS`, `HIGH` |
+| Quality | `LOSSLESS` | `HI_RES` · `LOSSLESS` · `HIGH` |
 | File naming | `{artist} - {title}` | Custom template |
-| Embed cover art | `true` | `true` / `false` |
+| Embed cover art | `true` | `true` · `false` |
 | Concurrent downloads | `4` | `1` – `10` |
 | Proxy | _(none)_ | `http://...` or `socks5://...` |
 
 ---
 
-## FAQ
-
-**Is this free?**
-Yes. No account, subscription, or API credentials required — authentication is handled by the app itself.
-
-**Do I need a Tidal or Qobuz account?**
-No. FLACidal handles authentication internally. Just paste a URL and download.
-
-**Why does my antivirus flag the file?**
-False positive. Go-compiled binaries are sometimes flagged heuristically. Build from source if you have concerns.
-
-**What audio quality can I download?**
-From Tidal: HI_RES (24-bit / up to 192 kHz) and LOSSLESS (16-bit / 44.1 kHz). From Qobuz: up to 24-bit FLAC depending on your subscription tier.
-
-**Can I use a proxy?**
-Yes. HTTP and SOCKS5 proxies are supported and configurable in Settings.
-
----
-
 ## Build from Source
+
+**Requirements:** [Go](https://go.dev) 1.21+ and [Wails](https://wails.io) v2
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -118,29 +109,40 @@ wails build
 # Binary: build/bin/flacidal
 ```
 
-Development mode: `wails dev`
+Development mode with hot reload:
+
+```bash
+wails dev
+```
+
+---
+
+## FAQ
+
+**Do I need a Tidal or Qobuz account?**
+No. FLACidal handles authentication internally. Just paste a URL and download.
+
+**What audio quality is available?**
+From Tidal: HI_RES (24-bit / up to 192 kHz) and LOSSLESS (16-bit / 44.1 kHz). From Qobuz: up to 24-bit depending on availability.
+
+**Why does my antivirus flag the file?**
+False positive. Go-compiled binaries are sometimes flagged heuristically. Build from source if you have concerns.
+
+**Can I use a proxy?**
+Yes. HTTP and SOCKS5 proxies are configurable in Settings.
 
 ---
 
 ## Disclaimer
 
-> This project is for **educational and personal use only**. The developer does not condone or encourage copyright infringement.
->
-> **FLACidal** is a third-party tool and is not affiliated with, endorsed by, or connected to Tidal, Qobuz, or any other streaming service.
->
-> You are solely responsible for:
-> 1. Ensuring your use complies with your local laws.
-> 2. Reading and adhering to the Terms of Service of Tidal and Qobuz.
-> 3. Any legal consequences resulting from misuse of this tool.
->
-> The software is provided "as is", without warranty of any kind. The author assumes no liability for any bans, damages, or legal issues arising from its use.
+FLACidal is intended for **educational and personal use only**. It is not affiliated with, endorsed by, or connected to Tidal, Qobuz, or any other streaming service. You are solely responsible for ensuring your use complies with local laws and the Terms of Service of the platforms involved. The software is provided "as is" without warranty of any kind.
 
 ---
 
 <div align="center">
 
-Made with ♥ by [KushieMoon](https://codeberg.org/KushieMoon-dev)
+**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
 
-⭐ Star this repo to be notified of new releases
+Made with ♥ by [KushieMoon](https://codeberg.org/KushieMoon-dev)
 
 </div>
