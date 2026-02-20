@@ -30,6 +30,9 @@ type TrackMetadata struct {
 	// Lyrics fields
 	Lyrics       string // Plain text lyrics (LYRICS tag)
 	SyncedLyrics string // LRC format synced lyrics (SYNCEDLYRICS tag)
+	// Rights fields
+	Copyright string // COPYRIGHT Vorbis comment
+	Label     string // ORGANIZATION Vorbis comment (record label)
 }
 
 // NewFLACTagger creates a new FLAC tagger
@@ -182,6 +185,12 @@ func (t *FLACTagger) createVorbisComment(meta TrackMetadata) []byte {
 	}
 	if meta.ISRC != "" {
 		comments = append(comments, fmt.Sprintf("ISRC=%s", meta.ISRC))
+	}
+	if meta.Copyright != "" {
+		comments = append(comments, fmt.Sprintf("COPYRIGHT=%s", meta.Copyright))
+	}
+	if meta.Label != "" {
+		comments = append(comments, fmt.Sprintf("ORGANIZATION=%s", meta.Label))
 	}
 	// Add lyrics tags
 	if meta.Lyrics != "" {

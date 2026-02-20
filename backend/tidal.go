@@ -73,6 +73,7 @@ var (
 	tidalTrackRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?track/(\d+)`)
 	tidalAlbumRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?album/(\d+)`)
 	tidalArtistRegex   = regexp.MustCompile(`tidal\.com/(?:browse/)?artist/(\d+)`)
+	tidalMixRegex      = regexp.MustCompile(`tidal\.com/(?:browse/)?mix/([a-zA-Z0-9]+)`)
 )
 
 // NewTidalClient creates a new Tidal API client
@@ -132,6 +133,9 @@ func ParseTidalURL(rawURL string) (id string, contentType string, err error) {
 	}
 	if matches := tidalArtistRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		return matches[1], "artist", nil
+	}
+	if matches := tidalMixRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1], "mix", nil
 	}
 	return "", "", fmt.Errorf("invalid Tidal URL: %s", rawURL)
 }
@@ -365,6 +369,125 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 	}
 
 	return allTracks, nil
+}
+
+// GetMix fetches a Tidal mix via the /pages/mix endpoint (works with client credentials).
+func (c *TidalClient) GetMix(mixID string) (*TidalPlaylist, error) {
+	endpoint := fmt.Sprintf("/pages/mix?mixId=%s&countryCode=US&locale=en_US&deviceType=BROWSER", mixID)
+	data, err := c.doRequest(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch mix: %w", err)
+	}
+
+	// pages/mix response: {"title": "...", "rows": [{"modules": [{"type": "TRACK_LIST", "pagedList": {"items": [...]}, "mixHeader": {...}}]}]}
+	var pageResp struct {
+		Title string `json:"title"`
+		Rows  []struct {
+			Modules []struct {
+				Type     string `json:"type"`
+				PagedList struct {
+					Items []struct {
+						ID              int    `json:"id"`
+						Title           string `json:"title"`
+						Duration        int    `json:"duration"`
+						ISRC            string `json:"isrc"`
+						Explicit        bool   `json:"explicit"`
+						StreamReady     *bool  `json:"streamReady"`
+						AudioPreviewURL string `json:"audioPreviewUrl"`
+						Popularity      int    `json:"popularity"`
+						TrackNumber     int    `json:"trackNumber"`
+						Album           struct {
+							ID    int    `json:"id"`
+							Title string `json:"title"`
+							Cover string `json:"cover"`
+						} `json:"album"`
+						Artists []struct {
+							ID   int    `json:"id"`
+							Name string `json:"name"`
+						} `json:"artists"`
+					} `json:"items"`
+				} `json:"pagedList"`
+				MixHeader struct {
+					Title    string `json:"title"`
+					SubTitle string `json:"subTitle"`
+					Graphic  struct {
+						Images []struct {
+							ID   string `json:"id"`
+							Type string `json:"type"`
+						} `json:"images"`
+					} `json:"graphic"`
+				} `json:"mixHeader"`
+			} `json:"modules"`
+		} `json:"rows"`
+	}
+
+	if err := json.Unmarshal(data, &pageResp); err != nil {
+		return nil, fmt.Errorf("failed to parse mix page: %w", err)
+	}
+
+	mixTitle := pageResp.Title
+	coverURL := ""
+	var tracks []TidalTrack
+
+	for _, row := range pageResp.Rows {
+		for _, mod := range row.Modules {
+			// Extract cover from mix header
+			if mod.MixHeader.Title != "" && mixTitle == "" {
+				mixTitle = mod.MixHeader.Title
+			}
+			if coverURL == "" && len(mod.MixHeader.Graphic.Images) > 0 {
+				coverURL = formatTidalImageURL(mod.MixHeader.Graphic.Images[0].ID)
+			}
+
+			// Extract tracks from TRACK_LIST modules
+			if mod.Type != "TRACK_LIST" {
+				continue
+			}
+			for _, t := range mod.PagedList.Items {
+				var artistNames []string
+				for _, a := range t.Artists {
+					artistNames = append(artistNames, a.Name)
+				}
+				artistStr := strings.Join(artistNames, ", ")
+				mainArtist := ""
+				if len(t.Artists) > 0 {
+					mainArtist = t.Artists[0].Name
+				}
+				available := t.StreamReady == nil || *t.StreamReady
+
+				tracks = append(tracks, TidalTrack{
+					ID:         t.ID,
+					Title:      t.Title,
+					Artist:     mainArtist,
+					Artists:    artistStr,
+					Album:      t.Album.Title,
+					AlbumID:    t.Album.ID,
+					ISRC:       t.ISRC,
+					Duration:   t.Duration,
+					TrackNum:   t.TrackNumber,
+					CoverURL:   formatTidalImageURL(t.Album.Cover),
+					Explicit:   t.Explicit,
+					TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", t.ID),
+					Available:  available,
+					PreviewURL: t.AudioPreviewURL,
+					Popularity: t.Popularity,
+				})
+			}
+		}
+	}
+
+	if mixTitle == "" {
+		mixTitle = "Tidal Mix"
+	}
+
+	return &TidalPlaylist{
+		UUID:       mixID,
+		Title:      mixTitle,
+		Creator:    "Tidal Mix",
+		CoverURL:   coverURL,
+		TrackCount: len(tracks),
+		Tracks:     tracks,
+	}, nil
 }
 
 // formatTidalImageURL converts Tidal image ID to full URL

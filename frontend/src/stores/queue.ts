@@ -153,6 +153,7 @@ export const queuePaused = writable<boolean>(false);
 // Current content store (playlist/album/track being viewed)
 export interface TidalContent {
   type: 'playlist' | 'album' | 'track' | 'artist';
+  id?: string;
   title: string;
   creator: string;
   coverUrl: string;
@@ -176,10 +177,10 @@ export interface TidalTrack {
   explicit: boolean;
   tidalUrl: string;
   available: boolean;
-  previewUrl: string;
-  copyright: string;
-  label: string;
-  popularity: number;
+  previewUrl?: string;
+  copyright?: string;
+  label?: string;
+  popularity?: number;
 }
 
 export const currentContent = writable<TidalContent | null>(null);

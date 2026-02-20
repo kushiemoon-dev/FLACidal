@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"flacidal/backend"
 
@@ -29,6 +30,7 @@ type App struct {
 	sourceManager   *backend.SourceManager    // Multi-source manager
 	tidalSource     *backend.TidalSource      // Tidal source
 	qobuzSource     *backend.QobuzSource      // Qobuz source
+	trackContentMap sync.Map                  // maps trackID (int) → contentID (string) for history tracking
 }
 
 // NewApp creates a new App application struct
@@ -148,6 +150,22 @@ func (a *App) startup(ctx context.Context) {
 				}
 			case "cancelled":
 				a.logBuffer.Warn(fmt.Sprintf("Track %d cancelled", trackID))
+			}
+		}
+
+		// Update download history counts
+		if a.db != nil {
+			switch status {
+			case "completed":
+				if cid, ok := a.trackContentMap.Load(trackID); ok {
+					_ = a.db.IncrementDownloadCounts(cid.(string), true)
+					a.trackContentMap.Delete(trackID)
+				}
+			case "error":
+				if cid, ok := a.trackContentMap.Load(trackID); ok {
+					_ = a.db.IncrementDownloadCounts(cid.(string), false)
+					a.trackContentMap.Delete(trackID)
+				}
 			}
 		}
 
@@ -335,7 +353,7 @@ func (a *App) FetchTidalPlaylist(url string) (*backend.TidalPlaylist, error) {
 		return nil, fmt.Errorf("URL is not a playlist (got %s)", contentType)
 	}
 
-	return a.tidalClient.GetPlaylist(id)
+	return a.downloader.GetPlaylistFromProxy(id)
 }
 
 // FetchTidalContent fetches playlist, album, or single track from any Tidal URL
@@ -347,11 +365,12 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 
 	result := map[string]interface{}{
 		"type": contentType,
+		"id":   id,
 	}
 
 	switch contentType {
 	case "playlist":
-		playlist, err := a.tidalClient.GetPlaylist(id)
+		playlist, err := a.downloader.GetPlaylistFromProxy(id)
 		if err != nil {
 			return nil, err
 		}
@@ -362,7 +381,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["trackCount"] = len(playlist.Tracks)
 
 	case "album":
-		album, err := a.tidalClient.GetAlbum(id)
+		album, err := a.downloader.GetAlbumFromProxy(id)
 		if err != nil {
 			return nil, err
 		}
@@ -374,7 +393,11 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["albumType"] = album.AlbumType
 
 	case "track":
-		track, err := a.tidalClient.GetTrack(id)
+		trackIDInt, convErr := strconv.Atoi(id)
+		if convErr != nil {
+			return nil, fmt.Errorf("invalid track ID: %s", id)
+		}
+		track, err := a.downloader.GetTrackAsTidalTrack(trackIDInt)
 		if err != nil {
 			return nil, err
 		}
@@ -383,6 +406,17 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["coverUrl"] = track.CoverURL
 		result["tracks"] = []backend.TidalTrack{*track}
 		result["trackCount"] = 1
+
+	case "mix":
+		mix, err := a.downloader.GetMixFromProxy(id)
+		if err != nil {
+			return nil, err
+		}
+		result["title"] = mix.Title
+		result["creator"] = mix.Creator
+		result["coverUrl"] = mix.CoverURL
+		result["tracks"] = mix.Tracks
+		result["trackCount"] = len(mix.Tracks)
 
 	case "artist":
 		artist, err := a.tidalClient.GetArtistDiscography(id)
@@ -548,7 +582,7 @@ func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "1.0.0"
+	return "2.0.0"
 }
 
 // =============================================================================
@@ -676,7 +710,7 @@ func (a *App) DownloadTrackFromTidal(track backend.TidalTrack, outputDir string)
 }
 
 // QueueDownloads queues multiple tracks for concurrent download
-func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, contentName string) (int, error) {
+func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
 	}
@@ -693,6 +727,21 @@ func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, cont
 	}
 
 	queued := a.downloadManager.QueueMultiple(tracks, outputDir)
+
+	// Save initial history record
+	if a.db != nil && contentID != "" {
+		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+			TidalContentID:   contentID,
+			TidalContentName: contentName,
+			ContentType:      contentType,
+			TracksTotal:      queued,
+		})
+	}
+	// Map each trackID → contentID for progress callback
+	for _, t := range tracks {
+		a.trackContentMap.Store(t.ID, contentID)
+	}
+
 	return queued, nil
 }
 
@@ -706,7 +755,7 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 		return 0, fmt.Errorf("no output directory specified")
 	}
 
-	album, err := a.tidalClient.GetAlbum(albumID)
+	album, err := a.downloader.GetAlbumFromProxy(albumID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch album: %w", err)
 	}
@@ -804,7 +853,18 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 		return fmt.Errorf("no output directory specified")
 	}
 
-	return a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
+	err := a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
+	if err == nil && a.db != nil {
+		contentID := strconv.Itoa(trackID)
+		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+			TidalContentID:   contentID,
+			TidalContentName: title,
+			ContentType:      "track",
+			TracksTotal:      1,
+		})
+		a.trackContentMap.Store(trackID, contentID)
+	}
+	return err
 }
 
 // GetDownloadQueueStatus returns current queue status
@@ -1479,6 +1539,33 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		result["creator"] = playlist.Creator
 		result["coverUrl"] = playlist.CoverURL
 		result["tracks"] = convertTracks(playlist.Tracks)
+
+	case "mix":
+		mix, err := a.downloader.GetMixFromProxy(id)
+		if err != nil {
+			return nil, err
+		}
+		result["title"] = mix.Title
+		result["creator"] = mix.Creator
+		result["coverUrl"] = mix.CoverURL
+		tidalTracks := make([]backend.SourceTrack, len(mix.Tracks))
+		for i, t := range mix.Tracks {
+			tidalTracks[i] = backend.SourceTrack{
+				ID:          strconv.Itoa(t.ID),
+				Title:       t.Title,
+				Artist:      t.Artist,
+				Artists:     []string{t.Artists},
+				Album:       t.Album,
+				ISRC:        t.ISRC,
+				Duration:    t.Duration,
+				TrackNumber: t.TrackNum,
+				CoverURL:    t.CoverURL,
+				Explicit:    t.Explicit,
+				SourceURL:   t.TidalURL,
+				Source:      "tidal",
+			}
+		}
+		result["tracks"] = convertTracks(tidalTracks)
 	}
 
 	if a.logBuffer != nil {
