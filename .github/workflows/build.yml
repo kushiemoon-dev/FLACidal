@@ -127,20 +127,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
             upx \
             fuse \
             libfuse2
-
-      - name: Symlink webkit2gtk for Ubuntu 24 compatibility
-        run: |
-          if [ ! -f /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 ]; then
-            sudo find /usr -name "libwebkit2gtk*.so*" 2>/dev/null | head -5
-            WEBKIT=$(find /usr/lib -name "libwebkit2gtk*.so*" | head -1)
-            if [ -n "$WEBKIT" ]; then
-              sudo ln -sf "$WEBKIT" /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 || true
-            fi
-          fi
 
       - name: Setup Go
         uses: actions/setup-go@v5
