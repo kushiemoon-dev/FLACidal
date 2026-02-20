@@ -1,0 +1,38 @@
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - typecheck
+    - unused
+    - gocritic
+    - revive
+    - misspell
+
+linters-settings:
+  govet:
+    enable-all: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+  revive:
+    rules:
+      - name: exported
+        arguments: ["checkPrivateReceivers"]
+
+run:
+  timeout: 5m
+  skip-dirs:
+    - frontend
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocritic
