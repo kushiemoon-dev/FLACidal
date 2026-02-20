@@ -39,16 +39,16 @@ type Config struct {
 	AutoQualityFallback bool `json:"autoQualityFallback"` // Retry with lower quality when requested tier is unavailable
 
 	// Source settings
-	TidalEnabled        bool     `json:"tidalEnabled"`                    // Enable Tidal source
-	QobuzEnabled        bool     `json:"qobuzEnabled"`                    // Enable Qobuz source
-	QobuzAppID          string   `json:"qobuzAppId,omitempty"`            // Qobuz app ID
-	QobuzAppSecret      string   `json:"qobuzAppSecret,omitempty"`        // Qobuz app secret
-	QobuzAuthToken      string   `json:"qobuzAuthToken,omitempty"`        // Qobuz user auth token
-	PreferredSource     string   `json:"preferredSource,omitempty"`       // "tidal" or "qobuz"
-	TidalHifiEndpoints  []string `json:"tidalHifiEndpoints,omitempty"`    // Custom Tidal HiFi proxy endpoints (empty = use defaults)
-	QobuzEndpoints      []string `json:"qobuzEndpoints,omitempty"`        // Custom Qobuz API endpoints (empty = use defaults)
-	SourceOrder         []string `json:"sourceOrder,omitempty"`           // Source priority order e.g. ["tidal","qobuz"]
-	QualityOrder        []string `json:"qualityOrder,omitempty"`          // Quality tier priority e.g. ["HI_RES","LOSSLESS","HIGH"]
+	TidalEnabled       bool     `json:"tidalEnabled"`                 // Enable Tidal source
+	QobuzEnabled       bool     `json:"qobuzEnabled"`                 // Enable Qobuz source
+	QobuzAppID         string   `json:"qobuzAppId,omitempty"`         // Qobuz app ID
+	QobuzAppSecret     string   `json:"qobuzAppSecret,omitempty"`     // Qobuz app secret
+	QobuzAuthToken     string   `json:"qobuzAuthToken,omitempty"`     // Qobuz user auth token
+	PreferredSource    string   `json:"preferredSource,omitempty"`    // "tidal" or "qobuz"
+	TidalHifiEndpoints []string `json:"tidalHifiEndpoints,omitempty"` // Custom Tidal HiFi proxy endpoints (empty = use defaults)
+	QobuzEndpoints     []string `json:"qobuzEndpoints,omitempty"`     // Custom Qobuz API endpoints (empty = use defaults)
+	SourceOrder        []string `json:"sourceOrder,omitempty"`        // Source priority order e.g. ["tidal","qobuz"]
+	QualityOrder       []string `json:"qualityOrder,omitempty"`       // Quality tier priority e.g. ["HI_RES","LOSSLESS","HIGH"]
 
 	// Playlist generation
 	GenerateM3U8 bool `json:"generateM3u8"` // Generate .m3u8 playlist after batch downloads

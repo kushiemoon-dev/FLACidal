@@ -116,29 +116,29 @@ type StreamInfo struct {
 
 // DownloadResult represents the result of a download
 type DownloadResult struct {
-	TrackID         int              `json:"trackId"`
-	Title           string           `json:"title"`
-	Artist          string           `json:"artist"`
-	Album           string           `json:"album"`
-	FilePath        string           `json:"filePath"`
-	FileSize        int64            `json:"fileSize"`
-	Quality         string           `json:"quality"`
+	TrackID          int             `json:"trackId"`
+	Title            string          `json:"title"`
+	Artist           string          `json:"artist"`
+	Album            string          `json:"album"`
+	FilePath         string          `json:"filePath"`
+	FileSize         int64           `json:"fileSize"`
+	Quality          string          `json:"quality"`
 	RequestedQuality string          `json:"requestedQuality,omitempty"` // Quality that was requested
-	QualityMismatch bool             `json:"qualityMismatch,omitempty"`  // True if server returned different quality
-	CoverURL        string           `json:"coverUrl"`
-	Success         bool             `json:"success"`
-	Error           string           `json:"error,omitempty"`
-	Analysis        *AnalysisResult  `json:"analysis,omitempty"` // Auto-analysis result if enabled
+	QualityMismatch  bool            `json:"qualityMismatch,omitempty"`  // True if server returned different quality
+	CoverURL         string          `json:"coverUrl"`
+	Success          bool            `json:"success"`
+	Error            string          `json:"error,omitempty"`
+	Analysis         *AnalysisResult `json:"analysis,omitempty"` // Auto-analysis result if enabled
 }
 
 // DownloadOptions configures download behavior
 type DownloadOptions struct {
-	Quality             string // "HI_RES", "LOSSLESS", "HIGH"
-	FileNameFormat      string // "{artist} - {title}", "{track} - {title}", etc.
-	OrganizeFolders     bool   // Create Artist/Album/ subfolders
-	EmbedCover          bool   // Embed cover art in FLAC
-	SaveCoverFile       bool   // Save cover art as .jpg file next to FLAC
-	AutoAnalyze         bool   // Automatically analyze quality after download
+	Quality              string   // "HI_RES", "LOSSLESS", "HIGH"
+	FileNameFormat       string   // "{artist} - {title}", "{track} - {title}", etc.
+	OrganizeFolders      bool     // Create Artist/Album/ subfolders
+	EmbedCover           bool     // Embed cover art in FLAC
+	SaveCoverFile        bool     // Save cover art as .jpg file next to FLAC
+	AutoAnalyze          bool     // Automatically analyze quality after download
 	AutoQualityFallback  bool     // Retry with lower quality when requested quality is unavailable
 	QualityFallbackOrder []string // Custom quality priority order; nil = use default chain
 	FirstArtistOnly      bool     // Use only the first artist in tags and filenames

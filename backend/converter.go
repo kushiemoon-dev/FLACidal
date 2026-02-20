@@ -19,12 +19,12 @@ type ConversionOptions struct {
 
 // ConversionResult contains the result of a conversion
 type ConversionResult struct {
-	SourcePath  string `json:"sourcePath"`
-	OutputPath  string `json:"outputPath"`
-	Success     bool   `json:"success"`
-	Error       string `json:"error,omitempty"`
-	OutputSize  int64  `json:"outputSize,omitempty"`
-	SourceSize  int64  `json:"sourceSize,omitempty"`
+	SourcePath string `json:"sourcePath"`
+	OutputPath string `json:"outputPath"`
+	Success    bool   `json:"success"`
+	Error      string `json:"error,omitempty"`
+	OutputSize int64  `json:"outputSize,omitempty"`
+	SourceSize int64  `json:"sourceSize,omitempty"`
 }
 
 // ConversionFormat describes an available format

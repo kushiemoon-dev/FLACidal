@@ -20,11 +20,11 @@ type FLACMetadata struct {
 	ISRC         string `json:"isrc"`
 	Comment      string `json:"comment"`
 	Size         int64  `json:"size"`
-	Duration     int    `json:"duration"`     // seconds
-	SampleRate   int    `json:"sampleRate"`   // Hz
-	BitDepth     int    `json:"bitDepth"`     // bits per sample
-	Channels     int    `json:"channels"`     // number of channels
-	Bitrate      int    `json:"bitrate"`      // kbps (calculated)
+	Duration     int    `json:"duration"`   // seconds
+	SampleRate   int    `json:"sampleRate"` // Hz
+	BitDepth     int    `json:"bitDepth"`   // bits per sample
+	Channels     int    `json:"channels"`   // number of channels
+	Bitrate      int    `json:"bitrate"`    // kbps (calculated)
 	HasCover     bool   `json:"hasCover"`
 	CoverMime    string `json:"coverMime,omitempty"`
 	CoverSize    int    `json:"coverSize,omitempty"`
