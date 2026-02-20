@@ -54,3 +54,6 @@ coverage.html
 
 
 
+
+# AI session tracking (internal context files, not for repo)
+docs/plans/

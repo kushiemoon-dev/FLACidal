@@ -19,6 +19,8 @@ var (
 	tidalSourcePlaylistRegex = regexp.MustCompile(`tidal\.com/(?:browse/)?playlist/([a-f0-9-]+)`)
 	tidalSourceTrackRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?track/(\d+)`)
 	tidalSourceAlbumRegex    = regexp.MustCompile(`tidal\.com/(?:browse/)?album/(\d+)`)
+	tidalSourceArtistRegex   = regexp.MustCompile(`tidal\.com/(?:browse/)?artist/(\d+)`)
+	tidalSourceMixRegex      = regexp.MustCompile(`tidal\.com/(?:browse/)?mix/([a-zA-Z0-9]+)`)
 )
 
 // NewTidalSource creates a new Tidal source
@@ -63,6 +65,12 @@ func (t *TidalSource) ParseURL(rawURL string) (id string, contentType string, er
 	}
 	if matches := tidalSourceAlbumRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
 		return matches[1], "album", nil
+	}
+	if matches := tidalSourceArtistRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1], "artist", nil
+	}
+	if matches := tidalSourceMixRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1], "mix", nil
 	}
 	return "", "", fmt.Errorf("invalid Tidal URL format")
 }
@@ -120,8 +128,8 @@ func (t *TidalSource) GetTrack(id string) (*SourceTrack, error) {
 
 // GetAlbum fetches album information with tracks
 func (t *TidalSource) GetAlbum(id string) (*SourceAlbum, error) {
-	// Use the API client to get album info
-	tidalAlbum, err := t.apiClient.GetAlbum(id)
+	// Use the proxy service (Tidal v1 client credentials are revoked)
+	tidalAlbum, err := t.service.GetAlbumFromProxy(id)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +166,8 @@ func (t *TidalSource) GetAlbum(id string) (*SourceAlbum, error) {
 
 // GetPlaylist fetches playlist information with tracks
 func (t *TidalSource) GetPlaylist(id string) (*SourcePlaylist, error) {
-	tidalPlaylist, err := t.apiClient.GetPlaylist(id)
+	// Use the proxy service (Tidal v1 client credentials are revoked)
+	tidalPlaylist, err := t.service.GetPlaylistFromProxy(id)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +217,11 @@ func (t *TidalSource) GetStreamURL(trackID string, quality string) (string, erro
 		defer func() { t.service.options.Quality = oldQuality }()
 	}
 
-	return t.service.GetStreamURL(id)
+	streamInfo, err := t.service.GetStreamURL(id)
+	if err != nil {
+		return "", err
+	}
+	return streamInfo.URL, nil
 }
 
 // DownloadTrack downloads a track to the specified directory
@@ -221,7 +234,7 @@ func (t *TidalSource) DownloadTrack(trackID string, outputDir string, options Do
 	// Apply options
 	t.service.SetOptions(options)
 
-	return t.service.DownloadTrack(id, outputDir)
+	return t.service.DownloadTrack(id, outputDir, "", "")
 }
 
 // GetService returns the underlying TidalHifiService

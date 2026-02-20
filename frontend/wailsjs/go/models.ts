@@ -40,6 +40,7 @@ export namespace backend {
 	    fileNameFormat?: string;
 	    organizeFolders?: boolean;
 	    embedCover: boolean;
+	    saveCoverFile: boolean;
 	    concurrentDownloads?: number;
 	    theme: string;
 	    accentColor?: string;
@@ -47,12 +48,22 @@ export namespace backend {
 	    soundVolume: number;
 	    embedLyrics: boolean;
 	    preferSyncedLyrics: boolean;
+	    autoAnalyze: boolean;
+	    autoQualityFallback: boolean;
 	    tidalEnabled: boolean;
 	    qobuzEnabled: boolean;
 	    qobuzAppId?: string;
 	    qobuzAppSecret?: string;
 	    qobuzAuthToken?: string;
 	    preferredSource?: string;
+	    tidalHifiEndpoints?: string[];
+	    qobuzEndpoints?: string[];
+	    sourceOrder?: string[];
+	    qualityOrder?: string[];
+	    generateM3u8: boolean;
+	    skipUnavailableTracks: boolean;
+	    firstArtistOnly: boolean;
+	    proxyUrl?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -67,6 +78,7 @@ export namespace backend {
 	        this.fileNameFormat = source["fileNameFormat"];
 	        this.organizeFolders = source["organizeFolders"];
 	        this.embedCover = source["embedCover"];
+	        this.saveCoverFile = source["saveCoverFile"];
 	        this.concurrentDownloads = source["concurrentDownloads"];
 	        this.theme = source["theme"];
 	        this.accentColor = source["accentColor"];
@@ -74,12 +86,22 @@ export namespace backend {
 	        this.soundVolume = source["soundVolume"];
 	        this.embedLyrics = source["embedLyrics"];
 	        this.preferSyncedLyrics = source["preferSyncedLyrics"];
+	        this.autoAnalyze = source["autoAnalyze"];
+	        this.autoQualityFallback = source["autoQualityFallback"];
 	        this.tidalEnabled = source["tidalEnabled"];
 	        this.qobuzEnabled = source["qobuzEnabled"];
 	        this.qobuzAppId = source["qobuzAppId"];
 	        this.qobuzAppSecret = source["qobuzAppSecret"];
 	        this.qobuzAuthToken = source["qobuzAuthToken"];
 	        this.preferredSource = source["preferredSource"];
+	        this.tidalHifiEndpoints = source["tidalHifiEndpoints"];
+	        this.qobuzEndpoints = source["qobuzEndpoints"];
+	        this.sourceOrder = source["sourceOrder"];
+	        this.qualityOrder = source["qualityOrder"];
+	        this.generateM3u8 = source["generateM3u8"];
+	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
+	        this.firstArtistOnly = source["firstArtistOnly"];
+	        this.proxyUrl = source["proxyUrl"];
 	    }
 	}
 	export class ConversionFormat {
@@ -180,9 +202,12 @@ export namespace backend {
 	    filePath: string;
 	    fileSize: number;
 	    quality: string;
+	    requestedQuality?: string;
+	    qualityMismatch?: boolean;
 	    coverUrl: string;
 	    success: boolean;
 	    error?: string;
+	    analysis?: AnalysisResult;
 	
 	    static createFrom(source: any = {}) {
 	        return new DownloadResult(source);
@@ -197,10 +222,31 @@ export namespace backend {
 	        this.filePath = source["filePath"];
 	        this.fileSize = source["fileSize"];
 	        this.quality = source["quality"];
+	        this.requestedQuality = source["requestedQuality"];
+	        this.qualityMismatch = source["qualityMismatch"];
 	        this.coverUrl = source["coverUrl"];
 	        this.success = source["success"];
 	        this.error = source["error"];
+	        this.analysis = this.convertValues(source["analysis"], AnalysisResult);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DownloadedFileInfo {
 	    path: string;
@@ -406,6 +452,11 @@ export namespace backend {
 	    coverUrl: string;
 	    explicit: boolean;
 	    tidalUrl: string;
+	    available: boolean;
+	    previewUrl?: string;
+	    copyright?: string;
+	    label?: string;
+	    popularity?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new TidalTrack(source);
@@ -425,6 +476,11 @@ export namespace backend {
 	        this.coverUrl = source["coverUrl"];
 	        this.explicit = source["explicit"];
 	        this.tidalUrl = source["tidalUrl"];
+	        this.available = source["available"];
+	        this.previewUrl = source["previewUrl"];
+	        this.copyright = source["copyright"];
+	        this.label = source["label"];
+	        this.popularity = source["popularity"];
 	    }
 	}
 	export class MatchResult {

@@ -13,6 +13,7 @@
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
   import { themeStore, initializeAccentColor } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
+  import Toast from './components/Toast.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
 
   let activePage = 'home';
@@ -117,7 +118,7 @@
 
   <div class="main-content">
     {#if activePage === 'home'}
-      <Home initialContent={refetchedContent} on:contentCleared={() => refetchedContent = null} />
+      <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
     {:else if activePage === 'search'}
       <Search />
     {:else if activePage === 'queue'}
@@ -135,12 +136,14 @@
     {/if}
   </div>
 </main>
+<Toast />
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
   /* Dark theme (default) */
   :global(:root), :global([data-theme="dark"]) {
+    color-scheme: dark;
     --color-bg-void: #050505;
     --color-bg-primary: #0a0a0a;
     --color-bg-secondary: #111111;
@@ -164,6 +167,7 @@
 
   /* Light theme */
   :global([data-theme="light"]) {
+    color-scheme: light;
     --color-bg-void: #f5f5f5;
     --color-bg-primary: #ffffff;
     --color-bg-secondary: #fafafa;
