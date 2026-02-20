@@ -131,6 +131,9 @@ jobs:
             upx \
             fuse \
             libfuse2
+          # Wails v2 hardcodes webkit2gtk-4.0 in pkg-config; alias 4.1 → 4.0
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc \
+            /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
 
       - name: Setup Go
         uses: actions/setup-go@v5
