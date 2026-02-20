@@ -82,13 +82,13 @@
       <input
         type="text"
         bind:value={searchQuery}
-        on:keypress={handleKeyPress}
+        onkeypress={handleKeyPress}
         placeholder="Search for tracks, albums, artists..."
         class="search-input"
       />
       <button
         class="search-btn"
-        on:click={handleSearch}
+        onclick={handleSearch}
         disabled={isSearching || !searchQuery.trim()}
       >
         {#if isSearching}
@@ -116,7 +116,7 @@
   {:else if searchResults.length > 0}
     <div class="results-header">
       <span class="results-count">{searchResults.length} results</span>
-      <button class="download-all-btn" on:click={downloadAll}>
+      <button class="download-all-btn" onclick={downloadAll}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -143,7 +143,7 @@
           <span class="track-duration">{formatDuration(track.duration)}</span>
           <button
             class="track-download-btn"
-            on:click={() => downloadTrack(track)}
+            onclick={() => downloadTrack(track)}
             title="Download"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -184,7 +184,7 @@
   }
 
   .subtitle {
-    color: #666;
+    color: var(--color-text-tertiary);
     margin: 0;
   }
 
@@ -196,19 +196,19 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 12px;
     padding: 8px 16px;
     transition: border-color 0.2s;
   }
 
   .search-input-wrapper:focus-within {
-    border-color: #f472b6;
+    border-color: var(--color-accent);
   }
 
   .search-icon {
-    color: #555;
+    color: var(--color-text-muted);
     flex-shrink: 0;
   }
 
@@ -217,13 +217,13 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #fff;
+    color: var(--color-text-primary);
     font-size: 16px;
     padding: 8px 0;
   }
 
   .search-input::placeholder {
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .search-btn {
@@ -270,12 +270,12 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #555;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
   .empty-state.initial {
-    color: #444;
+    color: var(--color-text-muted);
   }
 
   .empty-state svg {
@@ -291,14 +291,14 @@
   .empty-state .hint {
     margin-top: 8px;
     font-size: 14px;
-    color: #444;
+    color: var(--color-text-muted);
   }
 
   .loader {
     width: 40px;
     height: 40px;
-    border: 3px solid #222;
-    border-top-color: #f472b6;
+    border: 3px solid var(--color-border-subtle);
+    border-top-color: var(--color-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 16px;
@@ -310,11 +310,11 @@
     justify-content: space-between;
     margin-bottom: 16px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .results-count {
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
   }
 
@@ -356,7 +356,7 @@
   }
 
   .track-num {
-    color: #555;
+    color: var(--color-text-muted);
     font-size: 14px;
     text-align: center;
   }
@@ -384,14 +384,14 @@
 
   .track-artist {
     font-size: 13px;
-    color: #888;
+    color: var(--color-text-tertiary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .track-album {
-    color: #666;
+    color: var(--color-text-tertiary);
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
@@ -399,9 +399,10 @@
   }
 
   .track-duration {
-    color: #555;
+    color: var(--color-text-muted);
     font-size: 13px;
     text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   .track-download-btn {
@@ -411,9 +412,9 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-bg-hover);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     cursor: pointer;
     transition: all 0.2s;
   }

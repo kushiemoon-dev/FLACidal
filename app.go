@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"flacidal/backend"
 
@@ -27,6 +30,7 @@ type App struct {
 	sourceManager   *backend.SourceManager    // Multi-source manager
 	tidalSource     *backend.TidalSource      // Tidal source
 	qobuzSource     *backend.QobuzSource      // Qobuz source
+	trackContentMap sync.Map                  // maps trackID (int) → contentID (string) for history tracking
 }
 
 // NewApp creates a new App application struct
@@ -45,7 +49,6 @@ func (a *App) startup(ctx context.Context) {
 	// Load config
 	config, err := backend.LoadConfig()
 	if err != nil {
-		println("Warning: Could not load config:", err.Error())
 		a.logBuffer.Warn("Could not load config: " + err.Error())
 		config = &backend.Config{}
 	}
@@ -55,7 +58,6 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize database
 	db, err := backend.NewDatabase()
 	if err != nil {
-		println("Error: Could not initialize database:", err.Error())
 		a.logBuffer.Error("Database initialization failed: " + err.Error())
 	} else {
 		a.logBuffer.Success("Database initialized")
@@ -64,6 +66,13 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize Tidal client (uses internal credentials, no user config needed)
 	a.tidalClient = backend.NewTidalClientDefault()
+	if config.ProxyURL != "" {
+		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+		} else {
+			a.logBuffer.Info("Tidal API proxy: " + config.ProxyURL)
+		}
+	}
 	a.logBuffer.Info("Tidal client ready")
 
 	// Initialize Spotify search client (Client Credentials, no login needed)
@@ -74,6 +83,38 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize FLAC downloader
 	a.downloader = backend.NewTidalHifiService()
+	// Attach logger so endpoint rotation events appear in Terminal page
+	a.downloader.SetLogger(a.logBuffer)
+	if config.ProxyURL != "" {
+		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+		}
+	}
+	// Apply custom endpoints if configured
+	if len(config.TidalHifiEndpoints) > 0 {
+		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
+		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoint pool: %d endpoints configured", len(config.TidalHifiEndpoints)))
+	}
+	// Set download options from config
+	quality := config.DownloadQuality
+	if quality == "" {
+		quality = "LOSSLESS"
+	}
+	fileNameFormat := config.FileNameFormat
+	if fileNameFormat == "" {
+		fileNameFormat = "{artist} - {title}"
+	}
+	a.downloader.SetOptions(backend.DownloadOptions{
+		Quality:              quality,
+		FileNameFormat:       fileNameFormat,
+		OrganizeFolders:      config.OrganizeFolders,
+		EmbedCover:           config.EmbedCover,
+		SaveCoverFile:        config.SaveCoverFile,
+		AutoAnalyze:          config.AutoAnalyze,
+		AutoQualityFallback:  config.AutoQualityFallback,
+		QualityFallbackOrder: config.QualityOrder,
+		FirstArtistOnly:      config.FirstArtistOnly,
+	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
 	// Initialize download manager with 4 concurrent workers
@@ -88,7 +129,20 @@ func (a *App) startup(ctx context.Context) {
 				a.logBuffer.Info(fmt.Sprintf("Downloading track %d...", trackID))
 			case "completed":
 				if result != nil {
-					a.logBuffer.Success(fmt.Sprintf("Downloaded: %s", result.FilePath))
+					a.logBuffer.Success(fmt.Sprintf("Downloaded: %s (quality: %s)", result.FilePath, result.Quality))
+					// Log quality mismatch warning
+					if result.QualityMismatch {
+						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch: requested %s but got %s",
+							result.RequestedQuality, result.Quality))
+					}
+					// Log auto-analysis results
+					if result.Analysis != nil {
+						if result.Analysis.IsTrueLossless {
+							a.logBuffer.Info(fmt.Sprintf("Analysis: %s - True lossless", result.Analysis.VerdictLabel))
+						} else {
+							a.logBuffer.Warn(fmt.Sprintf("Analysis: %s - May be upscaled from lossy source", result.Analysis.VerdictLabel))
+						}
+					}
 				}
 			case "error":
 				if result != nil && result.Error != "" {
@@ -96,6 +150,22 @@ func (a *App) startup(ctx context.Context) {
 				}
 			case "cancelled":
 				a.logBuffer.Warn(fmt.Sprintf("Track %d cancelled", trackID))
+			}
+		}
+
+		// Update download history counts
+		if a.db != nil {
+			switch status {
+			case "completed":
+				if cid, ok := a.trackContentMap.Load(trackID); ok {
+					_ = a.db.IncrementDownloadCounts(cid.(string), true)
+					a.trackContentMap.Delete(trackID)
+				}
+			case "error":
+				if cid, ok := a.trackContentMap.Load(trackID); ok {
+					_ = a.db.IncrementDownloadCounts(cid.(string), false)
+					a.trackContentMap.Delete(trackID)
+				}
 			}
 		}
 
@@ -120,6 +190,16 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize Qobuz source
 	a.qobuzSource = backend.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
+	a.qobuzSource.SetLogger(a.logBuffer)
+	if config.ProxyURL != "" {
+		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+		}
+	}
+	if len(config.QobuzEndpoints) > 0 {
+		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
+		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured", len(config.QobuzEndpoints)))
+	}
 	if config.QobuzAuthToken != "" {
 		a.qobuzSource.SetCredentials(config.QobuzAppID, config.QobuzAppSecret, config.QobuzAuthToken)
 	}
@@ -132,6 +212,23 @@ func (a *App) startup(ctx context.Context) {
 	if config.PreferredSource != "" {
 		a.sourceManager.SetPreferredSource(config.PreferredSource)
 	}
+
+	// Configure inter-source fallback for download manager
+	if config.QobuzEnabled && a.qobuzSource.IsAvailable() {
+		a.downloadManager.SetFallbackQobuzSource(a.qobuzSource)
+	}
+	sourceOrder := config.SourceOrder
+	if len(sourceOrder) == 0 {
+		// Default: prefer Tidal, fall back to Qobuz if enabled
+		if config.QobuzEnabled {
+			sourceOrder = []string{"tidal", "qobuz"}
+		} else {
+			sourceOrder = []string{"tidal"}
+		}
+	}
+	a.downloadManager.SetSourceOrder(sourceOrder)
+	a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
+	a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
 
 	a.logBuffer.Success("FLACidal ready!")
 }
@@ -166,6 +263,36 @@ func (a *App) GetConfig() *backend.Config {
 // SaveConfig saves configuration
 func (a *App) SaveConfig(config backend.Config) error {
 	a.config = &config
+	if a.downloadManager != nil {
+		a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
+		a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
+	}
+	if a.downloader != nil {
+		opts := a.downloader.GetOptions()
+		opts.AutoQualityFallback = config.AutoQualityFallback
+		opts.QualityFallbackOrder = config.QualityOrder
+		opts.FirstArtistOnly = config.FirstArtistOnly
+		a.downloader.SetOptions(opts)
+	}
+	if a.downloadManager != nil {
+		a.downloadManager.SetSourceOrder(config.SourceOrder)
+	}
+	// Apply proxy changes immediately (no restart needed)
+	if a.tidalClient != nil {
+		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+		}
+	}
+	if a.downloader != nil {
+		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+		}
+	}
+	if a.qobuzSource != nil {
+		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
+			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+		}
+	}
 	return backend.SaveConfig(&config)
 }
 
@@ -226,7 +353,7 @@ func (a *App) FetchTidalPlaylist(url string) (*backend.TidalPlaylist, error) {
 		return nil, fmt.Errorf("URL is not a playlist (got %s)", contentType)
 	}
 
-	return a.tidalClient.GetPlaylist(id)
+	return a.downloader.GetPlaylistFromProxy(id)
 }
 
 // FetchTidalContent fetches playlist, album, or single track from any Tidal URL
@@ -238,11 +365,12 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 
 	result := map[string]interface{}{
 		"type": contentType,
+		"id":   id,
 	}
 
 	switch contentType {
 	case "playlist":
-		playlist, err := a.tidalClient.GetPlaylist(id)
+		playlist, err := a.downloader.GetPlaylistFromProxy(id)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +381,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["trackCount"] = len(playlist.Tracks)
 
 	case "album":
-		album, err := a.tidalClient.GetAlbum(id)
+		album, err := a.downloader.GetAlbumFromProxy(id)
 		if err != nil {
 			return nil, err
 		}
@@ -262,9 +390,14 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["coverUrl"] = album.CoverURL
 		result["tracks"] = album.Tracks
 		result["trackCount"] = len(album.Tracks)
+		result["albumType"] = album.AlbumType
 
 	case "track":
-		track, err := a.tidalClient.GetTrack(id)
+		trackIDInt, convErr := strconv.Atoi(id)
+		if convErr != nil {
+			return nil, fmt.Errorf("invalid track ID: %s", id)
+		}
+		track, err := a.downloader.GetTrackAsTidalTrack(trackIDInt)
 		if err != nil {
 			return nil, err
 		}
@@ -273,6 +406,30 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["coverUrl"] = track.CoverURL
 		result["tracks"] = []backend.TidalTrack{*track}
 		result["trackCount"] = 1
+
+	case "mix":
+		mix, err := a.downloader.GetMixFromProxy(id)
+		if err != nil {
+			return nil, err
+		}
+		result["title"] = mix.Title
+		result["creator"] = mix.Creator
+		result["coverUrl"] = mix.CoverURL
+		result["tracks"] = mix.Tracks
+		result["trackCount"] = len(mix.Tracks)
+
+	case "artist":
+		artist, err := a.tidalClient.GetArtistDiscography(id)
+		if err != nil {
+			return nil, err
+		}
+		result["title"] = artist.Name
+		result["creator"] = artist.Name
+		result["coverUrl"] = artist.PictureURL
+		result["albums"] = artist.Albums
+		result["albumCount"] = len(artist.Albums)
+		result["artistId"] = artist.ID
+		result["tracks"] = []backend.TidalTrack{} // empty — tracks loaded per album
 
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
@@ -425,7 +582,7 @@ func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "1.0.0"
+	return "2.0.0"
 }
 
 // =============================================================================
@@ -480,6 +637,20 @@ func (a *App) MatchSingleTrack(track backend.TidalTrack) backend.MatchResult {
 // Download Methods (exposed to frontend)
 // =============================================================================
 
+// OpenFLACFilesDialog opens a multi-file picker filtered to FLAC files.
+func (a *App) OpenFLACFilesDialog() ([]string, error) {
+	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select FLAC Files to Analyze",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "FLAC Audio (*.flac)", Pattern: "*.flac"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return paths, nil
+}
+
 // SelectDownloadFolder opens a folder picker dialog
 func (a *App) SelectDownloadFolder() (string, error) {
 	folder, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
@@ -524,16 +695,22 @@ func (a *App) DownloadTrack(trackID int, outputDir string) (*backend.DownloadRes
 	if outputDir == "" {
 		return nil, fmt.Errorf("no output directory specified")
 	}
-	return a.downloader.DownloadTrack(trackID, outputDir)
+	return a.downloader.DownloadTrack(trackID, outputDir, "", "")
 }
 
 // DownloadTrackFromTidal downloads using TidalTrack data (for UI convenience)
 func (a *App) DownloadTrackFromTidal(track backend.TidalTrack, outputDir string) (*backend.DownloadResult, error) {
-	return a.DownloadTrack(track.ID, outputDir)
+	if a.downloader == nil {
+		return nil, fmt.Errorf("downloader not initialized")
+	}
+	if outputDir == "" {
+		return nil, fmt.Errorf("no output directory specified")
+	}
+	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label)
 }
 
 // QueueDownloads queues multiple tracks for concurrent download
-func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, contentName string) (int, error) {
+func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
 	}
@@ -550,7 +727,121 @@ func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, cont
 	}
 
 	queued := a.downloadManager.QueueMultiple(tracks, outputDir)
+
+	// Save initial history record
+	if a.db != nil && contentID != "" {
+		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+			TidalContentID:   contentID,
+			TidalContentName: contentName,
+			ContentType:      contentType,
+			TracksTotal:      queued,
+		})
+	}
+	// Map each trackID → contentID for progress callback
+	for _, t := range tracks {
+		a.trackContentMap.Store(t.ID, contentID)
+	}
+
 	return queued, nil
+}
+
+// QueueArtistAlbum fetches a Tidal album's tracks and queues them all for download.
+// outputDir should be the artist folder; an album subfolder is created automatically.
+func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string) (int, error) {
+	if a.downloadManager == nil {
+		return 0, fmt.Errorf("download manager not initialized")
+	}
+	if outputDir == "" {
+		return 0, fmt.Errorf("no output directory specified")
+	}
+
+	album, err := a.downloader.GetAlbumFromProxy(albumID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch album: %w", err)
+	}
+
+	// Create {Artist}/{Album} folder structure
+	artistFolder := backend.SanitizeFileName(artistName)
+	if artistFolder == "" {
+		artistFolder = backend.SanitizeFileName(album.Artist)
+	}
+	albumFolder := backend.SanitizeFileName(album.Title)
+	albumDir := filepath.Join(outputDir, artistFolder, albumFolder)
+	if err := os.MkdirAll(albumDir, 0755); err != nil {
+		return 0, fmt.Errorf("failed to create album folder: %w", err)
+	}
+
+	queued := a.downloadManager.QueueMultiple(album.Tracks, albumDir)
+	return queued, nil
+}
+
+// DownloadArtistAssets downloads the artist's profile picture and banner image.
+// Files are saved to {outputDir}/{artistName}/ as profile.jpg, profile_hires.jpg, banner.jpg.
+// Returns the number of files successfully downloaded.
+func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir string) (int, error) {
+	if outputDir == "" {
+		return 0, fmt.Errorf("no output directory specified")
+	}
+
+	name, pictureID, err := a.tidalClient.GetArtistPictureID(artistID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch artist info: %w", err)
+	}
+	if pictureID == "" {
+		return 0, fmt.Errorf("artist has no picture available")
+	}
+
+	// Use fetched name if caller didn't provide one
+	if artistName == "" {
+		artistName = name
+	}
+
+	urls := backend.ArtistImageURLs(pictureID)
+	if len(urls) == 0 {
+		return 0, fmt.Errorf("no image URLs generated")
+	}
+
+	// Save to {outputDir}/{artistName}/
+	destDir := filepath.Join(outputDir, backend.SanitizeFileName(artistName))
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return 0, fmt.Errorf("failed to create artist folder: %w", err)
+	}
+
+	// Map of label → filename
+	fileNames := map[string]string{
+		"profile":       "profile.jpg",
+		"profile_hires": "profile_hires.jpg",
+		"banner":        "banner.jpg",
+	}
+
+	client := &http.Client{}
+	downloaded := 0
+	for label, imgURL := range urls {
+		fname := fileNames[label]
+		destPath := filepath.Join(destDir, fname)
+
+		resp, err := client.Get(imgURL)
+		if err != nil || resp.StatusCode != 200 {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			continue // skip unavailable sizes
+		}
+
+		f, err := os.Create(destPath)
+		if err != nil {
+			resp.Body.Close()
+			continue
+		}
+		_, copyErr := io.Copy(f, resp.Body)
+		f.Close()
+		resp.Body.Close()
+		if copyErr == nil {
+			downloaded++
+		}
+	}
+
+	return downloaded, nil
 }
 
 // QueueSingleDownload queues a single track for download
@@ -562,7 +853,18 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 		return fmt.Errorf("no output directory specified")
 	}
 
-	return a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
+	err := a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
+	if err == nil && a.db != nil {
+		contentID := strconv.Itoa(trackID)
+		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+			TidalContentID:   contentID,
+			TidalContentName: title,
+			ContentType:      "track",
+			TracksTotal:      1,
+		})
+		a.trackContentMap.Store(trackID, contentID)
+	}
+	return err
 }
 
 // GetDownloadQueueStatus returns current queue status
@@ -587,6 +889,8 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 			"fileNameFormat":  "{artist} - {title}",
 			"organizeFolders": false,
 			"embedCover":      true,
+			"saveCoverFile":   true,
+			"autoAnalyze":     false,
 		}
 	}
 
@@ -604,11 +908,13 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 		"fileNameFormat":  format,
 		"organizeFolders": a.config.OrganizeFolders,
 		"embedCover":      a.config.EmbedCover,
+		"saveCoverFile":   a.config.SaveCoverFile,
+		"autoAnalyze":     a.config.AutoAnalyze,
 	}
 }
 
 // SetDownloadOptions updates download options
-func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders, embedCover bool) error {
+func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders, embedCover, saveCoverFile, autoAnalyze bool) error {
 	if a.config == nil {
 		a.config = &backend.Config{}
 	}
@@ -617,14 +923,23 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 	a.config.FileNameFormat = fileNameFormat
 	a.config.OrganizeFolders = organizeFolders
 	a.config.EmbedCover = embedCover
+	a.config.SaveCoverFile = saveCoverFile
+	a.config.AutoAnalyze = autoAnalyze
 
-	// Update downloader options
+	// Update downloader options (preserve AutoQualityFallback from config)
 	if a.downloader != nil {
+		autoQualityFallback := false
+		if a.config != nil {
+			autoQualityFallback = a.config.AutoQualityFallback
+		}
 		a.downloader.SetOptions(backend.DownloadOptions{
-			Quality:         quality,
-			FileNameFormat:  fileNameFormat,
-			OrganizeFolders: organizeFolders,
-			EmbedCover:      embedCover,
+			Quality:             quality,
+			FileNameFormat:      fileNameFormat,
+			OrganizeFolders:     organizeFolders,
+			EmbedCover:          embedCover,
+			SaveCoverFile:       saveCoverFile,
+			AutoAnalyze:         autoAnalyze,
+			AutoQualityFallback: autoQualityFallback,
 		})
 	}
 
@@ -853,6 +1168,56 @@ func (a *App) RetryAllFailed() (int, error) {
 
 	count := a.downloadManager.RetryAllFailed()
 	return count, nil
+}
+
+// ExportFailedDownloads saves failed download info to a TXT or CSV file chosen by the user.
+// format is "txt" or "csv". Returns the path of the saved file, or empty string if cancelled.
+func (a *App) ExportFailedDownloads(format string) (string, error) {
+	if a.downloadManager == nil {
+		return "", fmt.Errorf("download manager not initialized")
+	}
+	jobs := a.downloadManager.GetFailedJobs()
+	if len(jobs) == 0 {
+		return "", nil
+	}
+
+	// Determine file filter and default name
+	var filter []runtime.FileFilter
+	var defaultFilename string
+	if format == "csv" {
+		filter = []runtime.FileFilter{{DisplayName: "CSV Files", Pattern: "*.csv"}}
+		defaultFilename = "failed_downloads.csv"
+	} else {
+		filter = []runtime.FileFilter{{DisplayName: "Text Files", Pattern: "*.txt"}}
+		defaultFilename = "failed_downloads.txt"
+	}
+
+	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Filters:         filter,
+	})
+	if err != nil || savePath == "" {
+		return "", err
+	}
+
+	var sb strings.Builder
+	if format == "csv" {
+		sb.WriteString("artist,title,url,error\n")
+		for _, job := range jobs {
+			url := fmt.Sprintf("https://tidal.com/browse/track/%d", job.TrackID)
+			sb.WriteString(fmt.Sprintf("%q,%q,%q,%q\n", job.Artist, job.Title, url, job.Error))
+		}
+	} else {
+		for _, job := range jobs {
+			url := fmt.Sprintf("https://tidal.com/browse/track/%d", job.TrackID)
+			sb.WriteString(fmt.Sprintf("%s - %s | %s | %s\n", job.Artist, job.Title, url, job.Error))
+		}
+	}
+
+	if err := os.WriteFile(savePath, []byte(sb.String()), 0644); err != nil {
+		return "", err
+	}
+	return savePath, nil
 }
 
 // CancelDownload cancels a download in progress
@@ -1174,6 +1539,33 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		result["creator"] = playlist.Creator
 		result["coverUrl"] = playlist.CoverURL
 		result["tracks"] = convertTracks(playlist.Tracks)
+
+	case "mix":
+		mix, err := a.downloader.GetMixFromProxy(id)
+		if err != nil {
+			return nil, err
+		}
+		result["title"] = mix.Title
+		result["creator"] = mix.Creator
+		result["coverUrl"] = mix.CoverURL
+		tidalTracks := make([]backend.SourceTrack, len(mix.Tracks))
+		for i, t := range mix.Tracks {
+			tidalTracks[i] = backend.SourceTrack{
+				ID:          strconv.Itoa(t.ID),
+				Title:       t.Title,
+				Artist:      t.Artist,
+				Artists:     []string{t.Artists},
+				Album:       t.Album,
+				ISRC:        t.ISRC,
+				Duration:    t.Duration,
+				TrackNumber: t.TrackNum,
+				CoverURL:    t.CoverURL,
+				Explicit:    t.Explicit,
+				SourceURL:   t.TidalURL,
+				Source:      "tidal",
+			}
+		}
+		result["tracks"] = convertTracks(tidalTracks)
 	}
 
 	if a.logBuffer != nil {
