@@ -156,7 +156,7 @@ func (t *FLACTagger) createVorbisComment(meta TrackMetadata) []byte {
 
 	// Vendor string
 	vendor := "TidalFLACDownloader"
-	binary.Write(&buf, binary.LittleEndian, uint32(len(vendor)))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(len(vendor)))
 	buf.WriteString(vendor)
 
 	// Build comments
@@ -201,11 +201,11 @@ func (t *FLACTagger) createVorbisComment(meta TrackMetadata) []byte {
 	}
 
 	// Write comment count
-	binary.Write(&buf, binary.LittleEndian, uint32(len(comments)))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(len(comments)))
 
 	// Write each comment
 	for _, comment := range comments {
-		binary.Write(&buf, binary.LittleEndian, uint32(len(comment)))
+		_ = binary.Write(&buf, binary.LittleEndian, uint32(len(comment)))
 		buf.WriteString(comment)
 	}
 
@@ -242,23 +242,23 @@ func (t *FLACTagger) createPictureBlock(coverURL string) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// Picture type: 3 = Front cover
-	binary.Write(&buf, binary.BigEndian, uint32(3))
+	_ = binary.Write(&buf, binary.BigEndian, uint32(3))
 
 	// MIME type
-	binary.Write(&buf, binary.BigEndian, uint32(len(mimeType)))
+	_ = binary.Write(&buf, binary.BigEndian, uint32(len(mimeType)))
 	buf.WriteString(mimeType)
 
 	// Description (empty)
-	binary.Write(&buf, binary.BigEndian, uint32(0))
+	_ = binary.Write(&buf, binary.BigEndian, uint32(0))
 
 	// Width, height, depth, colors (0 = unknown)
-	binary.Write(&buf, binary.BigEndian, uint32(0)) // width
-	binary.Write(&buf, binary.BigEndian, uint32(0)) // height
-	binary.Write(&buf, binary.BigEndian, uint32(0)) // depth
-	binary.Write(&buf, binary.BigEndian, uint32(0)) // colors
+	_ = binary.Write(&buf, binary.BigEndian, uint32(0)) // width
+	_ = binary.Write(&buf, binary.BigEndian, uint32(0)) // height
+	_ = binary.Write(&buf, binary.BigEndian, uint32(0)) // depth
+	_ = binary.Write(&buf, binary.BigEndian, uint32(0)) // colors
 
 	// Picture data
-	binary.Write(&buf, binary.BigEndian, uint32(len(imageData)))
+	_ = binary.Write(&buf, binary.BigEndian, uint32(len(imageData)))
 	buf.Write(imageData)
 
 	return buf.Bytes(), nil
@@ -293,7 +293,7 @@ func (t *FLACTagger) EmbedLyrics(filePath string, lyrics, syncedLyrics string) e
 
 	// Parse track number
 	if meta.TrackNumber != "" {
-		fmt.Sscanf(meta.TrackNumber, "%d", &trackMeta.TrackNumber)
+		_, _ = fmt.Sscanf(meta.TrackNumber, "%d", &trackMeta.TrackNumber)
 	}
 
 	// Read the original file
@@ -416,7 +416,9 @@ func (t *FLACTagger) DownloadCover(coverURL, outputPath string) error {
 	}
 
 	// Ensure directory exists
-	os.MkdirAll(filepath.Dir(outputPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return err
+	}
 
 	// Add extension if not present
 	if !strings.HasSuffix(outputPath, ext) && !strings.HasSuffix(outputPath, ".jpg") && !strings.HasSuffix(outputPath, ".png") {
