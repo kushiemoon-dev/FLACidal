@@ -19,31 +19,31 @@ type m3u8Entry struct {
 
 // m3u8Batch tracks progress of a download batch for M3U8 generation.
 type m3u8Batch struct {
-	total     int
-	done      int
-	entries   []m3u8Entry
+	total   int
+	done    int
+	entries []m3u8Entry
 }
 
 // DownloadManager handles concurrent downloads with queue
 type DownloadManager struct {
-	service        *TidalHifiService
-	qobuzSource    *QobuzSource // optional fallback source
-	sourceOrder    []string     // e.g. ["tidal", "qobuz"]
-	workers        int
-	queue          chan *DownloadJob
-	results        chan *DownloadResult
-	activeJobs     map[int]*DownloadJob
-	failedJobs     map[int]*DownloadJob // Track failed jobs for retry
-	mu             sync.RWMutex
-	wg             sync.WaitGroup
-	running        bool
-	paused         bool       // Pause state
-	pauseCond      *sync.Cond // Condition variable for pause/resume
-	onProgress     func(trackID int, status string, result *DownloadResult)
-	generateM3U8        bool
-	batches             map[string]*m3u8Batch
-	batchMu             sync.Mutex
-	skipUnavailable     bool
+	service         *TidalHifiService
+	qobuzSource     *QobuzSource // optional fallback source
+	sourceOrder     []string     // e.g. ["tidal", "qobuz"]
+	workers         int
+	queue           chan *DownloadJob
+	results         chan *DownloadResult
+	activeJobs      map[int]*DownloadJob
+	failedJobs      map[int]*DownloadJob // Track failed jobs for retry
+	mu              sync.RWMutex
+	wg              sync.WaitGroup
+	running         bool
+	paused          bool       // Pause state
+	pauseCond       *sync.Cond // Condition variable for pause/resume
+	onProgress      func(trackID int, status string, result *DownloadResult)
+	generateM3U8    bool
+	batches         map[string]*m3u8Batch
+	batchMu         sync.Mutex
+	skipUnavailable bool
 }
 
 // DownloadJob represents a single download task
@@ -64,7 +64,7 @@ type DownloadJob struct {
 // DownloadProgress represents download progress for frontend
 type DownloadProgress struct {
 	TrackID  int    `json:"trackId"`
-	Status   string `json:"status"` // "queued", "downloading", "completed", "error"
+	Status   string `json:"status"`   // "queued", "downloading", "completed", "error"
 	Progress int    `json:"progress"` // 0-100
 	Error    string `json:"error,omitempty"`
 	FileSize int64  `json:"fileSize,omitempty"`
@@ -252,10 +252,8 @@ func (dm *DownloadManager) processJob(job *DownloadJob) {
 		if dm.onProgress != nil {
 			dm.onProgress(job.TrackID, "error", result)
 		}
-	} else {
-		if dm.onProgress != nil {
-			dm.onProgress(job.TrackID, "completed", result)
-		}
+	} else if dm.onProgress != nil {
+		dm.onProgress(job.TrackID, "completed", result)
 	}
 
 	// Send to results channel (non-blocking)
@@ -348,7 +346,7 @@ func (dm *DownloadManager) downloadViaQobuzFallback(job *DownloadJob, tidalResul
 	var qTrack *SourceTrack
 	var err error
 	if job.ISRC != "" {
-		qTrack, err = dm.qobuzSource.SearchTrackByISRC(job.ISRC)
+		qTrack, _ = dm.qobuzSource.SearchTrackByISRC(job.ISRC)
 	}
 	if qTrack == nil {
 		qTrack, err = dm.qobuzSource.SearchTrackByTitleArtist(job.Title, job.Artist)
