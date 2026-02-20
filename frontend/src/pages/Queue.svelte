@@ -354,6 +354,7 @@
   .stat-value {
     font-size: 20px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
   .stat-value.downloading {
@@ -393,7 +394,7 @@
 
   .stat-label {
     font-size: 12px;
-    color: #666;
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
   }
 
@@ -407,19 +408,19 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-btn:hover:not(:disabled) {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .action-btn:disabled {
@@ -468,7 +469,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #444;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
@@ -480,7 +481,7 @@
   .empty-state p {
     margin: 0;
     font-size: 16px;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .empty-state .hint {
@@ -499,14 +500,14 @@
     align-items: center;
     gap: 16px;
     padding: 16px;
-    background: #111;
-    border: 1px solid #1a1a1a;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     transition: all 0.2s;
   }
 
   .queue-item:hover {
-    background: #151515;
+    background: var(--color-bg-tertiary);
   }
 
   .queue-item.status-downloading {
@@ -590,7 +591,7 @@
 
   .item-artist {
     font-size: 13px;
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .item-error {
@@ -611,16 +612,16 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .item-btn:hover {
-    background: #1a1a1a;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
   }
 
   .item-btn.retry:hover {

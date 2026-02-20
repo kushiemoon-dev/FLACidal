@@ -2,6 +2,7 @@ package backend
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -340,6 +341,20 @@ func (d *Database) DeleteDownloadRecord(id int64) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+// IncrementDownloadCounts increments the tracks_downloaded or tracks_failed counter
+// for the given content ID and updates last_download_at.
+func (d *Database) IncrementDownloadCounts(contentID string, success bool) error {
+	col := "tracks_failed"
+	if success {
+		col = "tracks_downloaded"
+	}
+	_, err := d.db.Exec(
+		fmt.Sprintf(`UPDATE download_history SET %s = %s + 1, last_download_at = ? WHERE tidal_content_id = ?`, col, col),
+		time.Now(), contentID,
+	)
+	return err
 }
 
 // ClearAllHistory removes all download history records
