@@ -264,6 +264,7 @@ func (s *Server) handleGetDownloadOptions(c *fiber.Ctx) error {
 		"fileNameFormat":  s.config.FileNameFormat,
 		"organizeFolders": s.config.OrganizeFolders,
 		"embedCover":      s.config.EmbedCover,
+		"saveCoverFile":   s.config.SaveCoverFile,
 		"embedLyrics":     s.config.EmbedLyrics,
 	})
 }
@@ -274,6 +275,7 @@ func (s *Server) handleSetDownloadOptions(c *fiber.Ctx) error {
 		FileNameFormat  string `json:"fileNameFormat"`
 		OrganizeFolders bool   `json:"organizeFolders"`
 		EmbedCover      bool   `json:"embedCover"`
+		SaveCoverFile   bool   `json:"saveCoverFile"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -283,6 +285,7 @@ func (s *Server) handleSetDownloadOptions(c *fiber.Ctx) error {
 	s.config.FileNameFormat = req.FileNameFormat
 	s.config.OrganizeFolders = req.OrganizeFolders
 	s.config.EmbedCover = req.EmbedCover
+	s.config.SaveCoverFile = req.SaveCoverFile
 
 	if err := backend.SaveConfig(s.config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

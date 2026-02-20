@@ -3,23 +3,47 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 )
 
+// m3u8Entry holds data for one line in a generated M3U8 playlist.
+type m3u8Entry struct {
+	duration int
+	artist   string
+	title    string
+	relPath  string
+}
+
+// m3u8Batch tracks progress of a download batch for M3U8 generation.
+type m3u8Batch struct {
+	total     int
+	done      int
+	entries   []m3u8Entry
+}
+
 // DownloadManager handles concurrent downloads with queue
 type DownloadManager struct {
-	service     *TidalHifiService
-	workers     int
-	queue       chan *DownloadJob
-	results     chan *DownloadResult
-	activeJobs  map[int]*DownloadJob
-	failedJobs  map[int]*DownloadJob // Track failed jobs for retry
-	mu          sync.RWMutex
-	wg          sync.WaitGroup
-	running     bool
-	paused      bool        // Pause state
-	pauseCond   *sync.Cond  // Condition variable for pause/resume
-	onProgress  func(trackID int, status string, result *DownloadResult)
+	service        *TidalHifiService
+	qobuzSource    *QobuzSource // optional fallback source
+	sourceOrder    []string     // e.g. ["tidal", "qobuz"]
+	workers        int
+	queue          chan *DownloadJob
+	results        chan *DownloadResult
+	activeJobs     map[int]*DownloadJob
+	failedJobs     map[int]*DownloadJob // Track failed jobs for retry
+	mu             sync.RWMutex
+	wg             sync.WaitGroup
+	running        bool
+	paused         bool       // Pause state
+	pauseCond      *sync.Cond // Condition variable for pause/resume
+	onProgress     func(trackID int, status string, result *DownloadResult)
+	generateM3U8        bool
+	batches             map[string]*m3u8Batch
+	batchMu             sync.Mutex
+	skipUnavailable     bool
 }
 
 // DownloadJob represents a single download task
@@ -28,6 +52,11 @@ type DownloadJob struct {
 	OutputDir  string             `json:"outputDir"`
 	Title      string             `json:"title"`
 	Artist     string             `json:"artist"`
+	ISRC       string             `json:"isrc,omitempty"`      // Used for cross-source fallback matching
+	Duration   int                `json:"duration,omitempty"`  // Track duration in seconds (for M3U8)
+	Error      string             `json:"error,omitempty"`     // Error message if download failed
+	Copyright  string             `json:"copyright,omitempty"` // Copyright string to embed in tags
+	Label      string             `json:"label,omitempty"`     // Record label to embed in tags
 	ctx        context.Context    // For cancellation
 	cancelFunc context.CancelFunc // Cancel function
 }
@@ -59,20 +88,44 @@ func NewDownloadManager(service *TidalHifiService, workers int) *DownloadManager
 	}
 
 	dm := &DownloadManager{
-		service:    service,
-		workers:    workers,
-		queue:      make(chan *DownloadJob, 1000), // Large buffer for big playlists
-		results:    make(chan *DownloadResult, 1000),
-		activeJobs: make(map[int]*DownloadJob),
-		failedJobs: make(map[int]*DownloadJob),
+		service:     service,
+		sourceOrder: []string{"tidal"},
+		workers:     workers,
+		queue:       make(chan *DownloadJob, 1000), // Large buffer for big playlists
+		results:     make(chan *DownloadResult, 1000),
+		activeJobs:  make(map[int]*DownloadJob),
+		failedJobs:  make(map[int]*DownloadJob),
+		batches:     make(map[string]*m3u8Batch),
 	}
 	dm.pauseCond = sync.NewCond(&dm.mu)
 	return dm
 }
 
+// SetFallbackQobuzSource sets the Qobuz source to use when Tidal fails.
+func (dm *DownloadManager) SetFallbackQobuzSource(source *QobuzSource) {
+	dm.qobuzSource = source
+}
+
+// SetSourceOrder sets the priority order for sources, e.g. ["tidal", "qobuz"].
+func (dm *DownloadManager) SetSourceOrder(order []string) {
+	if len(order) > 0 {
+		dm.sourceOrder = order
+	}
+}
+
 // SetProgressCallback sets the callback for progress updates
 func (dm *DownloadManager) SetProgressCallback(callback func(trackID int, status string, result *DownloadResult)) {
 	dm.onProgress = callback
+}
+
+// SetGenerateM3U8 enables or disables automatic M3U8 generation after batch downloads.
+func (dm *DownloadManager) SetGenerateM3U8(enabled bool) {
+	dm.generateM3U8 = enabled
+}
+
+// SetSkipUnavailable configures whether unavailable tracks are silently skipped.
+func (dm *DownloadManager) SetSkipUnavailable(skip bool) {
+	dm.skipUnavailable = skip
 }
 
 // Start begins the worker pool
@@ -158,8 +211,11 @@ func (dm *DownloadManager) processJob(job *DownloadJob) {
 	delete(dm.failedJobs, job.TrackID)
 	dm.mu.Unlock()
 
-	// Download
-	result, err := dm.service.DownloadTrack(job.TrackID, job.OutputDir)
+	// Download — try primary (Tidal) first, then fallback sources
+	result, err := dm.service.DownloadTrack(job.TrackID, job.OutputDir, job.Copyright, job.Label)
+	if (err != nil || (result != nil && !result.Success)) && dm.qobuzFallbackEnabled() && job.ISRC != "" {
+		result, err = dm.downloadViaQobuzFallback(job, result)
+	}
 
 	// Check for cancellation after download
 	cancelled := false
@@ -182,6 +238,12 @@ func (dm *DownloadManager) processJob(job *DownloadJob) {
 			dm.onProgress(job.TrackID, "cancelled", nil)
 		}
 	} else if err != nil || !result.Success {
+		// Capture error message for export
+		if result != nil && result.Error != "" {
+			job.Error = result.Error
+		} else if err != nil {
+			job.Error = err.Error()
+		}
 		// Track failed job for retry
 		dm.mu.Lock()
 		dm.failedJobs[job.TrackID] = job
@@ -201,10 +263,131 @@ func (dm *DownloadManager) processJob(job *DownloadJob) {
 	case dm.results <- result:
 	default:
 	}
+
+	// Record for M3U8 batch tracking
+	if dm.generateM3U8 && !cancelled {
+		dm.recordBatchResult(job, result)
+	}
+}
+
+// recordBatchResult updates batch progress and writes M3U8 when batch completes.
+func (dm *DownloadManager) recordBatchResult(job *DownloadJob, result *DownloadResult) {
+	dm.batchMu.Lock()
+	batch, ok := dm.batches[job.OutputDir]
+	if !ok {
+		dm.batchMu.Unlock()
+		return
+	}
+	batch.done++
+	if result != nil && result.Success && result.FilePath != "" {
+		relPath, err := filepath.Rel(job.OutputDir, result.FilePath)
+		if err != nil {
+			relPath = filepath.Base(result.FilePath)
+		}
+		batch.entries = append(batch.entries, m3u8Entry{
+			duration: job.Duration,
+			artist:   job.Artist,
+			title:    job.Title,
+			relPath:  relPath,
+		})
+	}
+	if batch.done < batch.total {
+		dm.batchMu.Unlock()
+		return
+	}
+	// All jobs finished — take entries and clean up
+	entries := batch.entries
+	delete(dm.batches, job.OutputDir)
+	dm.batchMu.Unlock()
+
+	if len(entries) > 0 {
+		dm.writeM3U8(job.OutputDir, entries)
+	}
+}
+
+// writeM3U8 writes a .m3u8 playlist file into outputDir.
+func (dm *DownloadManager) writeM3U8(outputDir string, entries []m3u8Entry) {
+	name := filepath.Base(outputDir)
+	outPath := filepath.Join(outputDir, name+".m3u8")
+
+	var sb strings.Builder
+	sb.WriteString("#EXTM3U\n")
+	for _, e := range entries {
+		sb.WriteString(fmt.Sprintf("#EXTINF:%d,%s - %s\n", e.duration, e.artist, e.title))
+		sb.WriteString(e.relPath + "\n")
+	}
+
+	_ = os.WriteFile(outPath, []byte(sb.String()), 0644)
+	if dm.service != nil && dm.service.logger != nil {
+		dm.service.logger.Info(fmt.Sprintf("M3U8 playlist written: %s", outPath))
+	}
+}
+
+// qobuzFallbackEnabled returns true when Qobuz fallback is configured and available.
+func (dm *DownloadManager) qobuzFallbackEnabled() bool {
+	if dm.qobuzSource == nil || !dm.qobuzSource.IsAvailable() {
+		return false
+	}
+	for _, s := range dm.sourceOrder {
+		if s == "qobuz" {
+			return true
+		}
+	}
+	return false
+}
+
+// downloadViaQobuzFallback attempts to download a track via Qobuz when Tidal fails.
+// It uses the ISRC for matching, falling back to title+artist search.
+func (dm *DownloadManager) downloadViaQobuzFallback(job *DownloadJob, tidalResult *DownloadResult) (*DownloadResult, error) {
+	logger := dm.service.logger
+	if logger != nil {
+		logger.Warn(fmt.Sprintf("Tidal failed for '%s - %s', falling back to Qobuz", job.Artist, job.Title))
+	}
+
+	// Find the track on Qobuz
+	var qTrack *SourceTrack
+	var err error
+	if job.ISRC != "" {
+		qTrack, err = dm.qobuzSource.SearchTrackByISRC(job.ISRC)
+	}
+	if qTrack == nil {
+		qTrack, err = dm.qobuzSource.SearchTrackByTitleArtist(job.Title, job.Artist)
+		if err != nil {
+			if logger != nil {
+				logger.Error(fmt.Sprintf("Qobuz fallback: track not found ('%s - %s'): %v", job.Artist, job.Title, err))
+			}
+			return tidalResult, err
+		}
+	}
+
+	// Download via Qobuz
+	opts := dm.service.GetOptions()
+	result, err := dm.qobuzSource.DownloadTrack(qTrack.ID, job.OutputDir, opts)
+	if err != nil {
+		if logger != nil {
+			logger.Error(fmt.Sprintf("Qobuz fallback download failed: %v", err))
+		}
+		return tidalResult, err
+	}
+
+	if logger != nil {
+		logger.Info(fmt.Sprintf("Qobuz fallback succeeded: %s", result.FilePath))
+	}
+	return result, nil
 }
 
 // QueueDownload adds a track to the download queue
 func (dm *DownloadManager) QueueDownload(trackID int, outputDir, title, artist string) error {
+	return dm.QueueDownloadWithISRC(trackID, outputDir, title, artist, "")
+}
+
+// QueueDownloadWithISRC adds a track with ISRC metadata (used for cross-source fallback).
+func (dm *DownloadManager) QueueDownloadWithISRC(trackID int, outputDir, title, artist, isrc string) error {
+	return dm.queueDownloadFull(trackID, outputDir, title, artist, isrc, 0, "", "")
+}
+
+// queueDownloadFull is the internal full-parameter queuing function.
+func (dm *DownloadManager) queueDownloadFull(trackID int, outputDir, title, artist, isrc string, duration int, copyright, label string) error {
 	dm.mu.RLock()
 	if !dm.running {
 		dm.mu.RUnlock()
@@ -220,6 +403,10 @@ func (dm *DownloadManager) QueueDownload(trackID int, outputDir, title, artist s
 		OutputDir:  outputDir,
 		Title:      title,
 		Artist:     artist,
+		ISRC:       isrc,
+		Duration:   duration,
+		Copyright:  copyright,
+		Label:      label,
 		ctx:        ctx,
 		cancelFunc: cancelFunc,
 	}
@@ -239,10 +426,20 @@ func (dm *DownloadManager) QueueDownload(trackID int, outputDir, title, artist s
 func (dm *DownloadManager) QueueMultiple(tracks []TidalTrack, outputDir string) int {
 	queued := 0
 	for _, track := range tracks {
-		err := dm.QueueDownload(track.ID, outputDir, track.Title, track.Artist)
+		// Skip unavailable tracks if configured
+		if dm.skipUnavailable && !track.Available {
+			continue
+		}
+		err := dm.queueDownloadFull(track.ID, outputDir, track.Title, track.Artist, track.ISRC, track.Duration, track.Copyright, track.Label)
 		if err == nil {
 			queued++
 		}
+	}
+	// Register batch for M3U8 generation (only when at least one track was queued)
+	if dm.generateM3U8 && queued > 0 {
+		dm.batchMu.Lock()
+		dm.batches[outputDir] = &m3u8Batch{total: queued}
+		dm.batchMu.Unlock()
 	}
 	return queued
 }
@@ -300,7 +497,7 @@ func (dm *DownloadManager) RetryAllFailed() int {
 	// Re-queue each failed job
 	retried := 0
 	for _, job := range jobsToRetry {
-		err := dm.QueueDownload(job.TrackID, job.OutputDir, job.Title, job.Artist)
+		err := dm.QueueDownloadWithISRC(job.TrackID, job.OutputDir, job.Title, job.Artist, job.ISRC)
 		if err == nil {
 			retried++
 		}
@@ -314,6 +511,17 @@ func (dm *DownloadManager) GetFailedCount() int {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
 	return len(dm.failedJobs)
+}
+
+// GetFailedJobs returns a snapshot of all failed jobs (for export purposes).
+func (dm *DownloadManager) GetFailedJobs() []DownloadJob {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+	jobs := make([]DownloadJob, 0, len(dm.failedJobs))
+	for _, job := range dm.failedJobs {
+		jobs = append(jobs, *job)
+	}
+	return jobs
 }
 
 // ClearFailed removes all failed jobs from tracking
