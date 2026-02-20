@@ -28,10 +28,10 @@ linters-settings:
 
 run:
   timeout: 5m
-  skip-dirs:
-    - frontend
 
 issues:
+  exclude-dirs:
+    - frontend
   exclude-rules:
     - path: _test\.go
       linters:
