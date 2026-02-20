@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple } from '../../wailsjs/go/main/App.js';
+  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../wailsjs/go/main/App.js';
+  import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
   import MetadataModal from '../components/MetadataModal.svelte';
   import RenameModal from '../components/RenameModal.svelte';
   import ConvertModal from '../components/ConvertModal.svelte';
@@ -17,21 +18,31 @@
     album: string;
   }
 
-  let files: DownloadedFile[] = [];
-  let isLoading = true;
-  let sortBy: 'name' | 'date' | 'size' = 'date';
-  let sortOrder: 'asc' | 'desc' = 'desc';
-  let metadataFilePath: string | null = null;
-  let selectedFiles: Set<string> = new Set();
-  let showRenameModal = false;
-  let showConvertModal = false;
-  let showAnalysisModal = false;
-  let converterAvailable = false;
-  let isFetchingLyrics = false;
-  let lyricsResults: { success: number; failed: number } | null = null;
+  let files: DownloadedFile[] = $state([]);
+  let isLoading = $state(true);
+  let sortBy: 'name' | 'date' | 'size' = $state('date');
+  let sortOrder: 'asc' | 'desc' = $state('desc');
+  let metadataFilePath: string | null = $state(null);
+  let selectedFiles: Set<string> = $state(new Set());
+  let showRenameModal = $state(false);
+  let showConvertModal = $state(false);
+  let showAnalysisModal = $state(false);
+  let converterAvailable = $state(false);
+  let isFetchingLyrics = $state(false);
+  let lyricsResults: { success: number; failed: number } | null = $state(null);
 
-  $: allSelected = files.length > 0 && selectedFiles.size === files.length;
-  $: someSelected = selectedFiles.size > 0;
+  let allSelected = $derived(files.length > 0 && selectedFiles.size === files.length);
+  let someSelected = $derived(selectedFiles.size > 0);
+
+  // Drag-and-drop state
+  let isDragOver = $state(false);
+  let dragCounter = 0;
+  let externalAnalysisFiles: string[] = $state([]);
+
+  // Files to analyze: external drops/picks take priority over selection
+  let analysisFileList = $derived(
+    externalAnalysisFiles.length > 0 ? externalAnalysisFiles : Array.from(selectedFiles)
+  );
 
   function toggleSelectAll() {
     if (allSelected) {
@@ -98,9 +109,57 @@
     }
   }
 
+  function handleDragEnter(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      dragCounter++;
+      isDragOver = true;
+    }
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      dragCounter--;
+      if (dragCounter === 0) isDragOver = false;
+    }
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.preventDefault();
+    }
+  }
+
+  function handleDrop() {
+    dragCounter = 0;
+    isDragOver = false;
+  }
+
+  async function openAnalyzeDialog() {
+    const paths = await OpenFLACFilesDialog();
+    if (paths && paths.length > 0) {
+      externalAnalysisFiles = paths;
+      showAnalysisModal = true;
+    }
+  }
+
   onMount(async () => {
     await loadFiles();
     converterAvailable = await IsConverterAvailable();
+
+    // Register Wails OS-level file drop handler
+    OnFileDrop((x, y, paths) => {
+      dragCounter = 0;
+      isDragOver = false;
+      const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
+      if (flacPaths.length > 0) {
+        externalAnalysisFiles = flacPaths;
+        showAnalysisModal = true;
+      }
+    }, false);
+  });
+
+  onDestroy(() => {
+    OnFileDropOff();
   });
 
   async function loadFiles() {
@@ -173,7 +232,7 @@
     }
   }
 
-  $: sortedFiles = [...files].sort((a, b) => {
+  let sortedFiles = $derived([...files].sort((a, b) => {
     let comparison = 0;
     switch (sortBy) {
       case 'name':
@@ -187,10 +246,28 @@
         break;
     }
     return sortOrder === 'asc' ? comparison : -comparison;
-  });
+  }));
 </script>
 
-<div class="files-page">
+<div
+  class="files-page"
+  ondragenter={handleDragEnter}
+  ondragleave={handleDragLeave}
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
+  role="region"
+  aria-label="Files"
+>
+  {#if isDragOver}
+    <div class="drop-overlay">
+      <div class="drop-overlay-inner">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <p>Drop FLAC files to analyze</p>
+      </div>
+    </div>
+  {/if}
   <div class="files-header">
     <div class="header-left">
       <h1>Downloaded Files</h1>
@@ -199,14 +276,14 @@
     <div class="header-actions">
       {#if someSelected}
         <span class="selection-count">{selectedFiles.size} selected</span>
-        <button class="action-btn" on:click={clearSelection}>
+        <button class="action-btn" onclick={clearSelection}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
           Clear
         </button>
-        <button class="action-btn" on:click={() => showAnalysisModal = true} title="Analyze quality">
+        <button class="action-btn" onclick={() => showAnalysisModal = true} title="Analyze quality">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
@@ -214,7 +291,7 @@
         </button>
         <button
           class="action-btn"
-          on:click={handleFetchLyrics}
+          onclick={handleFetchLyrics}
           disabled={isFetchingLyrics}
           title="Fetch and embed lyrics"
         >
@@ -230,7 +307,7 @@
           {/if}
         </button>
         {#if converterAvailable}
-          <button class="action-btn" on:click={() => showConvertModal = true} title="Convert to lossy format">
+          <button class="action-btn" onclick={() => showConvertModal = true} title="Convert to lossy format">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
@@ -239,7 +316,7 @@
             Convert
           </button>
         {/if}
-        <button class="action-btn primary" on:click={() => showRenameModal = true}>
+        <button class="action-btn primary" onclick={() => showRenameModal = true}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -247,7 +324,7 @@
           Rename
         </button>
       {:else}
-        <button class="action-btn" on:click={loadFiles}>
+        <button class="action-btn" onclick={loadFiles}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 2v6h-6"/>
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -256,7 +333,13 @@
           </svg>
           Refresh
         </button>
-        <button class="action-btn primary" on:click={openFolder}>
+        <button class="action-btn" onclick={openAnalyzeDialog} title="Pick FLAC files to analyze">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Analyze Files...
+        </button>
+        <button class="action-btn primary" onclick={openFolder}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
@@ -302,7 +385,7 @@
     <div class="files-table">
       <div class="table-header">
         <label class="th checkbox-col">
-          <input type="checkbox" checked={allSelected} on:change={toggleSelectAll} />
+          <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
           <span class="custom-checkbox" class:checked={allSelected} class:indeterminate={someSelected && !allSelected}>
             {#if allSelected}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -315,7 +398,7 @@
             {/if}
           </span>
         </label>
-        <button class="th sortable" on:click={() => sortFiles('name')}>
+        <button class="th sortable" onclick={() => sortFiles('name')}>
           Name
           {#if sortBy === 'name'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -329,7 +412,7 @@
         </button>
         <span class="th">Artist</span>
         <span class="th">Album</span>
-        <button class="th sortable" on:click={() => sortFiles('size')}>
+        <button class="th sortable" onclick={() => sortFiles('size')}>
           Size
           {#if sortBy === 'size'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -341,7 +424,7 @@
             </svg>
           {/if}
         </button>
-        <button class="th sortable" on:click={() => sortFiles('date')}>
+        <button class="th sortable" onclick={() => sortFiles('date')}>
           Date
           {#if sortBy === 'date'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -360,7 +443,7 @@
         {#each sortedFiles as file}
           <div class="table-row" class:selected={selectedFiles.has(file.path)}>
             <label class="cell checkbox-col">
-              <input type="checkbox" checked={selectedFiles.has(file.path)} on:change={() => toggleSelect(file.path)} />
+              <input type="checkbox" checked={selectedFiles.has(file.path)} onchange={() => toggleSelect(file.path)} />
               <span class="custom-checkbox" class:checked={selectedFiles.has(file.path)}>
                 {#if selectedFiles.has(file.path)}
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -387,7 +470,7 @@
             <div class="cell actions">
               <button
                 class="file-btn info"
-                on:click={() => metadataFilePath = file.path}
+                onclick={() => metadataFilePath = file.path}
                 title="View metadata"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -398,7 +481,7 @@
               </button>
               <button
                 class="file-btn"
-                on:click={() => openInFileManager(file.path)}
+                onclick={() => openInFileManager(file.path)}
                 title="Show in folder"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -407,7 +490,7 @@
               </button>
               <button
                 class="file-btn danger"
-                on:click={() => deleteFileHandler(file.path)}
+                onclick={() => deleteFileHandler(file.path)}
                 title="Delete"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -451,8 +534,8 @@
 
 {#if showAnalysisModal}
   <AnalysisModal
-    files={Array.from(selectedFiles)}
-    onClose={() => showAnalysisModal = false}
+    files={analysisFileList}
+    onClose={() => { showAnalysisModal = false; externalAnalysisFiles = []; }}
   />
 {/if}
 
@@ -460,6 +543,35 @@
   .files-page {
     padding: 32px;
     max-width: 1200px;
+    position: relative;
+  }
+
+  .drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(244, 114, 182, 0.08);
+    border: 2px dashed rgba(244, 114, 182, 0.5);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    pointer-events: none;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .drop-overlay-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #f472b6;
+  }
+
+  .drop-overlay-inner p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
   }
 
   .files-header {
@@ -477,7 +589,7 @@
   }
 
   .folder-path {
-    color: #666;
+    color: var(--color-text-tertiary);
     font-size: 14px;
     margin: 0;
     font-family: monospace;
@@ -524,19 +636,19 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-btn:hover {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .action-btn.primary {
@@ -556,7 +668,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #444;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
@@ -568,7 +680,7 @@
   .empty-state p {
     margin: 0;
     font-size: 16px;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .empty-state .hint {
@@ -579,8 +691,8 @@
   .loader {
     width: 40px;
     height: 40px;
-    border: 3px solid #222;
-    border-top-color: #f472b6;
+    border: 3px solid var(--color-border-subtle);
+    border-top-color: var(--color-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 16px;
@@ -591,8 +703,8 @@
   }
 
   .files-table {
-    background: #111;
-    border: 1px solid #1a1a1a;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     overflow: hidden;
   }
@@ -602,14 +714,14 @@
     grid-template-columns: 36px 1fr 150px 150px 80px 100px 110px;
     gap: 16px;
     padding: 12px 16px;
-    background: #0a0a0a;
-    border-bottom: 1px solid #1a1a1a;
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .th {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
     text-align: left;
     background: transparent;
@@ -622,11 +734,11 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 
   .th.sortable:hover {
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .table-body {
@@ -640,7 +752,7 @@
     gap: 16px;
     padding: 12px 16px;
     align-items: center;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
   }
 
@@ -658,7 +770,7 @@
 
   .cell {
     font-size: 14px;
-    color: #888;
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -679,7 +791,7 @@
 
   .file-name {
     font-weight: 500;
-    color: #fff;
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -687,7 +799,7 @@
 
   .file-path {
     font-size: 12px;
-    color: #555;
+    color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -696,10 +808,11 @@
   .cell.size {
     font-family: monospace;
     font-size: 13px;
+    font-variant-numeric: tabular-nums;
   }
 
   .cell.date {
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 
   .cell.actions {
@@ -715,16 +828,16 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .file-btn:hover {
-    background: #1a1a1a;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
   }
 
   .file-btn.danger:hover {
@@ -741,12 +854,12 @@
     display: flex;
     gap: 24px;
     padding: 16px 0;
-    color: #555;
+    color: var(--color-text-muted);
     font-size: 14px;
   }
 
   .total-size {
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .selection-count {
@@ -769,7 +882,7 @@
   .custom-checkbox {
     width: 18px;
     height: 18px;
-    border: 2px solid #444;
+    border: 2px solid var(--color-text-muted);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -778,7 +891,7 @@
   }
 
   .custom-checkbox:hover {
-    border-color: #666;
+    border-color: var(--color-text-tertiary);
   }
 
   .custom-checkbox.checked {

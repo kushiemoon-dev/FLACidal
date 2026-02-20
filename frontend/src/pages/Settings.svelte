@@ -3,6 +3,7 @@
   import { downloadFolder } from '../stores/queue';
   import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor } from '../stores/theme';
   import { updateAudioSettings, testSound } from '../stores/audio';
+  import { toastStore } from '../stores/toast';
   import {
     GetConfig,
     SaveConfig,
@@ -13,10 +14,11 @@
     ResetToDefaults
   } from '../../wailsjs/go/main/App.js';
 
-  let config = {
+  let config = $state({
     downloadFolder: '',
     concurrentDownloads: 4,
     embedCover: true,
+    saveCoverFile: true,
     fileNameFormat: '{artist} - {title}',
     theme: 'system' as ThemeMode,
     accentColor: '#f472b6',
@@ -24,20 +26,28 @@
     soundVolume: 70,
     embedLyrics: false,
     preferSyncedLyrics: true,
+    autoAnalyze: false,
     tidalEnabled: true,
     qobuzEnabled: false,
     qobuzAppId: '',
     qobuzAppSecret: '',
     qobuzAuthToken: '',
-    preferredSource: 'tidal'
-  };
-  let isSaving = false;
-  let saveMessage = '';
-  let showResetConfirm = false;
-  let isResetting = false;
+    preferredSource: 'tidal',
+    generateM3u8: false,
+    skipUnavailableTracks: false,
+    firstArtistOnly: false,
+    autoQualityFallback: false,
+    sourceOrder: ['tidal', 'qobuz'] as string[],
+    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
+    proxyUrl: ''
+  });
+  let isSaving = $state(false);
+  let showResetConfirm = $state(false);
+  let isResetting = $state(false);
 
-  // Update audio settings reactively
-  $: updateAudioSettings(config.soundEffects, config.soundVolume);
+  $effect(() => {
+    updateAudioSettings(config.soundEffects, config.soundVolume);
+  });
 
   function handleThemeChange(event: Event) {
     const select = event.target as HTMLSelectElement;
@@ -76,6 +86,13 @@
         config.qobuzAppSecret = result.qobuzAppSecret || '';
         config.qobuzAuthToken = result.qobuzAuthToken || '';
         config.preferredSource = result.preferredSource || 'tidal';
+        config.generateM3u8 = result.generateM3u8 || false;
+        config.skipUnavailableTracks = result.skipUnavailableTracks || false;
+        config.autoQualityFallback = result.autoQualityFallback || false;
+        config.firstArtistOnly = result.firstArtistOnly || false;
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
+        config.proxyUrl = result.proxyUrl || '';
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -83,11 +100,21 @@
       const opts = await GetDownloadOptions();
       if (opts) {
         config.embedCover = opts.embedCover !== false;
+        config.saveCoverFile = opts.saveCoverFile !== false;
         config.fileNameFormat = opts.fileNameFormat || '{artist} - {title}';
+        config.autoAnalyze = opts.autoAnalyze || false;
       }
     } catch (error) {
       console.error('Error loading config:', error);
     }
+  }
+
+  function moveItem(arr: string[], index: number, direction: -1 | 1): string[] {
+    const target = index + direction;
+    if (target < 0 || target >= arr.length) return arr;
+    const next = [...arr];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
   }
 
   async function selectFolder() {
@@ -105,7 +132,6 @@
 
   async function saveConfig() {
     isSaving = true;
-    saveMessage = '';
 
     try {
       // Save full config including theme, accent color, and sound settings
@@ -117,17 +143,26 @@
         downloadFolder: config.downloadFolder,
         concurrentDownloads: config.concurrentDownloads,
         embedCover: config.embedCover,
+        saveCoverFile: config.saveCoverFile,
         fileNameFormat: config.fileNameFormat,
         soundEffects: config.soundEffects,
         soundVolume: config.soundVolume,
         embedLyrics: config.embedLyrics,
         preferSyncedLyrics: config.preferSyncedLyrics,
+        autoAnalyze: config.autoAnalyze,
         tidalEnabled: config.tidalEnabled,
         qobuzEnabled: config.qobuzEnabled,
         qobuzAppId: config.qobuzAppId,
         qobuzAppSecret: config.qobuzAppSecret,
         qobuzAuthToken: config.qobuzAuthToken,
-        preferredSource: config.preferredSource
+        preferredSource: config.preferredSource,
+        generateM3u8: config.generateM3u8,
+        skipUnavailableTracks: config.skipUnavailableTracks,
+        autoQualityFallback: config.autoQualityFallback,
+        firstArtistOnly: config.firstArtistOnly,
+        sourceOrder: config.sourceOrder,
+        qualityOrder: config.qualityOrder,
+        proxyUrl: config.proxyUrl || ''
       });
 
       // Save download options
@@ -135,13 +170,14 @@
         'LOSSLESS',
         config.fileNameFormat,
         false,
-        config.embedCover
+        config.embedCover,
+        config.saveCoverFile,
+        config.autoAnalyze
       );
-      saveMessage = 'Settings saved!';
-      setTimeout(() => saveMessage = '', 3000);
+      toastStore.show('Settings saved!');
     } catch (error) {
       console.error('Error saving config:', error);
-      saveMessage = 'Error saving settings';
+      toastStore.show('Error saving settings', 'error');
     } finally {
       isSaving = false;
     }
@@ -154,6 +190,7 @@
       if (result) {
         config.concurrentDownloads = result.concurrentDownloads || 4;
         config.embedCover = result.embedCover !== false;
+        config.saveCoverFile = result.saveCoverFile !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
@@ -161,18 +198,24 @@
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
         config.preferSyncedLyrics = result.preferSyncedLyrics !== false;
+        config.autoAnalyze = result.autoAnalyze || false;
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
         config.preferredSource = result.preferredSource || 'tidal';
+        config.generateM3u8 = result.generateM3u8 || false;
+        config.skipUnavailableTracks = result.skipUnavailableTracks || false;
+        config.autoQualityFallback = result.autoQualityFallback || false;
+        config.firstArtistOnly = result.firstArtistOnly || false;
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
-        saveMessage = 'Settings reset to defaults!';
-        setTimeout(() => saveMessage = '', 3000);
+        toastStore.show('Settings reset to defaults!');
       }
     } catch (error) {
       console.error('Error resetting:', error);
-      saveMessage = 'Error resetting settings';
+      toastStore.show('Error resetting settings', 'error');
     } finally {
       isResetting = false;
       showResetConfirm = false;
@@ -197,7 +240,7 @@
           <span class="setting-desc">Choose your preferred color scheme</span>
         </div>
         <div class="setting-control">
-          <select id="theme" value={config.theme} on:change={handleThemeChange} class="select-input">
+          <select id="theme" value={config.theme} onchange={handleThemeChange} class="select-input">
             <option value="system">System</option>
             <option value="dark">Dark</option>
             <option value="light">Light</option>
@@ -217,7 +260,7 @@
               class:active={config.accentColor === preset.color}
               style="background-color: {preset.color}"
               title={preset.name}
-              on:click={() => handleAccentColorChange(preset.color)}
+              onclick={() => handleAccentColorChange(preset.color)}
             ></button>
           {/each}
         </div>
@@ -233,7 +276,7 @@
             <input type="checkbox" bind:checked={config.soundEffects} />
             <span class="toggle-slider"></span>
           </label>
-          <button class="test-sound-btn" on:click={testSound} title="Test sound">
+          <button class="test-sound-btn" onclick={testSound} title="Test sound">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -281,7 +324,7 @@
             placeholder="Select a folder..."
             class="folder-input"
           />
-          <button class="browse-btn" on:click={selectFolder}>
+          <button class="browse-btn" onclick={selectFolder}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
@@ -327,6 +370,19 @@
 
       <div class="setting-item">
         <div class="setting-info">
+          <label for="save-cover-file">Save Cover as File</label>
+          <span class="setting-desc">Save album artwork as .jpg file next to each track (for iPod compatibility)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.saveCoverFile} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
           <label for="file-naming">File Naming</label>
           <span class="setting-desc">Template for downloaded file names</span>
         </div>
@@ -337,6 +393,108 @@
             <option value={'{track}. {title}'}>{'{track}. {title}'}</option>
             <option value={'{track}. {artist} - {title}'}>{'{track}. {artist} - {title}'}</option>
           </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="first-artist-only">First Artist Only</label>
+          <span class="setting-desc">For multi-artist tracks, use only the primary artist in tags and filenames (e.g. "Artist A" instead of "Artist A, Artist B")</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" id="first-artist-only" bind:checked={config.firstArtistOnly} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quality Verification Settings -->
+    <section class="settings-section">
+      <h2>Quality Verification</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-quality-fallback">Auto Quality Fallback</label>
+          <span class="setting-desc">Retry with lower quality (HI_RES → LOSSLESS → HIGH) when the requested tier is unavailable</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoQualityFallback} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item order-setting">
+        <div class="setting-info">
+          <span class="setting-label">Quality Priority</span>
+          <span class="setting-desc">Order in which quality tiers are attempted (top = preferred)</span>
+        </div>
+        <div class="order-list">
+          {#each config.qualityOrder as tier, i}
+            <div class="order-item">
+              <span class="order-label">{tier}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, 1)} disabled={i === config.qualityOrder.length - 1} aria-label="Move down">↓</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-analyze">Auto-analyze Downloads</label>
+          <span class="setting-desc">Automatically analyze quality after download to detect upscaled files</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoAnalyze} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="quality-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>When enabled, downloaded files are analyzed to detect if they may be upscaled from lossy sources. Quality warnings will appear in the Terminal log.</span>
+      </div>
+    </section>
+
+    <!-- Playlist Generation Settings -->
+    <section class="settings-section">
+      <h2>Playlist Generation</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="generate-m3u8">Generate M3U8 Playlist</label>
+          <span class="setting-desc">Create a .m3u8 playlist file after batch downloads complete</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.generateM3u8} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="skip-unavailable">Skip Unavailable Tracks</label>
+          <span class="setting-desc">Automatically skip tracks not available for streaming in your region</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
     </section>
@@ -463,16 +621,21 @@
         </div>
       {/if}
 
-      <div class="setting-item">
+      <div class="setting-item order-setting">
         <div class="setting-info">
-          <label for="preferred-source">Preferred Source</label>
-          <span class="setting-desc">Default source when both are available</span>
+          <span class="setting-label">Source Priority</span>
+          <span class="setting-desc">Drag or reorder — first source is tried first for every download</span>
         </div>
-        <div class="setting-control">
-          <select id="preferred-source" bind:value={config.preferredSource} class="select-input">
-            <option value="tidal">Tidal</option>
-            <option value="qobuz">Qobuz</option>
-          </select>
+        <div class="order-list">
+          {#each config.sourceOrder as source, i}
+            <div class="order-item">
+              <span class="order-label">{source === 'tidal' ? 'Tidal' : 'Qobuz'}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, 1)} disabled={i === config.sourceOrder.length - 1} aria-label="Move down">↓</button>
+              </div>
+            </div>
+          {/each}
         </div>
       </div>
 
@@ -483,6 +646,26 @@
           <line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
         <span>The source is automatically detected from the URL you paste. Tidal works without login.</span>
+      </div>
+    </section>
+
+    <!-- Network Section -->
+    <section class="settings-section">
+      <h2>Network</h2>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <span>HTTP / SOCKS5 Proxy</span>
+          <span class="setting-desc">Route all requests through a proxy — useful in restricted regions. Supports <code>http://</code>, <code>https://</code>, and <code>socks5://</code> URLs. Leave empty to disable.</span>
+        </div>
+        <div class="setting-control wide">
+          <input
+            type="text"
+            class="text-input"
+            bind:value={config.proxyUrl}
+            placeholder="e.g. socks5://127.0.0.1:1080"
+          />
+        </div>
       </div>
     </section>
 
@@ -501,7 +684,7 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 1.0.0</span>
+            <span class="version">Version 2.0.0</span>
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
@@ -510,12 +693,9 @@
   </div>
 
   <div class="settings-footer">
-    {#if saveMessage}
-      <span class="save-message" class:error={saveMessage.includes('Error')}>{saveMessage}</span>
-    {/if}
     <button
       class="reset-btn"
-      on:click={() => showResetConfirm = true}
+      onclick={() => showResetConfirm = true}
       disabled={isResetting}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -526,7 +706,7 @@
     </button>
     <button
       class="save-btn"
-      on:click={saveConfig}
+      onclick={saveConfig}
       disabled={isSaving}
     >
       {#if isSaving}
@@ -546,8 +726,9 @@
 
 <!-- Reset Confirmation Modal -->
 {#if showResetConfirm}
-  <div class="modal-overlay" on:click={() => showResetConfirm = false} on:keydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true">
-    <div class="modal" on:click|stopPropagation on:keydown|stopPropagation role="document">
+  <div class="modal-overlay" onclick={() => showResetConfirm = false} onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true" tabindex="-1">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
       <div class="modal-icon">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -557,10 +738,10 @@
       <h3>Reset to Defaults?</h3>
       <p>This will reset all settings to their default values. Your download folder will be preserved.</p>
       <div class="modal-actions">
-        <button class="modal-btn cancel" on:click={() => showResetConfirm = false}>
+        <button class="modal-btn cancel" onclick={() => showResetConfirm = false}>
           Cancel
         </button>
-        <button class="modal-btn confirm" on:click={handleReset} disabled={isResetting}>
+        <button class="modal-btn confirm" onclick={handleReset} disabled={isResetting}>
           {#if isResetting}
             Resetting...
           {:else}
@@ -971,15 +1152,6 @@
     border-top: 1px solid var(--color-border);
   }
 
-  .save-message {
-    font-size: 14px;
-    color: var(--color-success);
-  }
-
-  .save-message.error {
-    color: var(--color-error);
-  }
-
   .save-btn {
     display: flex;
     align-items: center;
@@ -1190,6 +1362,25 @@
     margin-top: 1px;
   }
 
+  .quality-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #888;
+    margin-top: 8px;
+  }
+
+  .quality-info svg {
+    color: #f59e0b;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
   .text-input {
     padding: 10px 14px;
     background: #0a0a0a;
@@ -1208,5 +1399,72 @@
 
   .text-input::placeholder {
     color: #555;
+  }
+
+  /* Order List */
+  .order-setting {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .order-setting .setting-info {
+    width: 100%;
+  }
+
+  .order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+  }
+
+  .order-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-family: monospace;
+  }
+
+  .order-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .order-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+
+  .order-btn:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .order-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 </style>

@@ -42,6 +42,10 @@ export function DetectSourceFromURL(arg1) {
   return window['go']['main']['App']['DetectSourceFromURL'](arg1);
 }
 
+export function DownloadArtistAssets(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DownloadArtistAssets'](arg1, arg2, arg3);
+}
+
 export function DownloadTrack(arg1, arg2) {
   return window['go']['main']['App']['DownloadTrack'](arg1, arg2);
 }
@@ -52,6 +56,10 @@ export function DownloadTrackFromTidal(arg1, arg2) {
 
 export function EmbedLyricsToFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['EmbedLyricsToFile'](arg1, arg2, arg3);
+}
+
+export function ExportFailedDownloads(arg1) {
+  return window['go']['main']['App']['ExportFailedDownloads'](arg1);
 }
 
 export function FetchAndEmbedLyrics(arg1) {
@@ -198,6 +206,10 @@ export function OpenDownloadFolder(arg1) {
   return window['go']['main']['App']['OpenDownloadFolder'](arg1);
 }
 
+export function OpenFLACFilesDialog() {
+  return window['go']['main']['App']['OpenFLACFilesDialog']();
+}
+
 export function OpenInFileManager(arg1) {
   return window['go']['main']['App']['OpenInFileManager'](arg1);
 }
@@ -210,8 +222,12 @@ export function PreviewRename(arg1, arg2) {
   return window['go']['main']['App']['PreviewRename'](arg1, arg2);
 }
 
-export function QueueDownloads(arg1, arg2, arg3) {
-  return window['go']['main']['App']['QueueDownloads'](arg1, arg2, arg3);
+export function QueueArtistAlbum(arg1, arg2, arg3) {
+  return window['go']['main']['App']['QueueArtistAlbum'](arg1, arg2, arg3);
+}
+
+export function QueueDownloads(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['QueueDownloads'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function QueueSingleDownload(arg1, arg2, arg3, arg4) {
@@ -262,8 +278,8 @@ export function SetDownloadFolder(arg1) {
   return window['go']['main']['App']['SetDownloadFolder'](arg1);
 }
 
-export function SetDownloadOptions(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4);
+export function SetDownloadOptions(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function SetPreferredSource(arg1) {

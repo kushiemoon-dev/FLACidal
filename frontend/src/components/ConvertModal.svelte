@@ -2,9 +2,7 @@
   import { onMount } from 'svelte';
   import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../../wailsjs/go/main/App.js';
 
-  export let files: string[];
-  export let onClose: () => void;
-  export let onComplete: () => void;
+  let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
   interface ConversionFormat {
     id: string;
@@ -23,23 +21,25 @@
     sourceSize?: number;
   }
 
-  let formats: ConversionFormat[] = [];
-  let selectedFormat = 'mp3';
-  let selectedQuality = '320k';
-  let deleteSource = false;
-  let isLoading = true;
-  let isConverting = false;
-  let ffmpegAvailable = false;
-  let ffmpegVersion = '';
-  let results: ConversionResult[] = [];
-  let showResults = false;
-  let error = '';
+  let formats: ConversionFormat[] = $state([]);
+  let selectedFormat = $state('mp3');
+  let selectedQuality = $state('320k');
+  let deleteSource = $state(false);
+  let isLoading = $state(true);
+  let isConverting = $state(false);
+  let ffmpegAvailable = $state(false);
+  let ffmpegVersion = $state('');
+  let results: ConversionResult[] = $state([]);
+  let showResults = $state(false);
+  let error = $state('');
 
-  $: currentFormat = formats.find(f => f.id === selectedFormat);
-  $: qualities = currentFormat?.qualities || [];
-  $: if (currentFormat && !qualities.includes(selectedQuality)) {
-    selectedQuality = qualities[0] || '';
-  }
+  let currentFormat = $derived(formats.find(f => f.id === selectedFormat));
+  let qualities = $derived(currentFormat?.qualities || []);
+  $effect(() => {
+    if (currentFormat && !qualities.includes(selectedQuality)) {
+      selectedQuality = qualities[0] || '';
+    }
+  });
 
   onMount(async () => {
     await checkFFmpeg();
@@ -113,14 +113,14 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="dialog" aria-modal="true">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
       <h2>Convert Files</h2>
       <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-      <button class="close-btn" on:click={onClose} disabled={isConverting}>
+      <button class="close-btn" onclick={onClose} disabled={isConverting} aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -203,7 +203,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-primary" on:click={handleDone}>Done</button>
+        <button class="btn-primary" onclick={handleDone}>Done</button>
       </div>
     {:else}
       <div class="modal-body">
@@ -222,7 +222,7 @@
               <button
                 class="format-option"
                 class:selected={selectedFormat === format.id}
-                on:click={() => selectedFormat = format.id}
+                onclick={() => selectedFormat = format.id}
               >
                 <span class="format-name">{format.name}</span>
                 <span class="format-ext">{format.extension}</span>
@@ -271,8 +271,8 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" on:click={onClose} disabled={isConverting}>Cancel</button>
-        <button class="btn-primary" on:click={handleConvert} disabled={isConverting}>
+        <button class="btn-secondary" onclick={onClose} disabled={isConverting}>Cancel</button>
+        <button class="btn-primary" onclick={handleConvert} disabled={isConverting}>
           {#if isConverting}
             <span class="spinner"></span>
             Converting...

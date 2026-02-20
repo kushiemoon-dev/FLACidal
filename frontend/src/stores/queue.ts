@@ -152,12 +152,15 @@ export const queuePaused = writable<boolean>(false);
 
 // Current content store (playlist/album/track being viewed)
 export interface TidalContent {
-  type: 'playlist' | 'album' | 'track';
+  type: 'playlist' | 'album' | 'track' | 'artist';
+  id?: string;
   title: string;
   creator: string;
   coverUrl: string;
   tracks: TidalTrack[];
   source?: 'tidal' | 'qobuz';
+  albumType?: string; // "ALBUM", "EP", "SINGLE", "COMPILATION"
+  artistId?: number;
 }
 
 export interface TidalTrack {
@@ -173,6 +176,11 @@ export interface TidalTrack {
   coverUrl: string;
   explicit: boolean;
   tidalUrl: string;
+  available: boolean;
+  previewUrl?: string;
+  copyright?: string;
+  label?: string;
+  popularity?: number;
 }
 
 export const currentContent = writable<TidalContent | null>(null);

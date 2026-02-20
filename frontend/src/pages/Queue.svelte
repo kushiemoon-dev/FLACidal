@@ -1,10 +1,9 @@
 <script lang="ts">
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
-  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads } from '../../wailsjs/go/main/App.js';
+  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/main/App.js';
 
-  // Reactive access to stores
-  $: queue = $queueStore;
-  $: folder = $downloadFolder;
+  let queue = $derived($queueStore);
+  let folder = $derived($downloadFolder);
 
   function getStatusClass(status: string) {
     switch (status) {
@@ -42,6 +41,14 @@
       console.log(`Retrying ${count} failed downloads`);
     } catch (error) {
       console.error('Retry all failed error:', error);
+    }
+  }
+
+  async function exportFailed(format: 'txt' | 'csv') {
+    try {
+      await ExportFailedDownloads(format);
+    } catch (error) {
+      console.error('Export failed downloads error:', error);
     }
   }
 
@@ -83,6 +90,27 @@
       console.error('Toggle pause error:', error);
     }
   }
+
+  let statusFilter = $state('all');
+
+  const filters: { value: string; label: string }[] = [
+    { value: 'all',        label: 'All' },
+    { value: 'queued',     label: 'Queued' },
+    { value: 'downloading',label: 'Downloading' },
+    { value: 'completed',  label: 'Completed' },
+    { value: 'error',      label: 'Failed' },
+    { value: 'cancelled',  label: 'Cancelled' },
+  ];
+
+  const filteredItems = $derived(
+    statusFilter === 'all'
+      ? $queueItems
+      : $queueItems.filter(item =>
+          statusFilter === 'queued'
+            ? item.status === 'pending' || item.status === 'queued'
+            : item.status === statusFilter
+        )
+  );
 </script>
 
 <div class="queue-page">
@@ -122,7 +150,7 @@
       <button
         class="action-btn pause-btn"
         class:paused={$queuePaused}
-        on:click={togglePause}
+        onclick={togglePause}
         disabled={$queueStats.pending === 0 && $queueStats.downloading === 0 && !$queuePaused}
       >
         {#if $queuePaused}
@@ -138,7 +166,7 @@
           Pause
         {/if}
       </button>
-      <button class="action-btn retry-all" on:click={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
+      <button class="action-btn retry-all" onclick={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 2v6h-6"/>
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -147,13 +175,21 @@
         </svg>
         Retry Failed ({$queueStats.failed})
       </button>
-      <button class="action-btn" on:click={clearCompleted} disabled={$queueStats.completed === 0}>
+      <button class="action-btn" onclick={() => exportFailed('txt')} disabled={$queueStats.failed === 0}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export Failed
+      </button>
+      <button class="action-btn" onclick={clearCompleted} disabled={$queueStats.completed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
         Clear Completed
       </button>
-      <button class="action-btn" on:click={clearFailed} disabled={$queueStats.failed === 0}>
+      <button class="action-btn" onclick={clearFailed} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="15" y1="9" x2="9" y2="15"/>
@@ -161,7 +197,7 @@
         </svg>
         Clear Failed
       </button>
-      <button class="action-btn danger" on:click={clearAll} disabled={$queueStats.total === 0}>
+      <button class="action-btn danger" onclick={clearAll} disabled={$queueStats.total === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -171,6 +207,18 @@
       </button>
     </div>
   </div>
+
+  {#if $queueItems.length > 0}
+    <div class="filter-bar">
+      {#each filters as f}
+        <button
+          class="filter-btn"
+          class:active={statusFilter === f.value}
+          onclick={() => statusFilter = f.value}
+        >{f.label}</button>
+      {/each}
+    </div>
+  {/if}
 
   {#if $queueItems.length === 0}
     <div class="empty-state">
@@ -182,9 +230,18 @@
       <p>No downloads in queue</p>
       <span class="hint">Add tracks from Home or Search to start downloading</span>
     </div>
+  {:else if filteredItems.length === 0}
+    <div class="empty-state">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <p>No {filters.find(f => f.value === statusFilter)?.label.toLowerCase()} items</p>
+      <span class="hint">Try a different filter</span>
+    </div>
   {:else}
     <div class="queue-list">
-      {#each $queueItems as item (item.trackId)}
+      {#each filteredItems as item (item.trackId)}
         <div class="queue-item {getStatusClass(item.status)}">
           <div class="item-status">
             {#if item.status === 'downloading'}
@@ -224,7 +281,7 @@
             {#if item.status === 'downloading'}
               <button
                 class="item-btn cancel"
-                on:click={() => cancelDownload(item.trackId)}
+                onclick={() => cancelDownload(item.trackId)}
                 title="Cancel"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -235,7 +292,7 @@
             {#if item.status === 'error'}
               <button
                 class="item-btn retry"
-                on:click={() => retryFailed(item.trackId)}
+                onclick={() => retryFailed(item.trackId)}
                 title="Retry"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -248,7 +305,7 @@
             {/if}
             <button
               class="item-btn remove"
-              on:click={() => removeItem(item.trackId)}
+              onclick={() => removeItem(item.trackId)}
               title="Remove"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -297,6 +354,7 @@
   .stat-value {
     font-size: 20px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
   .stat-value.downloading {
@@ -336,7 +394,7 @@
 
   .stat-label {
     font-size: 12px;
-    color: #666;
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
   }
 
@@ -350,19 +408,19 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-btn:hover:not(:disabled) {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .action-btn:disabled {
@@ -411,7 +469,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #444;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
@@ -423,7 +481,7 @@
   .empty-state p {
     margin: 0;
     font-size: 16px;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .empty-state .hint {
@@ -442,14 +500,14 @@
     align-items: center;
     gap: 16px;
     padding: 16px;
-    background: #111;
-    border: 1px solid #1a1a1a;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     transition: all 0.2s;
   }
 
   .queue-item:hover {
-    background: #151515;
+    background: var(--color-bg-tertiary);
   }
 
   .queue-item.status-downloading {
@@ -533,7 +591,7 @@
 
   .item-artist {
     font-size: 13px;
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .item-error {
@@ -554,16 +612,16 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .item-btn:hover {
-    background: #1a1a1a;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
   }
 
   .item-btn.retry:hover {
@@ -579,5 +637,36 @@
   .item-btn.cancel:hover {
     border-color: #f59e0b;
     color: #f59e0b;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .filter-btn.active {
+    background: rgba(244, 114, 182, 0.15);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 </style>

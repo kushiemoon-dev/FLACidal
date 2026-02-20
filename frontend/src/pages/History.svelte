@@ -14,16 +14,15 @@
     createdAt: string;
   }
 
-  let records: DownloadRecord[] = [];
-  let total = 0;
-  let isLoading = true;
-  let searchQuery = '';
-  let contentTypeFilter = '';
-  let currentPage = 1;
+  let records: DownloadRecord[] = $state([]);
+  let total = $state(0);
+  let isLoading = $state(true);
+  let searchQuery = $state('');
+  let contentTypeFilter = $state('');
+  let currentPage = $state(1);
   const pageSize = 20;
 
-  // Export function for triggering refetch from parent
-  export let onRefetch: (content: any) => void = () => {};
+  let { onRefetch = (content: any) => {} }: { onRefetch?: (content: any) => void } = $props();
 
   onMount(async () => {
     await loadHistory();
@@ -135,7 +134,7 @@
     }
   }
 
-  $: totalPages = Math.ceil(total / pageSize);
+  let totalPages = $derived(Math.ceil(total / pageSize));
 </script>
 
 <div class="history-page">
@@ -145,7 +144,7 @@
       <p class="record-count">{total} records</p>
     </div>
     <div class="header-actions">
-      <button class="action-btn" on:click={loadHistory}>
+      <button class="action-btn" onclick={loadHistory}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 2v6h-6"/>
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
@@ -155,7 +154,7 @@
         Refresh
       </button>
       {#if records.length > 0}
-        <button class="action-btn danger" on:click={handleClearAll}>
+        <button class="action-btn danger" onclick={handleClearAll}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 6h18"/>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -177,10 +176,10 @@
         type="text"
         placeholder="Search by name..."
         bind:value={searchQuery}
-        on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+        onkeydown={(e) => e.key === 'Enter' && handleSearch()}
       />
       {#if searchQuery}
-        <button class="clear-search" on:click={() => { searchQuery = ''; handleSearch(); }}>
+        <button class="clear-search" onclick={() => { searchQuery = ''; handleSearch(); }} aria-label="Clear search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -189,7 +188,7 @@
       {/if}
     </div>
 
-    <select bind:value={contentTypeFilter} on:change={handleFilterChange}>
+    <select bind:value={contentTypeFilter} onchange={handleFilterChange}>
       <option value="">All Types</option>
       <option value="playlist">Playlists</option>
       <option value="album">Albums</option>
@@ -266,7 +265,7 @@
             <div class="cell actions">
               <button
                 class="action-icon-btn primary"
-                on:click={() => handleRefetch(record)}
+                onclick={() => handleRefetch(record)}
                 title="Re-download"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -277,7 +276,7 @@
               </button>
               <button
                 class="action-icon-btn danger"
-                on:click={() => handleDelete(record)}
+                onclick={() => handleDelete(record)}
                 title="Delete from history"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -294,14 +293,14 @@
 
     {#if totalPages > 1}
       <div class="pagination">
-        <button class="page-btn" on:click={prevPage} disabled={currentPage === 1}>
+        <button class="page-btn" onclick={prevPage} disabled={currentPage === 1}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
           Previous
         </button>
         <span class="page-info">Page {currentPage} of {totalPages}</span>
-        <button class="page-btn" on:click={nextPage} disabled={currentPage >= totalPages}>
+        <button class="page-btn" onclick={nextPage} disabled={currentPage >= totalPages}>
           Next
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
@@ -333,7 +332,7 @@
   }
 
   .record-count {
-    color: #666;
+    color: var(--color-text-tertiary);
     font-size: 14px;
     margin: 0;
   }
@@ -348,19 +347,19 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-btn:hover {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .action-btn.danger {
@@ -386,13 +385,13 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
   }
 
   .search-box svg {
-    color: #555;
+    color: var(--color-text-muted);
     flex-shrink: 0;
   }
 
@@ -400,13 +399,13 @@
     flex: 1;
     background: transparent;
     border: none;
-    color: #fff;
+    color: var(--color-text-primary);
     font-size: 14px;
     outline: none;
   }
 
   .search-box input::placeholder {
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .clear-search {
@@ -415,32 +414,36 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: #222;
+    background: var(--color-border-subtle);
     border: none;
     border-radius: 4px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .clear-search:hover {
-    background: #333;
-    color: #fff;
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .filters select {
-    padding: 10px 16px;
-    background: #111;
-    border: 1px solid #222;
+    padding: 10px 36px 10px 16px;
+    background: var(--color-bg-secondary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    appearance: none;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     outline: none;
   }
 
   .filters select:hover {
-    border-color: #333;
+    border-color: var(--color-bg-hover);
   }
 
   .loading-state,
@@ -450,7 +453,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    color: #444;
+    color: var(--color-text-muted);
     text-align: center;
   }
 
@@ -462,7 +465,7 @@
   .empty-state p {
     margin: 0;
     font-size: 16px;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   .empty-state .hint {
@@ -473,8 +476,8 @@
   .loader {
     width: 40px;
     height: 40px;
-    border: 3px solid #222;
-    border-top-color: #f472b6;
+    border: 3px solid var(--color-border-subtle);
+    border-top-color: var(--color-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 16px;
@@ -485,8 +488,8 @@
   }
 
   .history-table {
-    background: #111;
-    border: 1px solid #1a1a1a;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     overflow: hidden;
   }
@@ -496,14 +499,14 @@
     grid-template-columns: 1fr 100px 140px 160px 100px;
     gap: 16px;
     padding: 12px 16px;
-    background: #0a0a0a;
-    border-bottom: 1px solid #1a1a1a;
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .th {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
     text-align: left;
   }
@@ -519,7 +522,7 @@
     gap: 16px;
     padding: 12px 16px;
     align-items: center;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
   }
 
@@ -533,7 +536,7 @@
 
   .cell {
     font-size: 14px;
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .name-cell {
@@ -577,7 +580,7 @@
 
   .content-name {
     font-weight: 500;
-    color: #fff;
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -585,7 +588,7 @@
 
   .content-id {
     font-size: 12px;
-    color: #555;
+    color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -631,11 +634,11 @@
   }
 
   .tracks-separator {
-    color: #444;
+    color: var(--color-text-muted);
   }
 
   .tracks-total {
-    color: #888;
+    color: var(--color-text-secondary);
   }
 
   .tracks-failed {
@@ -645,7 +648,7 @@
   }
 
   .cell.date {
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 
   .cell.actions {
@@ -661,20 +664,20 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #666;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .action-icon-btn:hover {
-    background: #1a1a1a;
+    background: var(--color-bg-tertiary);
   }
 
   .action-icon-btn.primary:hover {
-    border-color: #f472b6;
-    color: #f472b6;
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 
   .action-icon-btn.danger:hover {
@@ -695,19 +698,19 @@
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    background: #111;
-    border: 1px solid #222;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 6px;
-    color: #888;
+    color: var(--color-text-secondary);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .page-btn:hover:not(:disabled) {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
   }
 
   .page-btn:disabled {
@@ -717,6 +720,6 @@
 
   .page-info {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-tertiary);
   }
 </style>
