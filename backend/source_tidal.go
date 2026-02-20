@@ -9,9 +9,9 @@ import (
 
 // TidalSource implements MusicSource interface for Tidal
 type TidalSource struct {
-	service     *TidalHifiService
-	apiClient   *TidalClient
-	available   bool
+	service   *TidalHifiService
+	apiClient *TidalClient
+	available bool
 }
 
 // Tidal URL patterns

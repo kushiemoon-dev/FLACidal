@@ -56,21 +56,21 @@ var (
 
 // Qobuz API response types
 type qobuzTrackResponse struct {
-	ID           int     `json:"id"`
-	Title        string  `json:"title"`
-	Duration     int     `json:"duration"`
-	TrackNumber  int     `json:"track_number"`
-	MediaNumber  int     `json:"media_number"`
-	ISRC         string  `json:"isrc"`
-	ParentalWarning bool `json:"parental_warning"`
-	Performer    struct {
+	ID              int    `json:"id"`
+	Title           string `json:"title"`
+	Duration        int    `json:"duration"`
+	TrackNumber     int    `json:"track_number"`
+	MediaNumber     int    `json:"media_number"`
+	ISRC            string `json:"isrc"`
+	ParentalWarning bool   `json:"parental_warning"`
+	Performer       struct {
 		Name string `json:"name"`
 	} `json:"performer"`
 	Performers string `json:"performers"`
 	Album      struct {
-		ID       string `json:"id"`
-		Title    string `json:"title"`
-		Artist   struct {
+		ID     string `json:"id"`
+		Title  string `json:"title"`
+		Artist struct {
 			Name string `json:"name"`
 		} `json:"artist"`
 		Image struct {
@@ -78,20 +78,20 @@ type qobuzTrackResponse struct {
 			Small string `json:"small"`
 		} `json:"image"`
 		ReleaseDateOriginal string `json:"release_date_original"`
-		Genre struct {
+		Genre               struct {
 			Name string `json:"name"`
 		} `json:"genre"`
 	} `json:"album"`
-	Streamable     bool `json:"streamable"`
-	HiresStreamable bool `json:"hires_streamable"`
-	MaximumBitDepth int `json:"maximum_bit_depth"`
+	Streamable          bool    `json:"streamable"`
+	HiresStreamable     bool    `json:"hires_streamable"`
+	MaximumBitDepth     int     `json:"maximum_bit_depth"`
 	MaximumSamplingRate float64 `json:"maximum_sampling_rate"`
 }
 
 type qobuzAlbumResponse struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Artist   struct {
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Artist struct {
 		Name string `json:"name"`
 	} `json:"artist"`
 	Image struct {
@@ -99,11 +99,11 @@ type qobuzAlbumResponse struct {
 		Small string `json:"small"`
 	} `json:"image"`
 	ReleaseDateOriginal string `json:"release_date_original"`
-	Genre struct {
+	Genre               struct {
 		Name string `json:"name"`
 	} `json:"genre"`
 	TracksCount int `json:"tracks_count"`
-	Tracks struct {
+	Tracks      struct {
 		Items []qobuzTrackResponse `json:"items"`
 	} `json:"tracks"`
 	Description string `json:"description"`
@@ -116,9 +116,9 @@ type qobuzPlaylistResponse struct {
 	Owner       struct {
 		Name string `json:"name"`
 	} `json:"owner"`
-	Images300 []string `json:"images300"`
-	TracksCount int `json:"tracks_count"`
-	Tracks struct {
+	Images300   []string `json:"images300"`
+	TracksCount int      `json:"tracks_count"`
+	Tracks      struct {
 		Items []qobuzTrackResponse `json:"items"`
 	} `json:"tracks"`
 }

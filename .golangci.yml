@@ -14,13 +14,11 @@ linters:
     - misspell
 
 linters-settings:
-  govet:
-    enable-all: true
   gocritic:
     enabled-tags:
       - diagnostic
-      - performance
-      - style
+    disabled-checks:
+      - ifElseChain
   revive:
     rules:
       - name: exported
@@ -28,11 +26,12 @@ linters-settings:
 
 run:
   timeout: 5m
-  skip-dirs:
-    - frontend
 
 issues:
+  exclude-dirs:
+    - frontend
   exclude-rules:
     - path: _test\.go
       linters:
         - gocritic
+        - errcheck

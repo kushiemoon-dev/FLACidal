@@ -14,10 +14,10 @@ type AnalysisResult struct {
 	FilePath       string  `json:"filePath"`
 	FileName       string  `json:"fileName"`
 	IsTrueLossless bool    `json:"isTrueLossless"`
-	Confidence     float64 `json:"confidence"` // 0-100
+	Confidence     float64 `json:"confidence"`     // 0-100
 	SpectrumCutoff int     `json:"spectrumCutoff"` // Detected cutoff in Hz
 	ExpectedCutoff int     `json:"expectedCutoff"` // Expected cutoff based on sample rate
-	Verdict        string  `json:"verdict"` // "lossless", "likely_upscaled", "upscaled"
+	Verdict        string  `json:"verdict"`        // "lossless", "likely_upscaled", "upscaled"
 	VerdictLabel   string  `json:"verdictLabel"`
 	Details        string  `json:"details"`
 	SampleRate     int     `json:"sampleRate"`

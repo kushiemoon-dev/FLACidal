@@ -17,11 +17,11 @@ type LyricsClient struct {
 
 // Lyrics contains lyrics data
 type Lyrics struct {
-	Plain     string `json:"plain"`     // Plain text lyrics
-	Synced    string `json:"synced"`    // LRC format synced lyrics
-	Source    string `json:"source"`    // Source (e.g., "lrclib")
-	HasSynced bool   `json:"hasSynced"` // Whether synced lyrics are available
-	TrackName string `json:"trackName"` // Track name from API
+	Plain      string `json:"plain"`      // Plain text lyrics
+	Synced     string `json:"synced"`     // LRC format synced lyrics
+	Source     string `json:"source"`     // Source (e.g., "lrclib")
+	HasSynced  bool   `json:"hasSynced"`  // Whether synced lyrics are available
+	TrackName  string `json:"trackName"`  // Track name from API
 	ArtistName string `json:"artistName"` // Artist name from API
 	AlbumName  string `json:"albumName"`  // Album name from API
 	Duration   int    `json:"duration"`   // Duration in seconds

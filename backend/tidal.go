@@ -37,23 +37,23 @@ type TidalClient struct {
 
 // TidalTrack represents a track from Tidal
 type TidalTrack struct {
-	ID         int     `json:"id"`
-	Title      string  `json:"title"`
-	Artist     string  `json:"artist"`
-	Artists    string  `json:"artists"` // All artists joined
-	Album      string  `json:"album"`
-	AlbumID    int     `json:"albumId"`
-	ISRC       string  `json:"isrc"`
-	Duration   int     `json:"duration"` // seconds
-	TrackNum   int     `json:"trackNumber"`
-	CoverURL   string  `json:"coverUrl"`
-	Explicit   bool    `json:"explicit"`
-	TidalURL   string  `json:"tidalUrl"`
-	Available  bool    `json:"available"`  // Whether track is available for streaming
-	PreviewURL string  `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
-	Copyright  string  `json:"copyright,omitempty"`  // Copyright string from album
-	Label      string  `json:"label,omitempty"`      // Record label name
-	Popularity int     `json:"popularity,omitempty"` // Popularity score 0-100
+	ID         int    `json:"id"`
+	Title      string `json:"title"`
+	Artist     string `json:"artist"`
+	Artists    string `json:"artists"` // All artists joined
+	Album      string `json:"album"`
+	AlbumID    int    `json:"albumId"`
+	ISRC       string `json:"isrc"`
+	Duration   int    `json:"duration"` // seconds
+	TrackNum   int    `json:"trackNumber"`
+	CoverURL   string `json:"coverUrl"`
+	Explicit   bool   `json:"explicit"`
+	TidalURL   string `json:"tidalUrl"`
+	Available  bool   `json:"available"`            // Whether track is available for streaming
+	PreviewURL string `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
+	Copyright  string `json:"copyright,omitempty"`  // Copyright string from album
+	Label      string `json:"label,omitempty"`      // Record label name
+	Popularity int    `json:"popularity,omitempty"` // Popularity score 0-100
 }
 
 // TidalPlaylist represents a playlist from Tidal
@@ -309,7 +309,7 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 					Duration        int    `json:"duration"`
 					ISRC            string `json:"isrc"`
 					Explicit        bool   `json:"explicit"`
-					StreamReady     *bool  `json:"streamReady"`    // nil = not in response = assume available
+					StreamReady     *bool  `json:"streamReady"` // nil = not in response = assume available
 					AudioPreviewURL string `json:"audioPreviewUrl"`
 					Popularity      int    `json:"popularity"`
 					Album           struct {
@@ -384,7 +384,7 @@ func (c *TidalClient) GetMix(mixID string) (*TidalPlaylist, error) {
 		Title string `json:"title"`
 		Rows  []struct {
 			Modules []struct {
-				Type     string `json:"type"`
+				Type      string `json:"type"`
 				PagedList struct {
 					Items []struct {
 						ID              int    `json:"id"`

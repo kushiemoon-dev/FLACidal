@@ -33,10 +33,10 @@ func NewMatcher(spotify *SpotifyClient, db *Database) *Matcher {
 // MatchTrack attempts to find a Spotify track matching the Tidal track
 func (m *Matcher) MatchTrack(track TidalTrack) MatchResult {
 	result := MatchResult{
-		TidalTrack: track,
-		Matched:    false,
+		TidalTrack:  track,
+		Matched:     false,
 		MatchMethod: "none",
-		Confidence: 0,
+		Confidence:  0,
 	}
 
 	// Check cache first
@@ -68,7 +68,7 @@ func (m *Matcher) MatchTrack(track TidalTrack) MatchResult {
 
 			// Cache the result
 			if m.db != nil {
-				m.db.CacheTrack(&CachedTrack{
+				_ = m.db.CacheTrack(&CachedTrack{ //nolint:errcheck
 					ISRC:           track.ISRC,
 					TidalTrackID:   fmt.Sprintf("%d", track.ID),
 					SpotifyTrackID: spotifyTrack.ID,
@@ -100,7 +100,7 @@ func (m *Matcher) MatchTrack(track TidalTrack) MatchResult {
 
 				// Cache the result
 				if m.db != nil && track.ISRC != "" {
-					m.db.CacheTrack(&CachedTrack{
+					_ = m.db.CacheTrack(&CachedTrack{
 						ISRC:           track.ISRC,
 						TidalTrackID:   fmt.Sprintf("%d", track.ID),
 						SpotifyTrackID: bestMatch.ID,
@@ -224,7 +224,7 @@ func similarity(a, b string) float64 {
 
 	// Use Levenshtein distance
 	distance := levenshtein(a, b)
-	maxLen := max(len(a), len(b))
+	maxLen := maxInts(len(a), len(b))
 
 	return (1 - float64(distance)/float64(maxLen)) * 100
 }
@@ -255,7 +255,7 @@ func levenshtein(a, b string) int {
 			if a[i-1] == b[j-1] {
 				cost = 0
 			}
-			matrix[i][j] = min(
+			matrix[i][j] = minInts(
 				matrix[i-1][j]+1,      // deletion
 				matrix[i][j-1]+1,      // insertion
 				matrix[i-1][j-1]+cost, // substitution
@@ -266,7 +266,7 @@ func levenshtein(a, b string) int {
 	return matrix[len(a)][len(b)]
 }
 
-func min(nums ...int) int {
+func minInts(nums ...int) int {
 	m := nums[0]
 	for _, n := range nums[1:] {
 		if n < m {
@@ -276,7 +276,7 @@ func min(nums ...int) int {
 	return m
 }
 
-func max(a, b int) int {
+func maxInts(a, b int) int {
 	if a > b {
 		return a
 	}
