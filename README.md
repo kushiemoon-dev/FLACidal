@@ -92,10 +92,10 @@ Settings location: `~/.flacidal/config.json`
 ## FAQ
 
 **Is this free?**
-Yes. No account, subscription, or login required on your end — just your Tidal or Qobuz credentials to authenticate.
+Yes. No account, subscription, or API credentials required — authentication is handled by the app itself.
 
 **Do I need a Tidal or Qobuz account?**
-Yes. Your credentials are used only to authenticate against the respective API. They are stored locally and never transmitted elsewhere.
+No. FLACidal handles authentication internally. Just paste a URL and download.
 
 **Why does my antivirus flag the file?**
 False positive. Go-compiled binaries are sometimes flagged heuristically. Build from source if you have concerns.
