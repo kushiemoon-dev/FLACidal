@@ -222,7 +222,7 @@ func TestMin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			result := min(tt.input...)
+			result := minInts(tt.input...)
 			if result != tt.expected {
 				t.Errorf("min(%v) = %d, want %d", tt.input, result, tt.expected)
 			}
@@ -244,7 +244,7 @@ func TestMax(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			result := max(tt.a, tt.b)
+			result := maxInts(tt.a, tt.b)
 			if result != tt.expected {
 				t.Errorf("max(%d, %d) = %d, want %d", tt.a, tt.b, result, tt.expected)
 			}
