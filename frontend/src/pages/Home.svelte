@@ -21,6 +21,7 @@
   let { initialContent = null, onContentCleared = () => {} }: { initialContent?: any; onContentCleared?: () => void } = $props();
 
   let tidalUrl = $state('');
+  let urlInputEl: HTMLInputElement | null = $state(null);
   let loading = $state(false);
   let error = $state('');
   let version = $state('');
@@ -103,6 +104,7 @@
     if (initialContent) {
       currentContent.set({
         type: initialContent.type,
+        id: initialContent.id,
         title: initialContent.title,
         creator: initialContent.creator,
         coverUrl: initialContent.coverUrl,
@@ -145,6 +147,7 @@
         const result = await FetchContentFromURL(tidalUrl);
         currentContent.set({
           type: result.type,
+          id: result.id,
           title: result.title,
           creator: result.creator,
           coverUrl: result.coverUrl,
@@ -161,6 +164,7 @@
         const result = await FetchTidalContent(tidalUrl);
         currentContent.set({
           type: result.type,
+          id: result.id,
           title: result.title,
           creator: result.creator,
           coverUrl: result.coverUrl,
@@ -170,7 +174,7 @@
         });
       }
     } catch (e: any) {
-      error = e.message || 'Failed to fetch content';
+      error = e.message || (typeof e === 'string' ? e : 'Failed to fetch content');
     }
 
     loading = false;
@@ -237,7 +241,7 @@
     });
 
     try {
-      await QueueDownloads(tracksToDownload, $downloadFolder, content.title);
+      await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
     } catch (e: any) {
       error = e.message || 'Failed to queue downloads';
     }
@@ -352,14 +356,28 @@
   <!-- URL Input -->
   <div class="input-section">
     <div class="url-input-wrapper">
-      <div class="input-with-badge">
+      <div class="input-with-badge" class:has-url={!!tidalUrl}>
         <input
           type="text"
           bind:value={tidalUrl}
+          bind:this={urlInputEl}
           placeholder="Paste Tidal or Qobuz URL (playlist, album, or track)..."
           onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
+        {#if tidalUrl}
+          <button
+            class="clear-input-btn"
+            onclick={() => { tidalUrl = ''; urlInputEl?.focus(); }}
+            aria-label="Clear URL"
+            tabindex="-1"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        {/if}
         {#if detectedSource}
           <div class="source-badge" class:tidal={detectedSource.source === 'tidal'} class:qobuz={detectedSource.source === 'qobuz'} class:unavailable={!detectedSource.available}>
             {#if detectedSource.source === 'tidal'}
@@ -743,7 +761,7 @@
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    padding: 14px 100px 14px 18px;
+    padding: 14px 140px 14px 18px;
     color: var(--color-text-primary);
     font-family: inherit;
     font-size: 0.95rem;
@@ -760,6 +778,29 @@
     color: var(--color-text-muted);
   }
 
+  .clear-input-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .clear-input-btn:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+  }
+
   .source-badge {
     position: absolute;
     right: 12px;
@@ -774,6 +815,11 @@
     font-weight: 500;
     background: rgba(136, 136, 136, 0.15);
     color: #888;
+    transition: right 0.15s;
+  }
+
+  .input-with-badge.has-url .source-badge {
+    right: 48px;
   }
 
   .source-badge.tidal {
@@ -1103,6 +1149,7 @@
     color: var(--color-text-muted);
     font-size: 0.85rem;
     font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
     text-align: right;
   }
 
@@ -1151,6 +1198,7 @@
     color: var(--color-text-muted);
     font-size: 0.85rem;
     font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
     width: 45px;
     text-align: right;
   }
@@ -1161,6 +1209,7 @@
     gap: 3px;
     font-size: 0.75rem;
     color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
     width: 36px;
     justify-content: flex-end;
     flex-shrink: 0;
