@@ -3,7 +3,7 @@ module flacidal
 go 1.24.0
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.11
+	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/wailsapp/wails/v2 v2.11.0
