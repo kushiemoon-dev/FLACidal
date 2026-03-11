@@ -32,28 +32,33 @@ type TidalClient struct {
 	accessToken  string
 	tokenExpiry  time.Time
 	httpClient   *http.Client
+	CountryCode  string
 	mu           sync.Mutex
 }
 
 // TidalTrack represents a track from Tidal
 type TidalTrack struct {
-	ID         int    `json:"id"`
-	Title      string `json:"title"`
-	Artist     string `json:"artist"`
-	Artists    string `json:"artists"` // All artists joined
-	Album      string `json:"album"`
-	AlbumID    int    `json:"albumId"`
-	ISRC       string `json:"isrc"`
-	Duration   int    `json:"duration"` // seconds
-	TrackNum   int    `json:"trackNumber"`
-	CoverURL   string `json:"coverUrl"`
-	Explicit   bool   `json:"explicit"`
-	TidalURL   string `json:"tidalUrl"`
-	Available  bool   `json:"available"`            // Whether track is available for streaming
-	PreviewURL string `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
-	Copyright  string `json:"copyright,omitempty"`  // Copyright string from album
-	Label      string `json:"label,omitempty"`      // Record label name
-	Popularity int    `json:"popularity,omitempty"` // Popularity score 0-100
+	ID           int    `json:"id"`
+	Title        string `json:"title"`
+	Artist       string `json:"artist"`
+	Artists      string `json:"artists"` // All artists joined
+	AlbumArtist  string `json:"albumArtist,omitempty"` // Album-level artist (may differ from track artist)
+	Album        string `json:"album"`
+	AlbumID      int    `json:"albumId"`
+	ISRC         string `json:"isrc"`
+	Duration     int    `json:"duration"` // seconds
+	TrackNum     int    `json:"trackNumber"`
+	DiscNum      int    `json:"discNumber,omitempty"`  // Disc/volume number for multi-disc albums
+	TotalDiscs   int    `json:"totalDiscs,omitempty"`  // Total number of discs
+	ReleaseDate  string `json:"releaseDate,omitempty"` // Full release date YYYY-MM-DD
+	CoverURL     string `json:"coverUrl"`
+	Explicit     bool   `json:"explicit"`
+	TidalURL     string `json:"tidalUrl"`
+	Available    bool   `json:"available"`            // Whether track is available for streaming
+	PreviewURL   string `json:"previewUrl,omitempty"` // ~30s MP3 preview URL
+	Copyright    string `json:"copyright,omitempty"`  // Copyright string from album
+	Label        string `json:"label,omitempty"`      // Record label name
+	Popularity   int    `json:"popularity,omitempty"` // Popularity score 0-100
 }
 
 // TidalPlaylist represents a playlist from Tidal
@@ -84,6 +89,7 @@ func NewTidalClient(clientID, clientSecret string) *TidalClient {
 	return &TidalClient{
 		clientID:     internalClientID,
 		clientSecret: internalClientSecret,
+		CountryCode:  "US",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -95,9 +101,17 @@ func NewTidalClientDefault() *TidalClient {
 	return &TidalClient{
 		clientID:     internalClientID,
 		clientSecret: internalClientSecret,
+		CountryCode:  "US",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+	}
+}
+
+// SetCountryCode sets the country code used for Tidal API requests
+func (c *TidalClient) SetCountryCode(code string) {
+	if code != "" {
+		c.CountryCode = code
 	}
 }
 
@@ -229,7 +243,7 @@ func (c *TidalClient) doRequest(endpoint string) ([]byte, error) {
 // GetPlaylist fetches a public playlist by UUID
 func (c *TidalClient) GetPlaylist(playlistUUID string) (*TidalPlaylist, error) {
 	// Fetch playlist metadata
-	endpoint := fmt.Sprintf("/playlists/%s?countryCode=US", playlistUUID)
+	endpoint := fmt.Sprintf("/playlists/%s?countryCode=%s", playlistUUID, c.CountryCode)
 	data, err := c.doRequest(endpoint)
 	if err != nil {
 		// Check if it's a 404 error - likely a private playlist
@@ -293,8 +307,8 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 	offset := 0
 
 	for offset < totalTracks {
-		endpoint := fmt.Sprintf("/playlists/%s/items?countryCode=US&limit=%d&offset=%d",
-			playlistUUID, limit, offset)
+		endpoint := fmt.Sprintf("/playlists/%s/items?countryCode=%s&limit=%d&offset=%d",
+			playlistUUID, c.CountryCode, limit, offset)
 
 		data, err := c.doRequest(endpoint)
 		if err != nil {
@@ -373,7 +387,7 @@ func (c *TidalClient) getPlaylistTracks(playlistUUID string, totalTracks int) ([
 
 // GetMix fetches a Tidal mix via the /pages/mix endpoint (works with client credentials).
 func (c *TidalClient) GetMix(mixID string) (*TidalPlaylist, error) {
-	endpoint := fmt.Sprintf("/pages/mix?mixId=%s&countryCode=US&locale=en_US&deviceType=BROWSER", mixID)
+	endpoint := fmt.Sprintf("/pages/mix?mixId=%s&countryCode=%s&locale=en_US&deviceType=BROWSER", mixID, c.CountryCode)
 	data, err := c.doRequest(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch mix: %w", err)
@@ -502,7 +516,7 @@ func formatTidalImageURL(imageID string) string {
 
 // GetTrack fetches a single track by ID
 func (c *TidalClient) GetTrack(trackID string) (*TidalTrack, error) {
-	endpoint := fmt.Sprintf("/tracks/%s?countryCode=US", trackID)
+	endpoint := fmt.Sprintf("/tracks/%s?countryCode=%s", trackID, c.CountryCode)
 	data, err := c.doRequest(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch track: %w", err)
@@ -588,7 +602,7 @@ type TidalArtist struct {
 // GetAlbum fetches an album with all its tracks
 func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 	// Fetch album metadata
-	endpoint := fmt.Sprintf("/albums/%s?countryCode=US", albumID)
+	endpoint := fmt.Sprintf("/albums/%s?countryCode=%s", albumID, c.CountryCode)
 	data, err := c.doRequest(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch album: %w", err)
@@ -632,7 +646,7 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 	}
 
 	// Fetch album tracks
-	tracksEndpoint := fmt.Sprintf("/albums/%s/tracks?countryCode=US&limit=100", albumID)
+	tracksEndpoint := fmt.Sprintf("/albums/%s/tracks?countryCode=%s&limit=100", albumID, c.CountryCode)
 	tracksData, err := c.doRequest(tracksEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch album tracks: %w", err)
@@ -705,7 +719,7 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 // Callers can fetch individual album tracks with GetAlbum if needed.
 func (c *TidalClient) GetArtistDiscography(artistID string) (*TidalArtist, error) {
 	// Fetch artist metadata
-	artistData, err := c.doRequest(fmt.Sprintf("/artists/%s?countryCode=US", artistID))
+	artistData, err := c.doRequest(fmt.Sprintf("/artists/%s?countryCode=%s", artistID, c.CountryCode))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch artist: %w", err)
 	}
@@ -731,8 +745,8 @@ func (c *TidalClient) GetArtistDiscography(artistID string) (*TidalArtist, error
 	offset := 0
 	for {
 		albumsData, err := c.doRequest(fmt.Sprintf(
-			"/artists/%s/albums?countryCode=US&limit=%d&offset=%d&filter=ALL",
-			artistID, limit, offset,
+			"/artists/%s/albums?countryCode=%s&limit=%d&offset=%d&filter=ALL",
+			artistID, c.CountryCode, limit, offset,
 		))
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch artist albums: %w", err)
@@ -800,7 +814,7 @@ func ArtistImageURLs(rawPictureID string) map[string]string {
 
 // GetArtistPictureID fetches only the artist name and raw picture ID (no album pagination).
 func (c *TidalClient) GetArtistPictureID(artistID string) (name string, pictureID string, err error) {
-	data, err := c.doRequest(fmt.Sprintf("/artists/%s?countryCode=US", artistID))
+	data, err := c.doRequest(fmt.Sprintf("/artists/%s?countryCode=%s", artistID, c.CountryCode))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to fetch artist: %w", err)
 	}

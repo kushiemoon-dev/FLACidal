@@ -11,8 +11,14 @@
     SetDownloadFolder,
     GetDownloadOptions,
     SetDownloadOptions,
-    ResetToDefaults
+    ResetToDefaults,
+    CheckAPIStatus,
+    CheckForUpdate,
+    OpenConfigFolder,
+    GetFFmpegInfo,
+    InstallFFmpeg,
   } from '../../wailsjs/go/main/App.js';
+  import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
 
   let config = $state({
     downloadFolder: '',
@@ -38,9 +44,124 @@
     firstArtistOnly: false,
     autoQualityFallback: false,
     sourceOrder: ['tidal', 'qobuz'] as string[],
-    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
-    proxyUrl: ''
+    qualityOrder: ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'] as string[],
+    proxyUrl: '',
+    skipExisting: true,
+    artistSeparator: '; ',
+    playlistSubfolder: true,
+    countryCode: 'US',
+    fontFamily: '',
+    downloadQuality: 'LOSSLESS',
   });
+  let activeTab = $state('general');
+  let apiStatuses: any[] = $state([]);
+  let checkingAPI = $state(false);
+  let updateInfo: any = $state(null);
+  let checkingUpdate = $state(false);
+  let ffmpegInfo: any = $state(null);
+  let installingFFmpeg = $state(false);
+  let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
+
+  const settingsTabs = [
+    { id: 'general', label: 'General' },
+    { id: 'sources', label: 'Sources' },
+    { id: 'metadata', label: 'Metadata' },
+    { id: 'appearance', label: 'Appearance' },
+    { id: 'advanced', label: 'Advanced' },
+  ];
+
+  const namingPresets = [
+    { name: 'Simple', template: '{artist} - {title}' },
+    { name: 'Title - Artist', template: '{title} - {artist}' },
+    { name: 'Numbered', template: '{track}. {title}' },
+    { name: 'Numbered with Artist', template: '{track}. {artist} - {title}' },
+    { name: 'Album Organized', template: '{track} - {title}' },
+    { name: 'Full (Artist/Album/Track)', template: '{artist}/{album}/{track} - {title}' },
+    { name: 'Full with Year', template: '{albumartist}/{album} ({year})/{track} - {title}' },
+    { name: 'Multi-disc', template: '{albumartist}/{album}/{discnumber}-{track} - {title}' },
+    { name: 'Date Organized', template: '{albumartist}/{album} [{date}]/{track}. {title}' },
+    { name: 'ISRC', template: '{isrc} - {title}' },
+  ];
+
+  const artistSeparators = [
+    { label: 'Semicolon (;)', value: '; ' },
+    { label: 'Comma (,)', value: ', ' },
+    { label: 'Slash (/)', value: ' / ' },
+    { label: 'Ampersand (&)', value: ' & ' },
+    { label: 'feat.', value: ' feat. ' },
+  ];
+
+  const countries = [
+    { code: 'US', name: 'United States' },
+    { code: 'GB', name: 'United Kingdom' },
+    { code: 'DE', name: 'Germany' },
+    { code: 'FR', name: 'France' },
+    { code: 'JP', name: 'Japan' },
+    { code: 'BR', name: 'Brazil' },
+    { code: 'AU', name: 'Australia' },
+    { code: 'CA', name: 'Canada' },
+    { code: 'SE', name: 'Sweden' },
+    { code: 'NO', name: 'Norway' },
+    { code: 'DK', name: 'Denmark' },
+    { code: 'NL', name: 'Netherlands' },
+    { code: 'ES', name: 'Spain' },
+    { code: 'IT', name: 'Italy' },
+    { code: 'PL', name: 'Poland' },
+    { code: 'KR', name: 'South Korea' },
+    { code: 'MX', name: 'Mexico' },
+    { code: 'AR', name: 'Argentina' },
+  ];
+
+  const fontOptions = [
+    { label: 'System Default', value: '' },
+    { label: 'Inter', value: 'Inter' },
+    { label: 'JetBrains Mono', value: 'JetBrains Mono' },
+    { label: 'Outfit', value: 'Outfit' },
+    { label: 'Geist', value: 'Geist' },
+  ];
+
+  async function checkAPI() {
+    checkingAPI = true;
+    try {
+      apiStatuses = await CheckAPIStatus();
+    } catch (e) {
+      console.error('API check failed:', e);
+    } finally {
+      checkingAPI = false;
+    }
+  }
+
+  async function checkUpdate() {
+    checkingUpdate = true;
+    try {
+      updateInfo = await CheckForUpdate();
+    } catch (e) {
+      console.error('Update check failed:', e);
+    } finally {
+      checkingUpdate = false;
+    }
+  }
+
+  async function openConfig() {
+    try {
+      await OpenConfigFolder();
+    } catch (e) {
+      console.error('Failed to open config folder:', e);
+    }
+  }
+
+  async function installFFmpegHandler() {
+    installingFFmpeg = true;
+    ffmpegProgress = { stage: 'downloading', percent: 0 };
+    try {
+      await InstallFFmpeg();
+    } catch (e) {
+      installingFFmpeg = false;
+      ffmpegProgress = { stage: 'error', percent: 0 };
+      console.error('FFmpeg install failed:', e);
+    }
+  }
+
   let isSaving = $state(false);
   let showResetConfirm = $state(false);
   let isResetting = $state(false);
@@ -62,8 +183,17 @@
     applyAccentColor(color);
   }
 
-  onMount(async () => {
-    await loadConfig();
+  onMount(() => {
+    loadConfig();
+    GetFFmpegInfo().then(info => { ffmpegInfo = info; });
+    EventsOn('ffmpeg-install-progress', (progress: any) => {
+      ffmpegProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
+      if (ffmpegProgress.stage === 'complete') {
+        installingFFmpeg = false;
+        GetFFmpegInfo().then(info => { ffmpegInfo = info; });
+      }
+    });
+    return () => EventsOff('ffmpeg-install-progress');
   });
 
   async function loadConfig() {
@@ -91,8 +221,14 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
-        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'];
         config.proxyUrl = result.proxyUrl || '';
+        config.skipExisting = result.skipExisting !== false;
+        config.artistSeparator = result.artistSeparator || '; ';
+        config.playlistSubfolder = result.playlistSubfolder !== false;
+        config.countryCode = result.countryCode || 'US';
+        config.fontFamily = result.fontFamily || '';
+        config.downloadQuality = result.downloadQuality || 'LOSSLESS';
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -162,7 +298,13 @@
         firstArtistOnly: config.firstArtistOnly,
         sourceOrder: config.sourceOrder,
         qualityOrder: config.qualityOrder,
-        proxyUrl: config.proxyUrl || ''
+        proxyUrl: config.proxyUrl || '',
+        skipExisting: config.skipExisting,
+        artistSeparator: config.artistSeparator,
+        playlistSubfolder: config.playlistSubfolder,
+        countryCode: config.countryCode,
+        fontFamily: config.fontFamily,
+        downloadQuality: config.downloadQuality,
       });
 
       // Save download options
@@ -207,7 +349,13 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
-        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'];
+        config.skipExisting = result.skipExisting !== false;
+        config.artistSeparator = result.artistSeparator || '; ';
+        config.playlistSubfolder = result.playlistSubfolder !== false;
+        config.countryCode = result.countryCode || 'US';
+        config.fontFamily = result.fontFamily || '';
+        config.downloadQuality = result.downloadQuality || 'LOSSLESS';
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
@@ -226,11 +374,435 @@
 <div class="settings-page">
   <div class="settings-header">
     <h1>Settings</h1>
-    <p class="subtitle">Configure FLACidal preferences</p>
+    <div class="tab-bar">
+      {#each settingsTabs as tab}
+        <button
+          class="tab-btn"
+          class:active={activeTab === tab.id}
+          onclick={() => activeTab = tab.id}
+        >{tab.label}</button>
+      {/each}
+    </div>
   </div>
 
   <div class="settings-sections">
-    <!-- Appearance Settings -->
+    <!-- ==================== GENERAL TAB ==================== -->
+    {#if activeTab === 'general'}
+
+    <!-- Download Settings -->
+    <section class="settings-section">
+      <h2>Downloads</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="download-folder">Download Folder</label>
+          <span class="setting-desc">Where your FLAC files will be saved</span>
+        </div>
+        <div class="setting-control folder-control">
+          <input
+            type="text"
+            id="download-folder"
+            bind:value={config.downloadFolder}
+            readonly
+            placeholder="Select a folder..."
+            class="folder-input"
+          />
+          <button class="browse-btn" onclick={selectFolder}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            Browse
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="concurrent">Concurrent Downloads</label>
+          <span class="setting-desc">Number of simultaneous downloads</span>
+        </div>
+        <div class="setting-control">
+          <select id="concurrent" bind:value={config.concurrentDownloads} class="select-input">
+            <option value={1}>1</option>
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+            <option value={4}>4</option>
+            <option value={6}>6</option>
+            <option value={8}>8</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="download-quality">Download Quality</label>
+          <span class="setting-desc">Preferred audio quality tier</span>
+        </div>
+        <div class="setting-control">
+          <select id="download-quality" bind:value={config.downloadQuality} class="select-input">
+            <option value="HI_RES_LOSSLESS">Hi-Res Lossless (24-bit/192kHz)</option>
+            <option value="HI_RES">Hi-Res (24-bit/96kHz)</option>
+            <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
+            <option value="HIGH">High (320kbps)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="skip-existing">Skip Existing Files</label>
+          <span class="setting-desc">Skip files already on disk (matched by ISRC tag)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.skipExisting} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-quality-fallback">Auto Quality Fallback</label>
+          <span class="setting-desc">Retry with lower quality when requested tier is unavailable</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoQualityFallback} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="skip-unavailable">Skip Unavailable Tracks</label>
+          <span class="setting-desc">Skip tracks not available for streaming</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="playlist-subfolder">Playlist Subfolder</label>
+          <span class="setting-desc">Create a subfolder for playlist downloads</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.playlistSubfolder} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="generate-m3u8">Generate M3U8 Playlist</label>
+          <span class="setting-desc">Create .m3u8 playlist after batch downloads</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.generateM3u8} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- File Naming -->
+    <section class="settings-section">
+      <h2>File Naming</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="naming-preset">Preset</label>
+          <span class="setting-desc">Quick-select a naming template</span>
+        </div>
+        <div class="setting-control">
+          <select
+            id="naming-preset"
+            class="select-input"
+            onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) config.fileNameFormat = v; }}
+          >
+            <option value="">Custom...</option>
+            {#each namingPresets as preset}
+              <option value={preset.template} selected={config.fileNameFormat === preset.template}>{preset.name}: {preset.template}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="file-naming">Template</label>
+          <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{discnumber}'}, {'{year}'}, {'{date}'}, {'{isrc}'}</span>
+        </div>
+        <div class="setting-control wide">
+          <input
+            type="text"
+            id="file-naming"
+            bind:value={config.fileNameFormat}
+            class="text-input"
+            placeholder="{'{artist}'} - {'{title}'}"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- Quality Verification -->
+    <section class="settings-section">
+      <h2>Quality</h2>
+
+      <div class="setting-item order-setting">
+        <div class="setting-info">
+          <span class="setting-label">Quality Priority</span>
+          <span class="setting-desc">Order in which quality tiers are attempted</span>
+        </div>
+        <div class="order-list">
+          {#each config.qualityOrder as tier, i}
+            <div class="order-item">
+              <span class="order-label">{tier}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, -1)} disabled={i === 0}>&#8593;</button>
+                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, 1)} disabled={i === config.qualityOrder.length - 1}>&#8595;</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-analyze">Auto-analyze Downloads</label>
+          <span class="setting-desc">Detect upscaled files after download</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.autoAnalyze} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SOURCES TAB ==================== -->
+    {:else if activeTab === 'sources'}
+
+    <section class="settings-section">
+      <h2>Music Sources</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Tidal</label>
+          <span class="setting-desc">Download from Tidal (no account required)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.tidalEnabled} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Qobuz</label>
+          <span class="setting-desc">Download from Qobuz (requires credentials)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.qobuzEnabled} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      {#if config.qobuzEnabled}
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="qobuz-app-id">Qobuz App ID</label>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="qobuz-app-id" bind:value={config.qobuzAppId} placeholder="Enter App ID..." class="text-input" />
+          </div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="qobuz-app-secret">Qobuz App Secret</label>
+          </div>
+          <div class="setting-control">
+            <input type="password" id="qobuz-app-secret" bind:value={config.qobuzAppSecret} placeholder="Enter App Secret..." class="text-input" />
+          </div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="qobuz-auth-token">Qobuz Auth Token</label>
+          </div>
+          <div class="setting-control">
+            <input type="password" id="qobuz-auth-token" bind:value={config.qobuzAuthToken} placeholder="Enter Auth Token..." class="text-input" />
+          </div>
+        </div>
+      {/if}
+
+      <div class="setting-item order-setting">
+        <div class="setting-info">
+          <span class="setting-label">Source Priority</span>
+          <span class="setting-desc">First source is tried first for every download</span>
+        </div>
+        <div class="order-list">
+          {#each config.sourceOrder as source, i}
+            <div class="order-item">
+              <span class="order-label">{source === 'tidal' ? 'Tidal' : 'Qobuz'}</span>
+              <div class="order-btns">
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, -1)} disabled={i === 0}>&#8593;</button>
+                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, 1)} disabled={i === config.sourceOrder.length - 1}>&#8595;</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="country-code">Region</label>
+          <span class="setting-desc">Country code for Tidal API (affects availability)</span>
+        </div>
+        <div class="setting-control">
+          <select id="country-code" bind:value={config.countryCode} class="select-input">
+            {#each countries as c}
+              <option value={c.code}>{c.name} ({c.code})</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Status -->
+    <section class="settings-section">
+      <h2>API Status</h2>
+      <div class="api-status-header">
+        <button class="action-btn" onclick={checkAPI} disabled={checkingAPI}>
+          {checkingAPI ? 'Checking...' : 'Check Status'}
+        </button>
+      </div>
+      {#if apiStatuses.length > 0}
+        <div class="api-status-list">
+          {#each apiStatuses as ep}
+            <div class="api-status-item">
+              <span class="api-name">{ep.name}</span>
+              <span class="api-indicator" class:online={ep.status === 'online'} class:offline={ep.status === 'offline'} class:slow={ep.status === 'slow'}>
+                {ep.status} ({ep.latencyMs}ms)
+              </span>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <!-- ==================== METADATA TAB ==================== -->
+    {:else if activeTab === 'metadata'}
+
+    <section class="settings-section">
+      <h2>Cover Art</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Embed Cover Art</label>
+          <span class="setting-desc">Include album artwork in FLAC files</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.embedCover} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Save Cover as File</label>
+          <span class="setting-desc">Save album artwork as .jpg next to each track</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.saveCoverFile} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>Tags</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>First Artist Only</label>
+          <span class="setting-desc">Use only the primary artist in tags and filenames</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.firstArtistOnly} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="artist-separator">Artist Separator</label>
+          <span class="setting-desc">How multiple artists are joined in tags and filenames</span>
+        </div>
+        <div class="setting-control">
+          <select id="artist-separator" bind:value={config.artistSeparator} class="select-input">
+            {#each artistSeparators as sep}
+              <option value={sep.value}>{sep.label}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>Lyrics</h2>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Auto-fetch Lyrics</label>
+          <span class="setting-desc">Automatically fetch and embed lyrics during download</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.embedLyrics} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      {#if config.embedLyrics}
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Prefer Synced Lyrics</label>
+            <span class="setting-desc">Prioritize time-synced (LRC) lyrics</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      {/if}
+    </section>
+
+    <!-- ==================== APPEARANCE TAB ==================== -->
+    {:else if activeTab === 'appearance'}
+
     <section class="settings-section">
       <h2>Appearance</h2>
 
@@ -304,359 +876,32 @@
           </div>
         </div>
       {/if}
-    </section>
-
-    <!-- Download Settings -->
-    <section class="settings-section">
-      <h2>Downloads</h2>
 
       <div class="setting-item">
         <div class="setting-info">
-          <label for="download-folder">Download Folder</label>
-          <span class="setting-desc">Where your FLAC files will be saved</span>
-        </div>
-        <div class="setting-control folder-control">
-          <input
-            type="text"
-            id="download-folder"
-            bind:value={config.downloadFolder}
-            readonly
-            placeholder="Select a folder..."
-            class="folder-input"
-          />
-          <button class="browse-btn" onclick={selectFolder}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            Browse
-          </button>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="concurrent">Concurrent Downloads</label>
-          <span class="setting-desc">Number of simultaneous downloads</span>
+          <label for="font-family">Font</label>
+          <span class="setting-desc">Choose the UI font</span>
         </div>
         <div class="setting-control">
-          <select id="concurrent" bind:value={config.concurrentDownloads} class="select-input">
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-            <option value={4}>4</option>
-            <option value={6}>6</option>
-            <option value={8}>8</option>
+          <select id="font-family" bind:value={config.fontFamily} class="select-input">
+            {#each fontOptions as font}
+              <option value={font.value}>{font.label}</option>
+            {/each}
           </select>
         </div>
       </div>
     </section>
 
-    <!-- Metadata Settings -->
-    <section class="settings-section">
-      <h2>Metadata</h2>
+    <!-- ==================== ADVANCED TAB ==================== -->
+    {:else if activeTab === 'advanced'}
 
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="embed-cover">Embed Cover Art</label>
-          <span class="setting-desc">Include album artwork in FLAC files</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.embedCover} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="save-cover-file">Save Cover as File</label>
-          <span class="setting-desc">Save album artwork as .jpg file next to each track (for iPod compatibility)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.saveCoverFile} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="file-naming">File Naming</label>
-          <span class="setting-desc">Template for downloaded file names</span>
-        </div>
-        <div class="setting-control">
-          <select id="file-naming" bind:value={config.fileNameFormat} class="select-input">
-            <option value={'{artist} - {title}'}>{'{artist} - {title}'}</option>
-            <option value={'{title} - {artist}'}>{'{title} - {artist}'}</option>
-            <option value={'{track}. {title}'}>{'{track}. {title}'}</option>
-            <option value={'{track}. {artist} - {title}'}>{'{track}. {artist} - {title}'}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="first-artist-only">First Artist Only</label>
-          <span class="setting-desc">For multi-artist tracks, use only the primary artist in tags and filenames (e.g. "Artist A" instead of "Artist A, Artist B")</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" id="first-artist-only" bind:checked={config.firstArtistOnly} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quality Verification Settings -->
-    <section class="settings-section">
-      <h2>Quality Verification</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="auto-quality-fallback">Auto Quality Fallback</label>
-          <span class="setting-desc">Retry with lower quality (HI_RES → LOSSLESS → HIGH) when the requested tier is unavailable</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.autoQualityFallback} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item order-setting">
-        <div class="setting-info">
-          <span class="setting-label">Quality Priority</span>
-          <span class="setting-desc">Order in which quality tiers are attempted (top = preferred)</span>
-        </div>
-        <div class="order-list">
-          {#each config.qualityOrder as tier, i}
-            <div class="order-item">
-              <span class="order-label">{tier}</span>
-              <div class="order-btns">
-                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
-                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, 1)} disabled={i === config.qualityOrder.length - 1} aria-label="Move down">↓</button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="auto-analyze">Auto-analyze Downloads</label>
-          <span class="setting-desc">Automatically analyze quality after download to detect upscaled files</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.autoAnalyze} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="quality-info">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>When enabled, downloaded files are analyzed to detect if they may be upscaled from lossy sources. Quality warnings will appear in the Terminal log.</span>
-      </div>
-    </section>
-
-    <!-- Playlist Generation Settings -->
-    <section class="settings-section">
-      <h2>Playlist Generation</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="generate-m3u8">Generate M3U8 Playlist</label>
-          <span class="setting-desc">Create a .m3u8 playlist file after batch downloads complete</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.generateM3u8} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="skip-unavailable">Skip Unavailable Tracks</label>
-          <span class="setting-desc">Automatically skip tracks not available for streaming in your region</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- Lyrics Settings -->
-    <section class="settings-section">
-      <h2>Lyrics</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="embed-lyrics">Auto-fetch Lyrics</label>
-          <span class="setting-desc">Automatically fetch and embed lyrics during download</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.embedLyrics} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      {#if config.embedLyrics}
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="prefer-synced">Prefer Synced Lyrics</label>
-            <span class="setting-desc">Prioritize time-synced (LRC) lyrics when available</span>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      {/if}
-
-      <div class="lyrics-info">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>Lyrics are fetched from LRCLIB. You can also manually fetch lyrics from the Files page.</span>
-      </div>
-    </section>
-
-    <!-- Sources Settings -->
-    <section class="settings-section">
-      <h2>Music Sources</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="tidal-enabled">Tidal</label>
-          <span class="setting-desc">Download from Tidal (no account required)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.tidalEnabled} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="qobuz-enabled">Qobuz</label>
-          <span class="setting-desc">Download from Qobuz (requires credentials)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.qobuzEnabled} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      {#if config.qobuzEnabled}
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-app-id">Qobuz App ID</label>
-            <span class="setting-desc">Your Qobuz application ID</span>
-          </div>
-          <div class="setting-control">
-            <input
-              type="text"
-              id="qobuz-app-id"
-              bind:value={config.qobuzAppId}
-              placeholder="Enter App ID..."
-              class="text-input"
-            />
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-app-secret">Qobuz App Secret</label>
-            <span class="setting-desc">Your Qobuz application secret</span>
-          </div>
-          <div class="setting-control">
-            <input
-              type="password"
-              id="qobuz-app-secret"
-              bind:value={config.qobuzAppSecret}
-              placeholder="Enter App Secret..."
-              class="text-input"
-            />
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-auth-token">Qobuz Auth Token</label>
-            <span class="setting-desc">Your Qobuz user authentication token</span>
-          </div>
-          <div class="setting-control">
-            <input
-              type="password"
-              id="qobuz-auth-token"
-              bind:value={config.qobuzAuthToken}
-              placeholder="Enter Auth Token..."
-              class="text-input"
-            />
-          </div>
-        </div>
-      {/if}
-
-      <div class="setting-item order-setting">
-        <div class="setting-info">
-          <span class="setting-label">Source Priority</span>
-          <span class="setting-desc">Drag or reorder — first source is tried first for every download</span>
-        </div>
-        <div class="order-list">
-          {#each config.sourceOrder as source, i}
-            <div class="order-item">
-              <span class="order-label">{source === 'tidal' ? 'Tidal' : 'Qobuz'}</span>
-              <div class="order-btns">
-                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
-                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, 1)} disabled={i === config.sourceOrder.length - 1} aria-label="Move down">↓</button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-
-      <div class="source-info">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>The source is automatically detected from the URL you paste. Tidal works without login.</span>
-      </div>
-    </section>
-
-    <!-- Network Section -->
     <section class="settings-section">
       <h2>Network</h2>
 
       <div class="setting-item">
-        <div class="setting-label">
-          <span>HTTP / SOCKS5 Proxy</span>
-          <span class="setting-desc">Route all requests through a proxy — useful in restricted regions. Supports <code>http://</code>, <code>https://</code>, and <code>socks5://</code> URLs. Leave empty to disable.</span>
+        <div class="setting-info">
+          <span class="setting-label">HTTP / SOCKS5 Proxy</span>
+          <span class="setting-desc">Route all requests through a proxy. Supports http://, https://, and socks5:// URLs.</span>
         </div>
         <div class="setting-control wide">
           <input
@@ -669,7 +914,70 @@
       </div>
     </section>
 
-    <!-- About Section -->
+    <section class="settings-section">
+      <h2>Data</h2>
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Config Folder</span>
+          <span class="setting-desc">Open the app's configuration directory</span>
+        </div>
+        <div class="setting-control">
+          <button class="action-btn" onclick={openConfig}>Open Folder</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>FFmpeg</h2>
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">FFmpeg Status</span>
+          <span class="setting-desc">Required for audio conversion (FLAC to MP3, AAC, etc.)</span>
+        </div>
+        <div class="setting-control">
+          {#if ffmpegInfo?.available}
+            <span class="ffmpeg-status installed">Installed</span>
+          {:else}
+            <span class="ffmpeg-status missing">Not Found</span>
+          {/if}
+        </div>
+      </div>
+
+      {#if ffmpegInfo?.available}
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Version</span>
+            <span class="setting-desc ffmpeg-version">{ffmpegInfo.version || 'Unknown'}</span>
+          </div>
+        </div>
+      {:else}
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Auto Install</span>
+            <span class="setting-desc">Download a static FFmpeg build to ~/.flacidal/bin/</span>
+          </div>
+          <div class="setting-control">
+            {#if installingFFmpeg}
+              <div class="ffmpeg-progress">
+                <div class="ffmpeg-progress-bar">
+                  <div class="ffmpeg-progress-fill" style="width: {ffmpegProgress.percent}%"></div>
+                </div>
+                <span class="ffmpeg-progress-text">
+                  {ffmpegProgress.stage === 'downloading' ? `Downloading... ${Math.round(ffmpegProgress.percent)}%` : ''}
+                  {ffmpegProgress.stage === 'extracting' ? 'Extracting...' : ''}
+                  {ffmpegProgress.stage === 'complete' ? 'Done!' : ''}
+                  {ffmpegProgress.stage === 'error' ? 'Failed' : ''}
+                </span>
+              </div>
+            {:else}
+              <button class="action-btn primary" onclick={installFFmpegHandler}>Install FFmpeg</button>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    </section>
+
+    <!-- About & Updates -->
     <section class="settings-section about">
       <h2>About</h2>
       <div class="about-content">
@@ -688,9 +996,26 @@
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
+        <div class="update-check">
+          <button class="action-btn" onclick={checkUpdate} disabled={checkingUpdate}>
+            {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+          </button>
+          {#if updateInfo}
+            {#if updateInfo.hasUpdate}
+              <span class="update-available">Update available: v{updateInfo.version} - <a href={updateInfo.releaseUrl} target="_blank" rel="noopener">View Release</a></span>
+            {:else}
+              <span class="update-current">You're up to date!</span>
+            {/if}
+          {/if}
+        </div>
       </div>
     </section>
+
+    {/if}
+    <!-- End of tab content -->
+    <!-- End settings-sections: old duplicate removed -->
   </div>
+  
 
   <div class="settings-footer">
     <button
@@ -761,6 +1086,194 @@
 
   .settings-header {
     margin-bottom: 32px;
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-top: 16px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0;
+  }
+
+  .tab-btn {
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: -1px;
+  }
+
+  .tab-btn:hover {
+    color: var(--color-text-primary);
+  }
+
+  .tab-btn.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+  }
+
+  .action-btn {
+    padding: 8px 16px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .api-status-header {
+    margin-bottom: 16px;
+  }
+
+  .api-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+  }
+
+  .api-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .api-indicator {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 12px;
+  }
+
+  .api-indicator.online {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .api-indicator.offline {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .api-indicator.slow {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .update-check {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .update-available {
+    color: var(--color-accent);
+    font-size: 14px;
+  }
+
+  .update-available a {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  .update-current {
+    color: #10b981;
+    font-size: 14px;
+  }
+
+  .ffmpeg-status {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+  }
+
+  .ffmpeg-status.installed {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .ffmpeg-status.missing {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .ffmpeg-version {
+    font-family: monospace;
+    font-size: 12px !important;
+  }
+
+  .ffmpeg-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+  }
+
+  .ffmpeg-progress-bar {
+    height: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .ffmpeg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f472b6, #a855f7);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+
+  .ffmpeg-progress-text {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  .action-btn.primary {
+    background: rgba(244, 114, 182, 0.15);
+    border-color: rgba(244, 114, 182, 0.3);
+    color: #f472b6;
+  }
+
+  .action-btn.primary:hover {
+    background: rgba(244, 114, 182, 0.25);
+  }
+
+  .setting-control.wide {
+    flex: 1;
+    max-width: 350px;
+    margin-left: 24px;
+  }
+
+  .setting-control.wide .text-input {
+    width: 100%;
   }
 
   .settings-header h1 {
