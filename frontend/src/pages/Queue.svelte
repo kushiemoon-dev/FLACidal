@@ -1,6 +1,9 @@
 <script lang="ts">
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
   import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/main/App.js';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
+
+  let showClearAllConfirm = $state(false);
 
   let queue = $derived($queueStore);
   let folder = $derived($downloadFolder);
@@ -92,6 +95,7 @@
   }
 
   let statusFilter = $state('all');
+  let sortMode = $state<'default' | 'status'>('default');
 
   const filters: { value: string; label: string }[] = [
     { value: 'all',        label: 'All' },
@@ -102,15 +106,35 @@
     { value: 'cancelled',  label: 'Cancelled' },
   ];
 
-  const filteredItems = $derived(
-    statusFilter === 'all'
+  const statusPriority: Record<string, number> = {
+    error: 0,
+    downloading: 1,
+    pending: 2,
+    queued: 2,
+    cancelled: 3,
+    completed: 4,
+  };
+
+  const filteredItems = $derived.by(() => {
+    const filtered = statusFilter === 'all'
       ? $queueItems
       : $queueItems.filter(item =>
           statusFilter === 'queued'
             ? item.status === 'pending' || item.status === 'queued'
             : item.status === statusFilter
-        )
-  );
+        );
+    if (sortMode === 'status') {
+      return [...filtered].sort((a, b) =>
+        (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99)
+      );
+    }
+    return filtered;
+  });
+
+  async function cleanAndRetry() {
+    clearCompleted();
+    await retryAllFailedDownloads();
+  }
 </script>
 
 <div class="queue-page">
@@ -166,6 +190,18 @@
           Pause
         {/if}
       </button>
+      <button
+        class="action-btn clean-retry"
+        onclick={cleanAndRetry}
+        disabled={$queueStats.completed === 0 && $queueStats.failed === 0}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2v6h-6"/>
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Clean &amp; Retry
+      </button>
       <button class="action-btn retry-all" onclick={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 2v6h-6"/>
@@ -197,7 +233,7 @@
         </svg>
         Clear Failed
       </button>
-      <button class="action-btn danger" onclick={clearAll} disabled={$queueStats.total === 0}>
+      <button class="action-btn danger" onclick={() => showClearAllConfirm = true} disabled={$queueStats.total === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -210,13 +246,22 @@
 
   {#if $queueItems.length > 0}
     <div class="filter-bar">
-      {#each filters as f}
-        <button
-          class="filter-btn"
-          class:active={statusFilter === f.value}
-          onclick={() => statusFilter = f.value}
-        >{f.label}</button>
-      {/each}
+      <div class="filter-pills">
+        {#each filters as f}
+          <button
+            class="filter-btn"
+            class:active={statusFilter === f.value}
+            onclick={() => statusFilter = f.value}
+          >{f.label}</button>
+        {/each}
+      </div>
+      <select
+        class="sort-select"
+        bind:value={sortMode}
+      >
+        <option value="default">Default order</option>
+        <option value="status">Sort by status</option>
+      </select>
     </div>
   {/if}
 
@@ -319,6 +364,17 @@
     </div>
   {/if}
 </div>
+
+{#if showClearAllConfirm}
+  <ConfirmDialog
+    title="Clear All Downloads"
+    message="Are you sure you want to clear all items from the queue?"
+    confirmText="Clear All"
+    variant="danger"
+    onConfirm={() => { clearAll(); showClearAllConfirm = false; }}
+    onCancel={() => showClearAllConfirm = false}
+  />
+{/if}
 
 <style>
   .queue-page {
@@ -639,12 +695,54 @@
     color: #f59e0b;
   }
 
+  .action-btn.clean-retry:not(:disabled) {
+    background: linear-gradient(135deg, #f472b6, #a855f7);
+    border-color: transparent;
+    color: #000;
+    font-weight: 600;
+  }
+
+  .action-btn.clean-retry:hover:not(:disabled) {
+    opacity: 0.9;
+    background: linear-gradient(135deg, #f472b6, #a855f7);
+    border-color: transparent;
+    color: #000;
+  }
+
   /* Filter bar */
   .filter-bar {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-bottom: 16px;
     flex-wrap: wrap;
+  }
+
+  .filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sort-select {
+    padding: 6px 12px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: none;
+  }
+
+  .sort-select:hover {
+    border-color: var(--color-accent);
+  }
+
+  .sort-select:focus {
+    border-color: var(--color-accent);
   }
 
   .filter-btn {

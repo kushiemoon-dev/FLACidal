@@ -168,10 +168,14 @@ export interface TidalTrack {
   title: string;
   artist: string;
   artists: string;
+  albumArtist?: string;
   album: string;
   albumId: number;
   duration: number;
   trackNumber: number;
+  discNumber?: number;
+  totalDiscs?: number;
+  releaseDate?: string;
   isrc: string;
   coverUrl: string;
   explicit: boolean;

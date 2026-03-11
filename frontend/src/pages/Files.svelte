@@ -3,6 +3,7 @@
   import { downloadFolder } from '../stores/queue';
   import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../wailsjs/go/main/App.js';
   import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import MetadataModal from '../components/MetadataModal.svelte';
   import RenameModal from '../components/RenameModal.svelte';
   import ConvertModal from '../components/ConvertModal.svelte';
@@ -30,6 +31,7 @@
   let converterAvailable = $state(false);
   let isFetchingLyrics = $state(false);
   let lyricsResults: { success: number; failed: number } | null = $state(null);
+  let deleteConfirmPath: string | null = $state(null);
 
   let allSelected = $derived(files.length > 0 && selectedFiles.size === files.length);
   let someSelected = $derived(selectedFiles.size > 0);
@@ -202,8 +204,14 @@
     }
   }
 
-  async function deleteFileHandler(path: string) {
-    if (!confirm('Are you sure you want to delete this file?')) return;
+  function deleteFileHandler(path: string) {
+    deleteConfirmPath = path;
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmPath) return;
+    const path = deleteConfirmPath;
+    deleteConfirmPath = null;
 
     try {
       await DeleteFile(path);
@@ -536,6 +544,17 @@
   <AnalysisModal
     files={analysisFileList}
     onClose={() => { showAnalysisModal = false; externalAnalysisFiles = []; }}
+  />
+{/if}
+
+{#if deleteConfirmPath}
+  <ConfirmDialog
+    title="Delete File"
+    message="Are you sure you want to delete this file? This cannot be undone."
+    confirmText="Delete"
+    variant="danger"
+    onConfirm={confirmDelete}
+    onCancel={() => deleteConfirmPath = null}
   />
 {/if}
 
