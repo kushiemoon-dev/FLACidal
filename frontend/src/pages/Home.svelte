@@ -16,6 +16,7 @@
     FetchContentFromURL,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import ContextMenu from '../components/ContextMenu.svelte';
 
   // Accept initial content from history refetch
   let { initialContent = null, onContentCleared = () => {} }: { initialContent?: any; onContentCleared?: () => void } = $props();
@@ -38,6 +39,39 @@
   let previewAudio: HTMLAudioElement | null = $state(null);
   let previewingTrackId: number | null = $state(null);
   let previewPlaying = $state(false);
+
+  // Context menu state
+  let contextMenu: { x: number; y: number; track: TidalTrack } | null = $state(null);
+
+  function showContextMenu(e: MouseEvent, track: TidalTrack) {
+    e.preventDefault();
+    contextMenu = { x: e.clientX, y: e.clientY, track };
+  }
+
+  function getContextMenuItems(track: TidalTrack) {
+    return [
+      { label: 'Download Track', icon: '\u2B07', action: () => downloadSingleTrack(track) },
+      { label: 'Copy Track URL', icon: '\uD83D\uDD17', action: () => navigator.clipboard.writeText(track.tidalUrl) },
+      { label: 'Copy ISRC', icon: '\uD83C\uDFAB', action: () => navigator.clipboard.writeText(track.isrc), disabled: !track.isrc },
+      { label: '', action: () => {}, divider: true },
+      { label: 'Open on Tidal', icon: '\uD83C\uDF10', action: () => {
+        if ((window as any).__wails?.BrowserOpenURL) {
+          (window as any).__wails.BrowserOpenURL(track.tidalUrl);
+        } else {
+          window.open(track.tidalUrl, '_blank');
+        }
+      }},
+    ];
+  }
+
+  // Pagination state
+  const tracksPerPage = 500;
+  let currentPage = $state(1);
+
+  // Reset page when content changes
+  $effect(() => {
+    if (content) currentPage = 1;
+  });
 
   function togglePreview(track: TidalTrack) {
     if (!previewAudio || !track.previewUrl) return;
@@ -281,6 +315,11 @@
     sortByPopularity
       ? [...(content?.tracks || [])].sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
       : (content?.tracks || [])
+  );
+
+  let totalPages = $derived(Math.max(1, Math.ceil(displayedTracks.length / tracksPerPage)));
+  let paginatedTracks = $derived(
+    displayedTracks.slice((currentPage - 1) * tracksPerPage, currentPage * tracksPerPage)
   );
 
   let filteredAlbums = $derived(() => {
@@ -566,10 +605,10 @@
 
         <!-- Track List -->
         <div class="tracks-container">
-          {#each displayedTracks as track, i}
+          {#each paginatedTracks as track, i}
             {@const status = trackStatuses[track.id]}
-            <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false}>
-              <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
+            <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false} oncontextmenu={(e) => showContextMenu(e, track)}>
+              <span class="track-num">{String((currentPage - 1) * tracksPerPage + i + 1).padStart(2, '0')}</span>
               <div class="track-details">
                 <div class="title-row">
                   <span class="track-title">{track.title}</span>
@@ -648,6 +687,22 @@
           {/each}
         </div>
 
+        {#if displayedTracks.length > tracksPerPage}
+          <div class="pagination-controls">
+            <button
+              class="btn-secondary pagination-btn"
+              onclick={() => currentPage = Math.max(1, currentPage - 1)}
+              disabled={currentPage <= 1}
+            >Previous</button>
+            <span class="pagination-info">Page {currentPage} of {totalPages}</span>
+            <button
+              class="btn-secondary pagination-btn"
+              onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+              disabled={currentPage >= totalPages}
+            >Next</button>
+          </div>
+        {/if}
+
         <!-- Download Section -->
         <div class="download-section">
           {#if stats.total > 0}
@@ -700,6 +755,15 @@
     </div>
   {/if}
 </div>
+
+{#if contextMenu}
+  <ContextMenu
+    items={getContextMenuItems(contextMenu.track)}
+    x={contextMenu.x}
+    y={contextMenu.y}
+    onClose={() => contextMenu = null}
+  />
+{/if}
 
 <style>
   .home-page {
@@ -1462,5 +1526,30 @@
     border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
     flex-shrink: 0;
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 24px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .pagination-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+
+  .pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pagination-info {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
   }
 </style>

@@ -18,6 +18,14 @@ export function CancelDownload(arg1) {
   return window['go']['main']['App']['CancelDownload'](arg1);
 }
 
+export function CheckAPIStatus() {
+  return window['go']['main']['App']['CheckAPIStatus']();
+}
+
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function ClearDownloadHistory() {
   return window['go']['main']['App']['ClearDownloadHistory']();
 }
@@ -28,6 +36,10 @@ export function ClearLogs() {
 
 export function ConvertFiles(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ConvertFiles'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function ConvertFolder(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ConvertFolder'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function DeleteFile(arg1) {
@@ -138,6 +150,10 @@ export function GetFFmpegInfo() {
   return window['go']['main']['App']['GetFFmpegInfo']();
 }
 
+export function GetFFmpegInstallStatus() {
+  return window['go']['main']['App']['GetFFmpegInstallStatus']();
+}
+
 export function GetFileCoverArt(arg1) {
   return window['go']['main']['App']['GetFileCoverArt'](arg1);
 }
@@ -174,6 +190,10 @@ export function GetSourceTrack(arg1, arg2) {
   return window['go']['main']['App']['GetSourceTrack'](arg1, arg2);
 }
 
+export function InstallFFmpeg() {
+  return window['go']['main']['App']['InstallFFmpeg']();
+}
+
 export function IsConverterAvailable() {
   return window['go']['main']['App']['IsConverterAvailable']();
 }
@@ -200,6 +220,10 @@ export function MatchPlaylistTracks(arg1) {
 
 export function MatchSingleTrack(arg1) {
   return window['go']['main']['App']['MatchSingleTrack'](arg1);
+}
+
+export function OpenConfigFolder() {
+  return window['go']['main']['App']['OpenConfigFolder']();
 }
 
 export function OpenDownloadFolder(arg1) {

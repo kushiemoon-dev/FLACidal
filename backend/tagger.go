@@ -20,9 +20,12 @@ type FLACTagger struct {
 type TrackMetadata struct {
 	Title       string
 	Artist      string
+	AlbumArtist string
 	Album       string
 	TrackNumber int
 	TotalTracks int
+	DiscNumber  int
+	TotalDiscs  int
 	Year        string
 	Genre       string
 	ISRC        string
@@ -182,6 +185,15 @@ func (t *FLACTagger) createVorbisComment(meta TrackMetadata) []byte {
 	}
 	if meta.Genre != "" {
 		comments = append(comments, fmt.Sprintf("GENRE=%s", meta.Genre))
+	}
+	if meta.AlbumArtist != "" {
+		comments = append(comments, fmt.Sprintf("ALBUMARTIST=%s", meta.AlbumArtist))
+	}
+	if meta.DiscNumber > 0 {
+		comments = append(comments, fmt.Sprintf("DISCNUMBER=%d", meta.DiscNumber))
+	}
+	if meta.TotalDiscs > 0 {
+		comments = append(comments, fmt.Sprintf("DISCTOTAL=%d", meta.TotalDiscs))
 	}
 	if meta.ISRC != "" {
 		comments = append(comments, fmt.Sprintf("ISRC=%s", meta.ISRC))
@@ -395,6 +407,34 @@ func (t *FLACTagger) rebuildWithLyrics(data []byte, meta TrackMetadata) ([]byte,
 	result.Write(audioData)
 
 	return result.Bytes(), nil
+}
+
+// ReadISRC reads the ISRC tag from an existing FLAC file.
+// Returns empty string if no ISRC is found.
+func ReadISRC(filePath string) (string, error) {
+	meta, err := ReadFLACMetadata(filePath)
+	if err != nil {
+		return "", err
+	}
+	return meta.ISRC, nil
+}
+
+// ScanFolderISRCs scans a directory for .flac files and returns a map of ISRC → file path.
+// Only files with a non-empty ISRC tag are included.
+func ScanFolderISRCs(folder string) (map[string]string, error) {
+	isrcMap := make(map[string]string)
+	files, err := ListFLACFiles(folder)
+	if err != nil {
+		return isrcMap, err
+	}
+	for _, f := range files {
+		isrc, err := ReadISRC(f.Path)
+		if err != nil || isrc == "" {
+			continue
+		}
+		isrcMap[isrc] = f.Path
+	}
+	return isrcMap, nil
 }
 
 // DownloadCover downloads cover art to a file
