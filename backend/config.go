@@ -57,9 +57,9 @@ type Config struct {
 	SkipUnavailableTracks bool `json:"skipUnavailableTracks"` // Skip tracks not available for streaming
 
 	// Metadata formatting
-	FirstArtistOnly  bool   `json:"firstArtistOnly"`            // Use only the first artist in tags and filenames
-	ArtistSeparator  string `json:"artistSeparator,omitempty"`  // Separator for multiple artists (default "; ")
-	PlaylistSubfolder bool  `json:"playlistSubfolder"`          // Create subfolder for playlist downloads
+	FirstArtistOnly   bool   `json:"firstArtistOnly"`           // Use only the first artist in tags and filenames
+	ArtistSeparator   string `json:"artistSeparator,omitempty"` // Separator for multiple artists (default "; ")
+	PlaylistSubfolder bool   `json:"playlistSubfolder"`         // Create subfolder for playlist downloads
 
 	// Smart skip
 	SkipExisting bool `json:"skipExisting"` // Skip downloading files that already exist (ISRC match)
