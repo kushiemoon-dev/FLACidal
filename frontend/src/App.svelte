@@ -43,6 +43,10 @@
       initializeAccentColor(config?.accentColor || '#f472b6');
       // Initialize audio settings
       initializeAudioSettings(config?.soundEffects || false, config?.soundVolume || 70);
+      // Apply custom font family
+      if (config?.fontFamily) {
+        document.documentElement.style.setProperty('--font-family', config.fontFamily);
+      }
     } catch {
       themeStore.initialize('system');
       initializeAccentColor('#f472b6');
@@ -196,7 +200,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
-    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-family, 'Outfit', system-ui, -apple-system, sans-serif);
     background: var(--color-bg-void);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;

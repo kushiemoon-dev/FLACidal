@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"os"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -10,6 +12,15 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+func init() {
+	// Fix WebKit/JSC signal handler conflict on Linux that causes SIGSEGV crashes.
+	// WebKit's JavaScriptCore uses SIGUSR1 (signal 10) for GC by default, which
+	// conflicts with Go's signal handling. Redirect to SIGUSR2 (signal 12).
+	if runtime.GOOS == "linux" {
+		os.Setenv("JSC_SIGNAL_FOR_GC", "12")
+	}
+}
 
 func main() {
 	// Create an instance of the app structure

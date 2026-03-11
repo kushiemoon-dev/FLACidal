@@ -107,6 +107,14 @@ func NewConverter() (*Converter, error) {
 		}
 	}
 
+	// Check app-local installation
+	if ffmpegPath == "" {
+		localPath := GetLocalFFmpegPath()
+		if _, err := os.Stat(localPath); err == nil {
+			ffmpegPath = localPath
+		}
+	}
+
 	if ffmpegPath == "" {
 		return nil, fmt.Errorf("FFmpeg not found")
 	}
@@ -280,6 +288,11 @@ func GetConverter() *Converter {
 		globalConverter, _ = NewConverter()
 	}
 	return globalConverter
+}
+
+// ResetConverter resets the global converter so it gets re-detected
+func ResetConverter() {
+	globalConverter = nil
 }
 
 // IsConverterAvailable checks if FFmpeg is available

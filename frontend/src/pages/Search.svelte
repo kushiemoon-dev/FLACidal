@@ -6,6 +6,37 @@
   let searchResults: TidalTrack[] = [];
   let isSearching = false;
   let hasSearched = false;
+  let filterText = $state('');
+  let filterTimeout: ReturnType<typeof setTimeout> | undefined;
+  let debouncedFilter = $state('');
+
+  function onFilterInput(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    filterText = value;
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+      debouncedFilter = value;
+    }, 300);
+  }
+
+  function clearFilter() {
+    filterText = '';
+    debouncedFilter = '';
+    clearTimeout(filterTimeout);
+  }
+
+  const filteredResults = $derived(
+    debouncedFilter.trim() === ''
+      ? searchResults
+      : searchResults.filter(track => {
+          const q = debouncedFilter.toLowerCase();
+          return (
+            track.title.toLowerCase().includes(q) ||
+            track.artists.toLowerCase().includes(q) ||
+            track.album.toLowerCase().includes(q)
+          );
+        })
+  );
 
   async function handleSearch() {
     if (!searchQuery.trim()) return;
@@ -61,7 +92,7 @@
   }
 
   async function downloadAll() {
-    for (const track of searchResults) {
+    for (const track of filteredResults) {
       await downloadTrack(track);
     }
   }
@@ -115,7 +146,7 @@
     </div>
   {:else if searchResults.length > 0}
     <div class="results-header">
-      <span class="results-count">{searchResults.length} results</span>
+      <span class="results-count">{filteredResults.length} of {searchResults.length} results</span>
       <button class="download-all-btn" onclick={downloadAll}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -126,8 +157,29 @@
       </button>
     </div>
 
+    <div class="filter-input-wrapper">
+      <svg class="filter-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+      </svg>
+      <input
+        type="text"
+        value={filterText}
+        oninput={onFilterInput}
+        placeholder="Filter by artist, album, or title..."
+        class="filter-input"
+      />
+      {#if filterText}
+        <button class="filter-clear-btn" onclick={clearFilter} title="Clear filter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      {/if}
+    </div>
+
     <div class="results-list">
-      {#each searchResults as track, i}
+      {#each filteredResults as track, i}
         <div class="track-row">
           <span class="track-num">{i + 1}</span>
           <img
@@ -334,6 +386,61 @@
 
   .download-all-btn:hover {
     background: rgba(244, 114, 182, 0.25);
+  }
+
+  .filter-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .filter-input-wrapper:focus-within {
+    border-color: var(--color-accent);
+  }
+
+  .filter-icon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .filter-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    padding: 4px 0;
+  }
+
+  .filter-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .filter-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .filter-clear-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--color-text-primary);
   }
 
   .results-list {

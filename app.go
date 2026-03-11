@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"flacidal/backend"
 
@@ -66,6 +70,7 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize Tidal client (uses internal credentials, no user config needed)
 	a.tidalClient = backend.NewTidalClientDefault()
+	a.tidalClient.SetCountryCode(config.CountryCode)
 	if config.ProxyURL != "" {
 		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
 			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
@@ -114,11 +119,35 @@ func (a *App) startup(ctx context.Context) {
 		AutoQualityFallback:  config.AutoQualityFallback,
 		QualityFallbackOrder: config.QualityOrder,
 		FirstArtistOnly:      config.FirstArtistOnly,
+		SkipExisting:         config.SkipExisting,
+		ArtistSeparator:      config.ArtistSeparator,
+		PlaylistSubfolder:    config.PlaylistSubfolder,
 	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
 	// Initialize download manager with 4 concurrent workers
 	a.downloadManager = backend.NewDownloadManager(a.downloader, 4)
+
+	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
+	// Events are queued and emitted one at a time from a dedicated goroutine.
+	type progressEvent struct {
+		trackID int
+		status  string
+		result  *backend.DownloadResult
+	}
+	eventCh := make(chan progressEvent, 64)
+	go func() {
+		for ev := range eventCh {
+			runtime.EventsEmit(ctx, "download-progress", map[string]interface{}{
+				"trackId": ev.trackID,
+				"status":  ev.status,
+				"result":  ev.result,
+			})
+			// Small delay between events to let WebKit/GTK process JS
+			time.Sleep(50 * time.Millisecond)
+		}
+	}()
+
 	a.downloadManager.SetProgressCallback(func(trackID int, status string, result *backend.DownloadResult) {
 		// Log download events
 		if a.logBuffer != nil {
@@ -130,12 +159,10 @@ func (a *App) startup(ctx context.Context) {
 			case "completed":
 				if result != nil {
 					a.logBuffer.Success(fmt.Sprintf("Downloaded: %s (quality: %s)", result.FilePath, result.Quality))
-					// Log quality mismatch warning
 					if result.QualityMismatch {
 						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch: requested %s but got %s",
 							result.RequestedQuality, result.Quality))
 					}
-					// Log auto-analysis results
 					if result.Analysis != nil {
 						if result.Analysis.IsTrueLossless {
 							a.logBuffer.Info(fmt.Sprintf("Analysis: %s - True lossless", result.Analysis.VerdictLabel))
@@ -169,12 +196,12 @@ func (a *App) startup(ctx context.Context) {
 			}
 		}
 
-		// Emit event to frontend
-		runtime.EventsEmit(ctx, "download-progress", map[string]interface{}{
-			"trackId": trackID,
-			"status":  status,
-			"result":  result,
-		})
+		// Queue event for serialized emission (non-blocking)
+		select {
+		case eventCh <- progressEvent{trackID, status, result}:
+		default:
+			// Channel full — drop event rather than block workers
+		}
 	})
 	a.downloadManager.Start()
 	a.logBuffer.Success("Download manager started (4 workers)")
@@ -272,6 +299,19 @@ func (a *App) SaveConfig(config backend.Config) error {
 		opts.AutoQualityFallback = config.AutoQualityFallback
 		opts.QualityFallbackOrder = config.QualityOrder
 		opts.FirstArtistOnly = config.FirstArtistOnly
+		opts.SkipExisting = config.SkipExisting
+		opts.ArtistSeparator = config.ArtistSeparator
+		opts.PlaylistSubfolder = config.PlaylistSubfolder
+		if config.DownloadQuality != "" {
+			opts.Quality = config.DownloadQuality
+		}
+		if config.FileNameFormat != "" {
+			opts.FileNameFormat = config.FileNameFormat
+		}
+		opts.OrganizeFolders = config.OrganizeFolders
+		opts.EmbedCover = config.EmbedCover
+		opts.SaveCoverFile = config.SaveCoverFile
+		opts.AutoAnalyze = config.AutoAnalyze
 		a.downloader.SetOptions(opts)
 	}
 	if a.downloadManager != nil {
@@ -323,6 +363,88 @@ func (a *App) GetConnectionStatus() map[string]interface{} {
 	return map[string]interface{}{
 		"tidalReady":    true, // Always ready (uses internal credentials)
 		"spotifySearch": a.spotifySearch != nil,
+	}
+}
+
+// EndpointStatus represents the status of an API endpoint
+type EndpointStatus struct {
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Status    string `json:"status"`    // "online", "offline", "slow"
+	LatencyMs int64  `json:"latencyMs"` // Response time in milliseconds
+}
+
+// CheckAPIStatus checks the status of all configured API endpoints
+func (a *App) CheckAPIStatus() []EndpointStatus {
+	endpoints := []struct {
+		name string
+		url  string
+	}{
+		{"Tidal HiFi Proxy", "https://vogel.qqdl.site"},
+		{"Metadata (hifi-one)", "https://hifi-one.spotisaver.net"},
+		{"Metadata (hifi-two)", "https://hifi-two.spotisaver.net"},
+		{"Metadata (triton)", "https://triton.squid.wtf"},
+		{"Tidal API", "https://api.tidalhifi.com"},
+	}
+
+	// Add Qobuz if enabled
+	if a.config != nil && a.config.QobuzEnabled {
+		endpoints = append(endpoints, struct {
+			name string
+			url  string
+		}{"Qobuz API", "https://www.qobuz.com/api.json/0.2"})
+	}
+
+	results := make([]EndpointStatus, len(endpoints))
+	var wg sync.WaitGroup
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	for i, ep := range endpoints {
+		wg.Add(1)
+		go func(idx int, name, url string) {
+			defer wg.Done()
+			status := EndpointStatus{Name: name, URL: url}
+
+			start := time.Now()
+			resp, err := client.Head(url)
+			latency := time.Since(start)
+			status.LatencyMs = latency.Milliseconds()
+
+			if err != nil {
+				status.Status = "offline"
+			} else {
+				resp.Body.Close()
+				if resp.StatusCode >= 500 {
+					status.Status = "offline"
+				} else if latency > 3*time.Second {
+					status.Status = "slow"
+				} else {
+					status.Status = "online"
+				}
+			}
+			results[idx] = status
+		}(i, ep.name, ep.url)
+	}
+
+	wg.Wait()
+	return results
+}
+
+// OpenConfigFolder opens the app config directory in the system file manager
+func (a *App) OpenConfigFolder() error {
+	configDir := backend.GetDataDir()
+	return openFolder(configDir)
+}
+
+// openFolder opens a folder in the system file manager
+func openFolder(path string) error {
+	switch goruntime.GOOS {
+	case "darwin":
+		return exec.Command("open", path).Start()
+	case "windows":
+		return exec.Command("explorer", path).Start()
+	default:
+		return exec.Command("xdg-open", path).Start()
 	}
 }
 
@@ -583,6 +705,69 @@ func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
 	return "2.0.0"
+}
+
+// UpdateInfo represents available update information
+type UpdateInfo struct {
+	HasUpdate  bool   `json:"hasUpdate"`
+	Version    string `json:"version"`
+	URL        string `json:"url"`
+	ReleaseURL string `json:"releaseUrl"`
+}
+
+// CheckForUpdate checks GitHub for a newer release
+func (a *App) CheckForUpdate() (*UpdateInfo, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/oilfraud/flacidal/releases/latest", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "FLACidal/"+a.GetAppVersion())
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return &UpdateInfo{HasUpdate: false}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return &UpdateInfo{HasUpdate: false}, nil
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+		Assets  []struct {
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &UpdateInfo{HasUpdate: false}, nil
+	}
+
+	if err := json.Unmarshal(body, &release); err != nil {
+		return &UpdateInfo{HasUpdate: false}, nil
+	}
+
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	currentVersion := a.GetAppVersion()
+
+	hasUpdate := latestVersion != currentVersion && latestVersion > currentVersion
+
+	downloadURL := release.HTMLURL
+	if len(release.Assets) > 0 {
+		downloadURL = release.Assets[0].BrowserDownloadURL
+	}
+
+	return &UpdateInfo{
+		HasUpdate:  hasUpdate,
+		Version:    latestVersion,
+		URL:        downloadURL,
+		ReleaseURL: release.HTMLURL,
+	}, nil
 }
 
 // =============================================================================
@@ -1094,6 +1279,35 @@ func (a *App) GetFFmpegInfo() map[string]interface{} {
 	return backend.GetFFmpegInfo()
 }
 
+// InstallFFmpeg downloads and installs FFmpeg, emitting progress events
+func (a *App) InstallFFmpeg() error {
+	progressCh := make(chan backend.FFmpegInstallProgress, 10)
+
+	go func() {
+		for p := range progressCh {
+			runtime.EventsEmit(a.ctx, "ffmpeg-install-progress", p)
+		}
+	}()
+
+	err := backend.InstallFFmpeg(progressCh)
+	if err != nil {
+		return err
+	}
+
+	// Reinitialize converter with new path
+	backend.ResetConverter()
+	return nil
+}
+
+// GetFFmpegInstallStatus returns whether FFmpeg is available and if local install exists
+func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
+	return map[string]interface{}{
+		"systemAvailable": backend.IsConverterAvailable(),
+		"localInstalled":  backend.IsFFmpegInstalledLocally(),
+		"localPath":       backend.GetLocalFFmpegPath(),
+	}
+}
+
 // GetConversionFormats returns available conversion formats
 func (a *App) GetConversionFormats() []backend.ConversionFormat {
 	conv := backend.GetConverter()
@@ -1138,6 +1352,26 @@ func (a *App) ConvertFiles(files []string, format, quality, outputDir string, de
 	}
 
 	return results
+}
+
+// ConvertFolder converts all .flac files in a folder recursively
+func (a *App) ConvertFolder(folderPath, format, quality, outputDir string, deleteSource bool) []backend.ConversionResult {
+	var files []string
+	filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() && strings.EqualFold(filepath.Ext(path), ".flac") {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	if len(files) == 0 {
+		return nil
+	}
+
+	return a.ConvertFiles(files, format, quality, outputDir, deleteSource)
 }
 
 // OpenInFileManager opens the file's directory in the system file manager

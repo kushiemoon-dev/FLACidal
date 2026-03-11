@@ -63,6 +63,11 @@ export namespace backend {
 	    generateM3u8: boolean;
 	    skipUnavailableTracks: boolean;
 	    firstArtistOnly: boolean;
+	    artistSeparator?: string;
+	    playlistSubfolder: boolean;
+	    skipExisting: boolean;
+	    countryCode?: string;
+	    fontFamily?: string;
 	    proxyUrl?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -101,6 +106,11 @@ export namespace backend {
 	        this.generateM3u8 = source["generateM3u8"];
 	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
 	        this.firstArtistOnly = source["firstArtistOnly"];
+	        this.artistSeparator = source["artistSeparator"];
+	        this.playlistSubfolder = source["playlistSubfolder"];
+	        this.skipExisting = source["skipExisting"];
+	        this.countryCode = source["countryCode"];
+	        this.fontFamily = source["fontFamily"];
 	        this.proxyUrl = source["proxyUrl"];
 	    }
 	}
@@ -444,11 +454,15 @@ export namespace backend {
 	    title: string;
 	    artist: string;
 	    artists: string;
+	    albumArtist?: string;
 	    album: string;
 	    albumId: number;
 	    isrc: string;
 	    duration: number;
 	    trackNumber: number;
+	    discNumber?: number;
+	    totalDiscs?: number;
+	    releaseDate?: string;
 	    coverUrl: string;
 	    explicit: boolean;
 	    tidalUrl: string;
@@ -468,11 +482,15 @@ export namespace backend {
 	        this.title = source["title"];
 	        this.artist = source["artist"];
 	        this.artists = source["artists"];
+	        this.albumArtist = source["albumArtist"];
 	        this.album = source["album"];
 	        this.albumId = source["albumId"];
 	        this.isrc = source["isrc"];
 	        this.duration = source["duration"];
 	        this.trackNumber = source["trackNumber"];
+	        this.discNumber = source["discNumber"];
+	        this.totalDiscs = source["totalDiscs"];
+	        this.releaseDate = source["releaseDate"];
 	        this.coverUrl = source["coverUrl"];
 	        this.explicit = source["explicit"];
 	        this.tidalUrl = source["tidalUrl"];
@@ -768,6 +786,47 @@ export namespace backend {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace main {
+	
+	export class EndpointStatus {
+	    name: string;
+	    url: string;
+	    status: string;
+	    latencyMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.status = source["status"];
+	        this.latencyMs = source["latencyMs"];
+	    }
+	}
+	export class UpdateInfo {
+	    hasUpdate: boolean;
+	    version: string;
+	    url: string;
+	    releaseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasUpdate = source["hasUpdate"];
+	        this.version = source["version"];
+	        this.url = source["url"];
+	        this.releaseUrl = source["releaseUrl"];
+	    }
 	}
 
 }
