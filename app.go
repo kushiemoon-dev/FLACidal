@@ -704,7 +704,7 @@ func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "2.0.0"
+	return "3.0.0"
 }
 
 // UpdateInfo represents available update information
