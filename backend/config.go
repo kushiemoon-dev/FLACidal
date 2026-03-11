@@ -57,7 +57,18 @@ type Config struct {
 	SkipUnavailableTracks bool `json:"skipUnavailableTracks"` // Skip tracks not available for streaming
 
 	// Metadata formatting
-	FirstArtistOnly bool `json:"firstArtistOnly"` // Use only the first artist in tags and filenames
+	FirstArtistOnly  bool   `json:"firstArtistOnly"`            // Use only the first artist in tags and filenames
+	ArtistSeparator  string `json:"artistSeparator,omitempty"`  // Separator for multiple artists (default "; ")
+	PlaylistSubfolder bool  `json:"playlistSubfolder"`          // Create subfolder for playlist downloads
+
+	// Smart skip
+	SkipExisting bool `json:"skipExisting"` // Skip downloading files that already exist (ISRC match)
+
+	// Region
+	CountryCode string `json:"countryCode,omitempty"` // Country code for Tidal API (default "US")
+
+	// Font
+	FontFamily string `json:"fontFamily,omitempty"` // UI font family
 
 	// Network
 	ProxyURL string `json:"proxyUrl,omitempty"` // HTTP/SOCKS5 proxy e.g. "socks5://127.0.0.1:1080"
@@ -80,6 +91,10 @@ var defaultConfig = Config{
 	TidalEnabled:        true,
 	QobuzEnabled:        false,
 	PreferredSource:     "tidal",
+	SkipExisting:        true,
+	PlaylistSubfolder:   true,
+	ArtistSeparator:     "; ",
+	CountryCode:         "US",
 }
 
 // GetDataDir returns the app data directory (~/.flacidal/)
