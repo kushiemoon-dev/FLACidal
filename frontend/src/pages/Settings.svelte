@@ -992,7 +992,7 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 2.0.0</span>
+            <span class="version">Version 3.0.0</span>
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
