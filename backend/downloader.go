@@ -729,11 +729,11 @@ func (t *TidalHifiService) GetAlbumFromProxy(albumID string) (*TidalAlbum, error
 // playlistProxyResponse is the JSON structure returned by the v2.4 proxy playlist endpoint.
 type playlistProxyResponse struct {
 	Playlist struct {
-		UUID               string `json:"uuid"`
-		Title              string `json:"title"`
-		Description        string `json:"description"`
-		NumberOfTracks     int    `json:"numberOfTracks"`
-		Creator            struct {
+		UUID           string `json:"uuid"`
+		Title          string `json:"title"`
+		Description    string `json:"description"`
+		NumberOfTracks int    `json:"numberOfTracks"`
+		Creator        struct {
 			Name string `json:"name"`
 		} `json:"creator"`
 		Image       string `json:"image"`
