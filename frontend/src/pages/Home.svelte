@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     FetchTidalContent,
     ValidateTidalURL,
@@ -39,6 +39,18 @@
   let previewAudio: HTMLAudioElement | null = $state(null);
   let previewingTrackId: number | null = $state(null);
   let previewPlaying = $state(false);
+
+  // Animated placeholder
+  const exampleUrls = [
+    'https://tidal.com/browse/album/123456789',
+    'https://tidal.com/browse/track/987654321',
+    'https://tidal.com/browse/playlist/abc-def-123',
+    'https://tidal.com/browse/artist/12345',
+    'https://tidal.com/browse/mix/abcdef123',
+  ];
+  let placeholderIndex = $state(0);
+  let placeholderUrl = $derived(exampleUrls[placeholderIndex]);
+  let placeholderInterval: ReturnType<typeof setInterval> | undefined;
 
   // Context menu state
   let contextMenu: { x: number; y: number; track: TidalTrack } | null = $state(null);
@@ -161,6 +173,14 @@
     if (savedFolder) {
       downloadFolder.set(savedFolder);
     }
+
+    placeholderInterval = setInterval(() => {
+      placeholderIndex = (placeholderIndex + 1) % exampleUrls.length;
+    }, 3000);
+  });
+
+  onDestroy(() => {
+    if (placeholderInterval) clearInterval(placeholderInterval);
   });
 
   async function fetchContent() {
@@ -400,7 +420,7 @@
           type="text"
           bind:value={tidalUrl}
           bind:this={urlInputEl}
-          placeholder="Paste Tidal or Qobuz URL (playlist, album, or track)..."
+          placeholder={placeholderUrl}
           onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
