@@ -368,6 +368,7 @@ func (dm *DownloadManager) downloadViaQobuzFallback(job *DownloadJob, tidalResul
 		return tidalResult, err
 	}
 
+	result.Source = "qobuz"
 	if logger != nil {
 		logger.Info(fmt.Sprintf("Qobuz fallback succeeded: %s", result.FilePath))
 	}

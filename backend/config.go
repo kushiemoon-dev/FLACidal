@@ -18,8 +18,10 @@ type Config struct {
 	DownloadQuality     string `json:"downloadQuality,omitempty"`     // "HI_RES", "LOSSLESS", "HIGH"
 	FileNameFormat      string `json:"fileNameFormat,omitempty"`      // "{artist} - {title}", "{track} - {title}", etc.
 	OrganizeFolders     bool   `json:"organizeFolders,omitempty"`     // Create Artist/Album/ subfolders
+	FolderTemplate      string `json:"folderTemplate,omitempty"`      // Folder structure template e.g. "{artist}/{album}"
 	EmbedCover          bool   `json:"embedCover"`                    // Embed cover art in FLAC
 	SaveCoverFile       bool   `json:"saveCoverFile"`                 // Save cover art as .jpg file next to FLAC
+	SaveFolderCover     bool   `json:"saveFolderCover"`               // Save folder.jpg in album/playlist directories
 	ConcurrentDownloads int    `json:"concurrentDownloads,omitempty"` // Number of parallel downloads
 
 	// UI settings
@@ -33,6 +35,7 @@ type Config struct {
 	// Lyrics settings
 	EmbedLyrics        bool `json:"embedLyrics"`        // Automatically fetch and embed lyrics
 	PreferSyncedLyrics bool `json:"preferSyncedLyrics"` // Prefer synced (LRC) lyrics when available
+	SaveLyricsFile     bool `json:"saveLyricsFile"`     // Save lyrics as separate .lrc file alongside FLAC
 
 	// Quality verification settings
 	AutoAnalyze         bool `json:"autoAnalyze"`         // Automatically analyze quality after download
@@ -82,6 +85,7 @@ var defaultConfig = Config{
 	OrganizeFolders:     false,
 	EmbedCover:          true,
 	SaveCoverFile:       true,
+	SaveFolderCover:     true,
 	ConcurrentDownloads: 4,
 	SoundEffects:        false,
 	SoundVolume:         70,
