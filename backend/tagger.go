@@ -33,6 +33,7 @@ type TrackMetadata struct {
 	// Lyrics fields
 	Lyrics       string // Plain text lyrics (LYRICS tag)
 	SyncedLyrics string // LRC format synced lyrics (SYNCEDLYRICS tag)
+	OriginalDate string // Original release date (ORIGINALDATE tag)
 	// Rights fields
 	Copyright string // COPYRIGHT Vorbis comment
 	Label     string // ORGANIZATION Vorbis comment (record label)
@@ -182,6 +183,9 @@ func (t *FLACTagger) createVorbisComment(meta TrackMetadata) []byte {
 	}
 	if meta.Year != "" {
 		comments = append(comments, fmt.Sprintf("DATE=%s", meta.Year))
+	}
+	if meta.OriginalDate != "" {
+		comments = append(comments, fmt.Sprintf("ORIGINALDATE=%s", meta.OriginalDate))
 	}
 	if meta.Genre != "" {
 		comments = append(comments, fmt.Sprintf("GENRE=%s", meta.Genre))

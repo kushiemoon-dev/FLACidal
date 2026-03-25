@@ -39,8 +39,10 @@ export namespace backend {
 	    downloadQuality?: string;
 	    fileNameFormat?: string;
 	    organizeFolders?: boolean;
+	    folderTemplate?: string;
 	    embedCover: boolean;
 	    saveCoverFile: boolean;
+	    saveFolderCover: boolean;
 	    concurrentDownloads?: number;
 	    theme: string;
 	    accentColor?: string;
@@ -48,6 +50,7 @@ export namespace backend {
 	    soundVolume: number;
 	    embedLyrics: boolean;
 	    preferSyncedLyrics: boolean;
+	    saveLyricsFile: boolean;
 	    autoAnalyze: boolean;
 	    autoQualityFallback: boolean;
 	    tidalEnabled: boolean;
@@ -82,8 +85,10 @@ export namespace backend {
 	        this.downloadQuality = source["downloadQuality"];
 	        this.fileNameFormat = source["fileNameFormat"];
 	        this.organizeFolders = source["organizeFolders"];
+	        this.folderTemplate = source["folderTemplate"];
 	        this.embedCover = source["embedCover"];
 	        this.saveCoverFile = source["saveCoverFile"];
+	        this.saveFolderCover = source["saveFolderCover"];
 	        this.concurrentDownloads = source["concurrentDownloads"];
 	        this.theme = source["theme"];
 	        this.accentColor = source["accentColor"];
@@ -91,6 +96,7 @@ export namespace backend {
 	        this.soundVolume = source["soundVolume"];
 	        this.embedLyrics = source["embedLyrics"];
 	        this.preferSyncedLyrics = source["preferSyncedLyrics"];
+	        this.saveLyricsFile = source["saveLyricsFile"];
 	        this.autoAnalyze = source["autoAnalyze"];
 	        this.autoQualityFallback = source["autoQualityFallback"];
 	        this.tidalEnabled = source["tidalEnabled"];
@@ -448,6 +454,90 @@ export namespace backend {
 	        this.uri = source["uri"];
 	        this.isrc = source["isrc"];
 	    }
+	}
+	export class TidalAlbum {
+	    id: number;
+	    title: string;
+	    artist: string;
+	    releaseDate: string;
+	    trackCount: number;
+	    coverUrl: string;
+	    albumType?: string;
+	    copyright?: string;
+	    label?: string;
+	    tracks: TidalTrack[];
+
+	    static createFrom(source: any = {}) {
+	        return new TidalAlbum(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.releaseDate = source["releaseDate"];
+	        this.trackCount = source["trackCount"];
+	        this.coverUrl = source["coverUrl"];
+	        this.albumType = source["albumType"];
+	        this.copyright = source["copyright"];
+	        this.label = source["label"];
+	        this.tracks = this.convertValues(source["tracks"], TidalTrack);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TidalArtist {
+	    id: number;
+	    name: string;
+	    pictureUrl?: string;
+	    albums: TidalAlbum[];
+
+	    static createFrom(source: any = {}) {
+	        return new TidalArtist(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.pictureUrl = source["pictureUrl"];
+	        this.albums = this.convertValues(source["albums"], TidalAlbum);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class TidalTrack {
 	    id: number;

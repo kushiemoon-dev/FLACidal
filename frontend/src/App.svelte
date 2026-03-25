@@ -86,7 +86,8 @@
           result: {
             filePath: result.filePath,
             fileSize: result.fileSize
-          }
+          },
+          source: result.source || undefined
         });
         // Play complete sound
         playSound('complete');

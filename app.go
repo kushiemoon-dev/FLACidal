@@ -113,6 +113,7 @@ func (a *App) startup(ctx context.Context) {
 		Quality:              quality,
 		FileNameFormat:       fileNameFormat,
 		OrganizeFolders:      config.OrganizeFolders,
+		FolderTemplate:       config.FolderTemplate,
 		EmbedCover:           config.EmbedCover,
 		SaveCoverFile:        config.SaveCoverFile,
 		AutoAnalyze:          config.AutoAnalyze,
@@ -122,6 +123,8 @@ func (a *App) startup(ctx context.Context) {
 		SkipExisting:         config.SkipExisting,
 		ArtistSeparator:      config.ArtistSeparator,
 		PlaylistSubfolder:    config.PlaylistSubfolder,
+		SaveLyricsFile:       config.SaveLyricsFile,
+		SaveFolderCover:      config.SaveFolderCover,
 	})
 	a.logBuffer.Info("FLAC downloader service ready")
 
@@ -309,9 +312,12 @@ func (a *App) SaveConfig(config backend.Config) error {
 			opts.FileNameFormat = config.FileNameFormat
 		}
 		opts.OrganizeFolders = config.OrganizeFolders
+		opts.FolderTemplate = config.FolderTemplate
 		opts.EmbedCover = config.EmbedCover
 		opts.SaveCoverFile = config.SaveCoverFile
 		opts.AutoAnalyze = config.AutoAnalyze
+		opts.SaveLyricsFile = config.SaveLyricsFile
+		opts.SaveFolderCover = config.SaveFolderCover
 		a.downloader.SetOptions(opts)
 	}
 	if a.downloadManager != nil {
@@ -704,7 +710,7 @@ func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "3.0.0"
+	return "3.1.0"
 }
 
 // UpdateInfo represents available update information
@@ -718,7 +724,7 @@ type UpdateInfo struct {
 // CheckForUpdate checks GitHub for a newer release
 func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/oilfraud/flacidal/releases/latest", nil)
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/kushiemoon-dev/flacidal/releases/latest", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1075,6 +1081,7 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 			"organizeFolders": false,
 			"embedCover":      true,
 			"saveCoverFile":   true,
+			"saveFolderCover": true,
 			"autoAnalyze":     false,
 		}
 	}
@@ -1094,6 +1101,7 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 		"organizeFolders": a.config.OrganizeFolders,
 		"embedCover":      a.config.EmbedCover,
 		"saveCoverFile":   a.config.SaveCoverFile,
+		"saveFolderCover": a.config.SaveFolderCover,
 		"autoAnalyze":     a.config.AutoAnalyze,
 	}
 }
@@ -1196,6 +1204,22 @@ func (a *App) SearchTidal(query string) ([]backend.TidalTrack, error) {
 	}
 
 	return tracks, nil
+}
+
+// SearchTidalAlbums searches for albums on Tidal
+func (a *App) SearchTidalAlbums(query string) ([]backend.TidalAlbum, error) {
+	if a.tidalClient == nil {
+		return nil, fmt.Errorf("tidal client not initialized")
+	}
+	return a.tidalClient.SearchAlbums(query, 20)
+}
+
+// SearchTidalArtists searches for artists on Tidal
+func (a *App) SearchTidalArtists(query string) ([]backend.TidalArtist, error) {
+	if a.tidalClient == nil {
+		return nil, fmt.Errorf("tidal client not initialized")
+	}
+	return a.tidalClient.SearchArtists(query, 20)
 }
 
 // =============================================================================
@@ -1352,6 +1376,25 @@ func (a *App) ConvertFiles(files []string, format, quality, outputDir string, de
 	}
 
 	return results
+}
+
+// SelectFolderForConversion opens a directory dialog and returns paths of FLAC files within it
+func (a *App) SelectFolderForConversion() ([]string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select folder to convert",
+	})
+	if err != nil || dir == "" {
+		return nil, err
+	}
+	files, err := backend.ListFLACFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+	paths := make([]string, len(files))
+	for i, f := range files {
+		paths[i] = f.Path
+	}
+	return paths, nil
 }
 
 // ConvertFolder converts all .flac files in a folder recursively
@@ -1608,6 +1651,13 @@ func (a *App) FetchAndEmbedLyrics(filePath string) (*backend.Lyrics, error) {
 	err = a.EmbedLyricsToFile(filePath, lyrics.Plain, lyrics.Synced)
 	if err != nil {
 		return lyrics, err // Return lyrics even if embedding failed
+	}
+
+	// Save lyrics as separate file if enabled
+	if a.config != nil && a.config.SaveLyricsFile {
+		if saveErr := backend.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain); saveErr != nil {
+			a.logBuffer.Warn("Failed to save lyrics file: " + saveErr.Error())
+		}
 	}
 
 	return lyrics, nil

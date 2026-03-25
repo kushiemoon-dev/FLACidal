@@ -10,6 +10,7 @@ export interface QueueItem {
     filePath: string;
     fileSize: number;
   };
+  source?: string;
 }
 
 export interface QueueStats {
