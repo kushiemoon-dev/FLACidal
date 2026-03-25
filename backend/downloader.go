@@ -139,6 +139,7 @@ type DownloadResult struct {
 	Success          bool            `json:"success"`
 	Error            string          `json:"error,omitempty"`
 	Analysis         *AnalysisResult `json:"analysis,omitempty"` // Auto-analysis result if enabled
+	Source           string          `json:"source,omitempty"`   // Which source served this track (e.g. "tidal", "qobuz")
 }
 
 // DownloadOptions configures download behavior
@@ -146,6 +147,7 @@ type DownloadOptions struct {
 	Quality              string   // "HI_RES", "HI_RES_LOSSLESS", "LOSSLESS", "HIGH"
 	FileNameFormat       string   // "{artist} - {title}", "{track} - {title}", etc.
 	OrganizeFolders      bool     // Create Artist/Album/ subfolders
+	FolderTemplate       string   // Folder structure template e.g. "{artist}/{album}"
 	EmbedCover           bool     // Embed cover art in FLAC
 	SaveCoverFile        bool     // Save cover art as .jpg file next to FLAC
 	AutoAnalyze          bool     // Automatically analyze quality after download
@@ -155,6 +157,8 @@ type DownloadOptions struct {
 	SkipExisting         bool     // Skip files already on disk (matched by ISRC)
 	ArtistSeparator      string   // Separator for multiple artists (default "; ")
 	PlaylistSubfolder    bool     // Create subfolder for playlist downloads
+	SaveLyricsFile       bool     // Save lyrics as separate .lrc file
+	SaveFolderCover      bool     // Save folder.jpg in album directory
 }
 
 // qualityFallbackChain defines the descending quality order used for auto-fallback.
@@ -986,6 +990,7 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string, copyrigh
 	result := &DownloadResult{
 		TrackID: trackID,
 		Success: false,
+		Source:  "tidal",
 	}
 
 	// Get track info
@@ -1044,7 +1049,14 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string, copyrigh
 
 	// Determine output path based on options
 	finalDir := outputDir
-	if t.options.OrganizeFolders {
+	if t.options.FolderTemplate != "" {
+		// Template-based folder structure
+		subDir := t.applyFolderTemplate(t.options.FolderTemplate, track, artistName)
+		if subDir != "" {
+			finalDir = filepath.Join(outputDir, subDir)
+		}
+	} else if t.options.OrganizeFolders {
+		// Legacy: simple Artist/Album structure
 		safeArtist := SanitizeFileName(artistName)
 		safeAlbum := SanitizeFileName(track.Album.Title)
 		if safeAlbum == "" {
@@ -1132,17 +1144,18 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string, copyrigh
 	// Tag the file with metadata
 	tagger := NewFLACTagger()
 	meta := TrackMetadata{
-		Title:       track.Title,
-		Artist:      artistName,
-		AlbumArtist: albumArtist,
-		Album:       track.Album.Title,
-		TrackNumber: track.TrackNumber,
-		DiscNumber:  track.VolumeNumber,
-		TotalDiscs:  track.Album.NumberOfVolumes,
-		Year:        track.Album.ReleaseDate,
-		ISRC:        track.ISRC,
-		Copyright:   copyright,
-		Label:       label,
+		Title:        track.Title,
+		Artist:       artistName,
+		AlbumArtist:  albumArtist,
+		Album:        track.Album.Title,
+		TrackNumber:  track.TrackNumber,
+		DiscNumber:   track.VolumeNumber,
+		TotalDiscs:   track.Album.NumberOfVolumes,
+		Year:         track.Album.ReleaseDate,
+		OriginalDate: track.Album.ReleaseDate,
+		ISRC:         track.ISRC,
+		Copyright:    copyright,
+		Label:        label,
 	}
 
 	// Only embed cover if option is enabled
@@ -1162,6 +1175,18 @@ func (t *TidalHifiService) DownloadTrack(trackID int, outputDir string, copyrigh
 		if err := t.saveCoverFile(coverURL, coverPath); err != nil {
 			if t.logger != nil {
 				t.logger.Warn("Failed to save cover file: " + err.Error())
+			}
+		}
+	}
+
+	// Save folder.jpg if enabled (one per directory, skip if exists)
+	if t.options.SaveFolderCover && coverURL != "" {
+		folderCoverPath := filepath.Join(finalDir, "folder.jpg")
+		if _, statErr := os.Stat(folderCoverPath); statErr != nil {
+			if err := t.saveCoverFile(coverURL, folderCoverPath); err != nil {
+				if t.logger != nil {
+					t.logger.Warn("Failed to save folder cover: " + err.Error())
+				}
 			}
 		}
 	}
@@ -1247,6 +1272,32 @@ func (t *TidalHifiService) saveCoverFile(coverURL, outputPath string) error {
 	return os.WriteFile(outputPath, data, 0644)
 }
 
+// SaveLyricsFile writes synced or plain lyrics to a file alongside the FLAC.
+// Synced lyrics are saved as .lrc, plain lyrics as .txt.
+func SaveLyricsFile(flacPath string, syncedLyrics, plainLyrics string) error {
+	basePath := strings.TrimSuffix(flacPath, filepath.Ext(flacPath))
+
+	if syncedLyrics != "" {
+		lrcPath := basePath + ".lrc"
+		if _, err := os.Stat(lrcPath); err != nil {
+			if err := os.WriteFile(lrcPath, []byte(syncedLyrics), 0644); err != nil {
+				return fmt.Errorf("failed to write .lrc file: %w", err)
+			}
+		}
+		return nil
+	}
+
+	if plainLyrics != "" {
+		txtPath := basePath + ".txt"
+		if _, err := os.Stat(txtPath); err != nil {
+			if err := os.WriteFile(txtPath, []byte(plainLyrics), 0644); err != nil {
+				return fmt.Errorf("failed to write lyrics .txt file: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 // SanitizeFileName removes invalid characters from filenames
 func SanitizeFileName(name string) string {
 	if name == "" {
@@ -1303,6 +1354,51 @@ func (t *TidalHifiService) formatFileName(track *TidalHifiTrackResponse, artistN
 	result = strings.ReplaceAll(result, "{isrc}", track.ISRC)
 
 	return SanitizeFileName(result)
+}
+
+// applyFolderTemplate resolves a folder template string using track metadata.
+// Supported placeholders: {artist}, {albumartist}, {album}, {year}, {genre}, {label}
+func (t *TidalHifiService) applyFolderTemplate(template string, track *TidalHifiTrackResponse, artistName string) string {
+	albumArtist := ""
+	if track.Album.Artist.Name != "" {
+		albumArtist = track.Album.Artist.Name
+	} else if len(track.Album.Artists) > 0 {
+		albumArtist = track.Album.Artists[0].Name
+	}
+	if albumArtist == "" {
+		albumArtist = artistName
+	}
+
+	year := ""
+	if track.Album.ReleaseDate != "" {
+		if len(track.Album.ReleaseDate) >= 4 {
+			year = track.Album.ReleaseDate[:4]
+		}
+	}
+
+	album := track.Album.Title
+	if album == "" {
+		album = "Singles"
+	}
+
+	replacements := map[string]string{
+		"{artist}":      artistName,
+		"{albumartist}": albumArtist,
+		"{album}":       album,
+		"{year}":        year,
+		"{label}":       "", // Label info not available in track response
+	}
+
+	result := template
+	for placeholder, value := range replacements {
+		safeValue := SanitizeFileName(value)
+		if safeValue == "" {
+			safeValue = "Unknown"
+		}
+		result = strings.ReplaceAll(result, placeholder, safeValue)
+	}
+
+	return result
 }
 
 // FormatCoverUUID converts a Tidal cover UUID to URL path format

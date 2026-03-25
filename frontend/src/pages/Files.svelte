@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../wailsjs/go/main/App.js';
+  import { formatNumber } from '../lib/format';
+  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion } from '../../wailsjs/go/main/App.js';
   import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import MetadataModal from '../components/MetadataModal.svelte';
@@ -36,6 +37,9 @@
   let allSelected = $derived(files.length > 0 && selectedFiles.size === files.length);
   let someSelected = $derived(selectedFiles.size > 0);
 
+  // External convert files (from folder picker)
+  let externalConvertFiles: string[] = $state([]);
+
   // Drag-and-drop state
   let isDragOver = $state(false);
   let dragCounter = 0;
@@ -44,6 +48,11 @@
   // Files to analyze: external drops/picks take priority over selection
   let analysisFileList = $derived(
     externalAnalysisFiles.length > 0 ? externalAnalysisFiles : Array.from(selectedFiles)
+  );
+
+  // Files to convert: external folder picks take priority over selection
+  let convertFileList = $derived(
+    externalConvertFiles.length > 0 ? externalConvertFiles : Array.from(selectedFiles)
   );
 
   function toggleSelectAll() {
@@ -141,6 +150,18 @@
     if (paths && paths.length > 0) {
       externalAnalysisFiles = paths;
       showAnalysisModal = true;
+    }
+  }
+
+  async function openConvertFolderDialog() {
+    try {
+      const paths = await SelectFolderForConversion();
+      if (paths && paths.length > 0) {
+        externalConvertFiles = paths;
+        showConvertModal = true;
+      }
+    } catch (error) {
+      console.error('Error selecting folder for conversion:', error);
     }
   }
 
@@ -347,6 +368,16 @@
           </svg>
           Analyze Files...
         </button>
+        {#if converterAvailable}
+          <button class="action-btn" onclick={openConvertFolderDialog} title="Convert all FLAC files in a folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Convert Folder...
+          </button>
+        {/if}
         <button class="action-btn primary" onclick={openFolder}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -514,7 +545,7 @@
     </div>
 
     <div class="files-footer">
-      <span class="total-count">{files.length} files</span>
+      <span class="total-count">{formatNumber(files.length)} files</span>
       <span class="total-size">{formatSize(files.reduce((acc, f) => acc + f.size, 0))} total</span>
     </div>
   {/if}
@@ -534,9 +565,9 @@
 
 {#if showConvertModal}
   <ConvertModal
-    files={Array.from(selectedFiles)}
-    onClose={() => showConvertModal = false}
-    onComplete={handleConvertComplete}
+    files={convertFileList}
+    onClose={() => { showConvertModal = false; externalConvertFiles = []; }}
+    onComplete={() => { handleConvertComplete(); externalConvertFiles = []; }}
   />
 {/if}
 
