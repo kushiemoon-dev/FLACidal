@@ -25,6 +25,7 @@
     concurrentDownloads: 4,
     embedCover: true,
     saveCoverFile: true,
+    saveFolderCover: true,
     fileNameFormat: '{artist} - {title}',
     theme: 'system' as ThemeMode,
     accentColor: '#f472b6',
@@ -32,6 +33,7 @@
     soundVolume: 70,
     embedLyrics: false,
     preferSyncedLyrics: true,
+    saveLyricsFile: false,
     autoAnalyze: false,
     tidalEnabled: true,
     qobuzEnabled: false,
@@ -49,6 +51,7 @@
     skipExisting: true,
     artistSeparator: '; ',
     playlistSubfolder: true,
+    folderTemplate: '',
     countryCode: 'US',
     fontFamily: '',
     downloadQuality: 'LOSSLESS',
@@ -61,6 +64,34 @@
   let ffmpegInfo: any = $state(null);
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
+  let folderTemplatePreset = $state('{artist}/{album}');
+
+  const folderPresets = [
+    '{artist}/{album}',
+    '{albumartist}/{album}',
+    '{artist}/{year} - {album}',
+    '{year}/{artist}/{album}',
+  ];
+
+  function handleFolderTemplateChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value;
+    folderTemplatePreset = value;
+    if (value === '') {
+      config.folderTemplate = '';
+    } else if (value !== 'custom') {
+      config.folderTemplate = value;
+    }
+  }
+
+  function syncFolderTemplatePreset(template: string) {
+    if (!template) {
+      folderTemplatePreset = '';
+    } else if (folderPresets.includes(template)) {
+      folderTemplatePreset = template;
+    } else {
+      folderTemplatePreset = 'custom';
+    }
+  }
 
   const settingsTabs = [
     { id: 'general', label: 'General' },
@@ -210,6 +241,7 @@
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
         config.preferSyncedLyrics = result.preferSyncedLyrics !== false;
+        config.saveLyricsFile = result.saveLyricsFile || false;
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
         config.qobuzAppId = result.qobuzAppId || '';
@@ -226,6 +258,8 @@
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
+        config.folderTemplate = result.folderTemplate || '';
+        syncFolderTemplatePreset(config.folderTemplate);
         config.countryCode = result.countryCode || 'US';
         config.fontFamily = result.fontFamily || '';
         config.downloadQuality = result.downloadQuality || 'LOSSLESS';
@@ -237,6 +271,7 @@
       if (opts) {
         config.embedCover = opts.embedCover !== false;
         config.saveCoverFile = opts.saveCoverFile !== false;
+        config.saveFolderCover = opts.saveFolderCover !== false;
         config.fileNameFormat = opts.fileNameFormat || '{artist} - {title}';
         config.autoAnalyze = opts.autoAnalyze || false;
       }
@@ -280,11 +315,13 @@
         concurrentDownloads: config.concurrentDownloads,
         embedCover: config.embedCover,
         saveCoverFile: config.saveCoverFile,
+        saveFolderCover: config.saveFolderCover,
         fileNameFormat: config.fileNameFormat,
         soundEffects: config.soundEffects,
         soundVolume: config.soundVolume,
         embedLyrics: config.embedLyrics,
         preferSyncedLyrics: config.preferSyncedLyrics,
+        saveLyricsFile: config.saveLyricsFile,
         autoAnalyze: config.autoAnalyze,
         tidalEnabled: config.tidalEnabled,
         qobuzEnabled: config.qobuzEnabled,
@@ -302,6 +339,7 @@
         skipExisting: config.skipExisting,
         artistSeparator: config.artistSeparator,
         playlistSubfolder: config.playlistSubfolder,
+        folderTemplate: config.folderTemplate,
         countryCode: config.countryCode,
         fontFamily: config.fontFamily,
         downloadQuality: config.downloadQuality,
@@ -333,6 +371,7 @@
         config.concurrentDownloads = result.concurrentDownloads || 4;
         config.embedCover = result.embedCover !== false;
         config.saveCoverFile = result.saveCoverFile !== false;
+        config.saveFolderCover = result.saveFolderCover !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
@@ -340,6 +379,7 @@
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
         config.preferSyncedLyrics = result.preferSyncedLyrics !== false;
+        config.saveLyricsFile = result.saveLyricsFile || false;
         config.autoAnalyze = result.autoAnalyze || false;
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
@@ -353,6 +393,8 @@
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
+        config.folderTemplate = result.folderTemplate || '';
+        syncFolderTemplatePreset(config.folderTemplate);
         config.countryCode = result.countryCode || 'US';
         config.fontFamily = result.fontFamily || '';
         config.downloadQuality = result.downloadQuality || 'LOSSLESS';
@@ -512,6 +554,45 @@
           </label>
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="folder-template">Folder Structure</label>
+          <span class="setting-desc">Organize downloads into subfolders (leave empty for flat)</span>
+        </div>
+        <div class="setting-control">
+          <select
+            id="folder-template"
+            class="select-input"
+            value={folderTemplatePreset}
+            onchange={handleFolderTemplateChange}
+          >
+            <option value="">No organization</option>
+            <option value={'{artist}/{album}'}>Artist / Album</option>
+            <option value={'{albumartist}/{album}'}>Album Artist / Album</option>
+            <option value={'{artist}/{year} - {album}'}>Artist / Year - Album</option>
+            <option value={'{year}/{artist}/{album}'}>Year / Artist / Album</option>
+            <option value="custom">Custom template...</option>
+          </select>
+        </div>
+      </div>
+      {#if folderTemplatePreset === 'custom'}
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="folder-template-custom">Custom Template</label>
+            <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{album}'}, {'{year}'}, {'{label}'}</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              id="folder-template-custom"
+              bind:value={config.folderTemplate}
+              class="text-input"
+              placeholder="{'{artist}'}/{'{album}'}"
+            />
+          </div>
+        </div>
+      {/if}
     </section>
 
     <!-- File Naming -->
@@ -735,6 +816,19 @@
           </label>
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label>Save Folder Cover</label>
+          <span class="setting-desc">Save folder.jpg in album directories (for Plex, Jellyfin, Kodi)</span>
+        </div>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={config.saveFolderCover} />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
     </section>
 
     <section class="settings-section">
@@ -793,6 +887,19 @@
           <div class="setting-control">
             <label class="toggle">
               <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Save Lyrics File</label>
+            <span class="setting-desc">Save .lrc or .txt lyrics file alongside FLAC</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.saveLyricsFile} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -992,7 +1099,7 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 3.0.0</span>
+            <span class="version">Version 3.1.0</span>
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>

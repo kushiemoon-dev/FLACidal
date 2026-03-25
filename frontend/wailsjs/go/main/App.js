@@ -294,8 +294,20 @@ export function SearchTidal(arg1) {
   return window['go']['main']['App']['SearchTidal'](arg1);
 }
 
+export function SearchTidalAlbums(arg1) {
+  return window['go']['main']['App']['SearchTidalAlbums'](arg1);
+}
+
+export function SearchTidalArtists(arg1) {
+  return window['go']['main']['App']['SearchTidalArtists'](arg1);
+}
+
 export function SelectDownloadFolder() {
   return window['go']['main']['App']['SelectDownloadFolder']();
+}
+
+export function SelectFolderForConversion() {
+  return window['go']['main']['App']['SelectFolderForConversion']();
 }
 
 export function SetDownloadFolder(arg1) {
