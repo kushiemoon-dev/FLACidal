@@ -149,7 +149,13 @@ export function SaveConfig(arg1:backend.Config):Promise<void>;
 
 export function SearchTidal(arg1:string):Promise<Array<backend.TidalTrack>>;
 
+export function SearchTidalAlbums(arg1:string):Promise<Array<backend.TidalAlbum>>;
+
+export function SearchTidalArtists(arg1:string):Promise<Array<backend.TidalArtist>>;
+
 export function SelectDownloadFolder():Promise<string>;
+
+export function SelectFolderForConversion():Promise<Array<string>>;
 
 export function SetDownloadFolder(arg1:string):Promise<void>;
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
   import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/main/App.js';
+  import { formatNumber } from '../lib/format';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let showClearAllConfirm = $state(false);
@@ -149,23 +150,23 @@
           </span>
         {/if}
         <span class="stat">
-          <span class="stat-value">{$queueStats.total}</span>
+          <span class="stat-value">{formatNumber($queueStats.total)}</span>
           <span class="stat-label">Total</span>
         </span>
         <span class="stat">
-          <span class="stat-value downloading">{$queueStats.downloading}</span>
+          <span class="stat-value downloading">{formatNumber($queueStats.downloading)}</span>
           <span class="stat-label">Downloading</span>
         </span>
         <span class="stat">
-          <span class="stat-value pending">{$queueStats.pending}</span>
+          <span class="stat-value pending">{formatNumber($queueStats.pending)}</span>
           <span class="stat-label">Pending</span>
         </span>
         <span class="stat">
-          <span class="stat-value completed">{$queueStats.completed}</span>
+          <span class="stat-value completed">{formatNumber($queueStats.completed)}</span>
           <span class="stat-label">Completed</span>
         </span>
         <span class="stat">
-          <span class="stat-value failed">{$queueStats.failed}</span>
+          <span class="stat-value failed">{formatNumber($queueStats.failed)}</span>
           <span class="stat-label">Failed</span>
         </span>
       </div>
@@ -316,7 +317,12 @@
 
           <div class="item-info">
             <span class="item-title">{item.title}</span>
-            <span class="item-artist">{item.artist}</span>
+            <span class="item-artist">
+              {item.artist}
+              {#if item.status === 'completed' && item.source}
+                <span class="source-badge">{item.source}</span>
+              {/if}
+            </span>
             {#if item.error}
               <span class="item-error">{item.error}</span>
             {/if}
@@ -648,6 +654,19 @@
   .item-artist {
     font-size: 13px;
     color: var(--color-text-secondary);
+  }
+
+  .source-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    background: rgba(168, 85, 247, 0.15);
+    border-radius: 4px;
+    color: #a855f7;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    vertical-align: middle;
   }
 
   .item-error {

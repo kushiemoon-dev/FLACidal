@@ -599,6 +599,92 @@ type TidalArtist struct {
 	Albums     []TidalAlbum `json:"albums"`
 }
 
+// SearchAlbums searches for albums on Tidal
+func (c *TidalClient) SearchAlbums(query string, limit int) ([]TidalAlbum, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	endpoint := fmt.Sprintf("/search/albums?query=%s&countryCode=%s&limit=%d",
+		url.QueryEscape(query), c.CountryCode, limit)
+	data, err := c.doRequest(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("album search failed: %w", err)
+	}
+
+	var searchResp struct {
+		Items []struct {
+			ID             int    `json:"id"`
+			Title          string `json:"title"`
+			Type           string `json:"type"`
+			ReleaseDate    string `json:"releaseDate"`
+			NumberOfTracks int    `json:"numberOfTracks"`
+			Cover          string `json:"cover"`
+			Artists        []struct {
+				Name string `json:"name"`
+			} `json:"artists"`
+		} `json:"items"`
+	}
+
+	if err := json.Unmarshal(data, &searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse album search: %w", err)
+	}
+
+	albums := make([]TidalAlbum, 0, len(searchResp.Items))
+	for _, item := range searchResp.Items {
+		artist := ""
+		if len(item.Artists) > 0 {
+			artist = item.Artists[0].Name
+		}
+		albums = append(albums, TidalAlbum{
+			ID:          item.ID,
+			Title:       item.Title,
+			Artist:      artist,
+			ReleaseDate: item.ReleaseDate,
+			TrackCount:  item.NumberOfTracks,
+			CoverURL:    formatTidalImageURL(item.Cover),
+			AlbumType:   item.Type,
+		})
+	}
+
+	return albums, nil
+}
+
+// SearchArtists searches for artists on Tidal
+func (c *TidalClient) SearchArtists(query string, limit int) ([]TidalArtist, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	endpoint := fmt.Sprintf("/search/artists?query=%s&countryCode=%s&limit=%d",
+		url.QueryEscape(query), c.CountryCode, limit)
+	data, err := c.doRequest(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("artist search failed: %w", err)
+	}
+
+	var searchResp struct {
+		Items []struct {
+			ID      int    `json:"id"`
+			Name    string `json:"name"`
+			Picture string `json:"picture"`
+		} `json:"items"`
+	}
+
+	if err := json.Unmarshal(data, &searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse artist search: %w", err)
+	}
+
+	artists := make([]TidalArtist, 0, len(searchResp.Items))
+	for _, item := range searchResp.Items {
+		artists = append(artists, TidalArtist{
+			ID:         item.ID,
+			Name:       item.Name,
+			PictureURL: formatTidalImageURL(item.Picture),
+		})
+	}
+
+	return artists, nil
+}
+
 // GetAlbum fetches an album with all its tracks
 func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 	// Fetch album metadata
@@ -692,23 +778,24 @@ func (c *TidalClient) GetAlbum(albumID string) (*TidalAlbum, error) {
 
 		trackAvail := track.StreamReady == nil || *track.StreamReady
 		album.Tracks = append(album.Tracks, TidalTrack{
-			ID:         track.ID,
-			Title:      track.Title,
-			Artist:     mainArtist,
-			Artists:    artistStr,
-			Album:      track.Album.Title,
-			AlbumID:    track.Album.ID,
-			ISRC:       track.ISRC,
-			Duration:   track.Duration,
-			TrackNum:   track.TrackNumber,
-			CoverURL:   formatTidalImageURL(track.Album.Cover),
-			Explicit:   track.Explicit,
-			TidalURL:   fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
-			Available:  trackAvail,
-			PreviewURL: track.AudioPreviewURL,
-			Copyright:  album.Copyright,
-			Label:      album.Label,
-			Popularity: track.Popularity,
+			ID:          track.ID,
+			Title:       track.Title,
+			Artist:      mainArtist,
+			Artists:     artistStr,
+			Album:       track.Album.Title,
+			AlbumID:     track.Album.ID,
+			ISRC:        track.ISRC,
+			Duration:    track.Duration,
+			TrackNum:    track.TrackNumber,
+			ReleaseDate: album.ReleaseDate,
+			CoverURL:    formatTidalImageURL(track.Album.Cover),
+			Explicit:    track.Explicit,
+			TidalURL:    fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID),
+			Available:   trackAvail,
+			PreviewURL:  track.AudioPreviewURL,
+			Copyright:   album.Copyright,
+			Label:       album.Label,
+			Popularity:  track.Popularity,
 		})
 	}
 
