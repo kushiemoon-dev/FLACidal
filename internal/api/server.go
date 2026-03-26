@@ -15,18 +15,18 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/websocket/v2"
 
-	"flacidal/backend"
+	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
 // ServerConfig holds all dependencies for the server
 type ServerConfig struct {
-	Config          *backend.Config
-	DB              *backend.Database
-	DownloadManager *backend.DownloadManager
-	SourceManager   *backend.SourceManager
-	TidalSource     *backend.TidalSource
-	QobuzSource     *backend.QobuzSource
-	LyricsClient    *backend.LyricsClient
+	Config          *core.Config
+	DB              *core.Database
+	DownloadManager *core.DownloadManager
+	SourceManager   *core.SourceManager
+	TidalSource     *core.TidalSource
+	QobuzSource     *core.QobuzSource
+	LyricsClient    *core.LyricsClient
 	Context         context.Context
 	FrontendFS      embed.FS // Embedded frontend assets
 }
@@ -34,13 +34,13 @@ type ServerConfig struct {
 // Server represents the HTTP API server
 type Server struct {
 	app             *fiber.App
-	config          *backend.Config
-	db              *backend.Database
-	downloadManager *backend.DownloadManager
-	sourceManager   *backend.SourceManager
-	tidalSource     *backend.TidalSource
-	qobuzSource     *backend.QobuzSource
-	lyricsClient    *backend.LyricsClient
+	config          *core.Config
+	db              *core.Database
+	downloadManager *core.DownloadManager
+	sourceManager   *core.SourceManager
+	tidalSource     *core.TidalSource
+	qobuzSource     *core.QobuzSource
+	lyricsClient    *core.LyricsClient
 	wsHub           *WebSocketHub
 	ctx             context.Context
 	frontendFS      embed.FS
@@ -215,7 +215,7 @@ func (s *Server) Shutdown() error {
 }
 
 // BroadcastDownloadEvent sends a download event to all connected WebSocket clients
-func (s *Server) BroadcastDownloadEvent(event backend.DownloadEvent) {
+func (s *Server) BroadcastDownloadEvent(event core.DownloadEvent) {
 	s.wsHub.Broadcast(map[string]interface{}{
 		"type":    "download-progress",
 		"trackId": event.TrackID,
