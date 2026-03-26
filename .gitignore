@@ -57,3 +57,11 @@ CLAUDE.md
 
 # AI session tracking (internal context files, not for repo)
 docs/plans/
+task_plan.md
+findings.md
+progress.md
+
+# Workspace sub-repos (each has its own git)
+flacidal-desktop/
+flacidal-core/
+flacidal-mobile/
