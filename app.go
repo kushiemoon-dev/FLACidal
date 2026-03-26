@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"flacidal/backend"
+	core "github.com/kushiemoon-dev/flacidal-core"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -23,17 +23,17 @@ import (
 // App struct - main Wails application
 type App struct {
 	ctx             context.Context
-	config          *backend.Config
-	db              *backend.Database
-	tidalClient     *backend.TidalClient
-	spotifySearch   *backend.SpotifyClient    // For search/matching (Client Credentials, no login)
-	matcher         *backend.Matcher
-	downloader      *backend.TidalHifiService // FLAC downloader
-	downloadManager *backend.DownloadManager  // Concurrent download manager
-	logBuffer       *backend.LogBuffer        // Log buffer for Terminal page
-	sourceManager   *backend.SourceManager    // Multi-source manager
-	tidalSource     *backend.TidalSource      // Tidal source
-	qobuzSource     *backend.QobuzSource      // Qobuz source
+	config          *core.Config
+	db              *core.Database
+	tidalClient     *core.TidalClient
+	spotifySearch   *core.SpotifyClient    // For search/matching (Client Credentials, no login)
+	matcher         *core.Matcher
+	downloader      *core.TidalHifiService // FLAC downloader
+	downloadManager *core.DownloadManager  // Concurrent download manager
+	logBuffer       *core.LogBuffer        // Log buffer for Terminal page
+	sourceManager   *core.SourceManager    // Multi-source manager
+	tidalSource     *core.TidalSource      // Tidal source
+	qobuzSource     *core.QobuzSource      // Qobuz source
 	trackContentMap sync.Map                  // maps trackID (int) → contentID (string) for history tracking
 }
 
@@ -47,20 +47,20 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// Initialize log buffer
-	a.logBuffer = backend.NewLogBuffer(500)
+	a.logBuffer = core.NewLogBuffer(500)
 	a.logBuffer.Info("FLACidal starting...")
 
 	// Load config
-	config, err := backend.LoadConfig()
+	config, err := core.LoadConfig()
 	if err != nil {
 		a.logBuffer.Warn("Could not load config: " + err.Error())
-		config = &backend.Config{}
+		config = &core.Config{}
 	}
 	a.config = config
 	a.logBuffer.Success("Configuration loaded")
 
 	// Initialize database
-	db, err := backend.NewDatabase()
+	db, err := core.NewDatabase()
 	if err != nil {
 		a.logBuffer.Error("Database initialization failed: " + err.Error())
 	} else {
@@ -69,7 +69,7 @@ func (a *App) startup(ctx context.Context) {
 	a.db = db
 
 	// Initialize Tidal client (uses internal credentials, no user config needed)
-	a.tidalClient = backend.NewTidalClientDefault()
+	a.tidalClient = core.NewTidalClientDefault()
 	a.tidalClient.SetCountryCode(config.CountryCode)
 	if config.ProxyURL != "" {
 		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
@@ -81,13 +81,13 @@ func (a *App) startup(ctx context.Context) {
 	a.logBuffer.Info("Tidal client ready")
 
 	// Initialize Spotify search client (Client Credentials, no login needed)
-	a.spotifySearch = backend.NewSpotifyClientForSearch()
+	a.spotifySearch = core.NewSpotifyClientForSearch()
 
 	// Initialize matcher
-	a.matcher = backend.NewMatcher(a.spotifySearch, a.db)
+	a.matcher = core.NewMatcher(a.spotifySearch, a.db)
 
 	// Initialize FLAC downloader
-	a.downloader = backend.NewTidalHifiService()
+	a.downloader = core.NewTidalHifiService()
 	// Attach logger so endpoint rotation events appear in Terminal page
 	a.downloader.SetLogger(a.logBuffer)
 	if config.ProxyURL != "" {
@@ -109,7 +109,7 @@ func (a *App) startup(ctx context.Context) {
 	if fileNameFormat == "" {
 		fileNameFormat = "{artist} - {title}"
 	}
-	a.downloader.SetOptions(backend.DownloadOptions{
+	a.downloader.SetOptions(core.DownloadOptions{
 		Quality:              quality,
 		FileNameFormat:       fileNameFormat,
 		OrganizeFolders:      config.OrganizeFolders,
@@ -129,14 +129,14 @@ func (a *App) startup(ctx context.Context) {
 	a.logBuffer.Info("FLAC downloader service ready")
 
 	// Initialize download manager with 4 concurrent workers
-	a.downloadManager = backend.NewDownloadManager(a.downloader, 4)
+	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
 
 	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
 	// Events are queued and emitted one at a time from a dedicated goroutine.
 	type progressEvent struct {
 		trackID int
 		status  string
-		result  *backend.DownloadResult
+		result  *core.DownloadResult
 	}
 	eventCh := make(chan progressEvent, 64)
 	go func() {
@@ -151,7 +151,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}()
 
-	a.downloadManager.SetProgressCallback(func(trackID int, status string, result *backend.DownloadResult) {
+	a.downloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
 		// Log download events
 		if a.logBuffer != nil {
 			switch status {
@@ -210,16 +210,16 @@ func (a *App) startup(ctx context.Context) {
 	a.logBuffer.Success("Download manager started (4 workers)")
 
 	// Initialize source manager
-	a.sourceManager = backend.NewSourceManager()
+	a.sourceManager = core.NewSourceManager()
 
 	// Initialize Tidal source
-	a.tidalSource = backend.NewTidalSource()
+	a.tidalSource = core.NewTidalSource()
 	a.tidalSource.SetAvailable(config.TidalEnabled)
 	a.sourceManager.RegisterSource(a.tidalSource)
 	a.logBuffer.Info("Tidal source registered")
 
 	// Initialize Qobuz source
-	a.qobuzSource = backend.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
+	a.qobuzSource = core.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
 	a.qobuzSource.SetLogger(a.logBuffer)
 	if config.ProxyURL != "" {
 		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
@@ -272,7 +272,7 @@ func (a *App) shutdown(ctx context.Context) {
 
 	// Save config
 	if a.config != nil {
-		backend.SaveConfig(a.config)
+		core.SaveConfig(a.config)
 	}
 
 	// Close database
@@ -286,12 +286,12 @@ func (a *App) shutdown(ctx context.Context) {
 // =============================================================================
 
 // GetConfig returns current configuration
-func (a *App) GetConfig() *backend.Config {
+func (a *App) GetConfig() *core.Config {
 	return a.config
 }
 
 // SaveConfig saves configuration
-func (a *App) SaveConfig(config backend.Config) error {
+func (a *App) SaveConfig(config core.Config) error {
 	a.config = &config
 	if a.downloadManager != nil {
 		a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
@@ -339,12 +339,12 @@ func (a *App) SaveConfig(config backend.Config) error {
 			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
 		}
 	}
-	return backend.SaveConfig(&config)
+	return core.SaveConfig(&config)
 }
 
 // ResetToDefaults resets configuration to default values
-func (a *App) ResetToDefaults() (*backend.Config, error) {
-	defaultCfg := backend.GetDefaultConfig()
+func (a *App) ResetToDefaults() (*core.Config, error) {
+	defaultCfg := core.GetDefaultConfig()
 
 	// Preserve download folder if set
 	if a.config != nil && a.config.DownloadFolder != "" {
@@ -352,7 +352,7 @@ func (a *App) ResetToDefaults() (*backend.Config, error) {
 	}
 
 	a.config = defaultCfg
-	if err := backend.SaveConfig(defaultCfg); err != nil {
+	if err := core.SaveConfig(defaultCfg); err != nil {
 		return nil, err
 	}
 
@@ -438,7 +438,7 @@ func (a *App) CheckAPIStatus() []EndpointStatus {
 
 // OpenConfigFolder opens the app config directory in the system file manager
 func (a *App) OpenConfigFolder() error {
-	configDir := backend.GetDataDir()
+	configDir := core.GetDataDir()
 	return openFolder(configDir)
 }
 
@@ -464,15 +464,15 @@ func (a *App) SetTidalCredentials(clientID, clientSecret string) error {
 	a.config.TidalClientSecret = clientSecret
 
 	// Initialize client with new credentials
-	a.tidalClient = backend.NewTidalClient(clientID, clientSecret)
+	a.tidalClient = core.NewTidalClient(clientID, clientSecret)
 
-	return backend.SaveConfig(a.config)
+	return core.SaveConfig(a.config)
 }
 
 // FetchTidalPlaylist fetches a public playlist from Tidal URL
-func (a *App) FetchTidalPlaylist(url string) (*backend.TidalPlaylist, error) {
+func (a *App) FetchTidalPlaylist(url string) (*core.TidalPlaylist, error) {
 	// Parse URL to get playlist UUID
-	id, contentType, err := backend.ParseTidalURL(url)
+	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +486,7 @@ func (a *App) FetchTidalPlaylist(url string) (*backend.TidalPlaylist, error) {
 
 // FetchTidalContent fetches playlist, album, or single track from any Tidal URL
 func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
-	id, contentType, err := backend.ParseTidalURL(url)
+	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +532,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["title"] = track.Title
 		result["creator"] = track.Artist
 		result["coverUrl"] = track.CoverURL
-		result["tracks"] = []backend.TidalTrack{*track}
+		result["tracks"] = []core.TidalTrack{*track}
 		result["trackCount"] = 1
 
 	case "mix":
@@ -557,7 +557,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["albums"] = artist.Albums
 		result["albumCount"] = len(artist.Albums)
 		result["artistId"] = artist.ID
-		result["tracks"] = []backend.TidalTrack{} // empty — tracks loaded per album
+		result["tracks"] = []core.TidalTrack{} // empty — tracks loaded per album
 
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
@@ -568,7 +568,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 
 // ValidateTidalURL checks if a URL is a valid Tidal URL
 func (a *App) ValidateTidalURL(url string) map[string]interface{} {
-	id, contentType, err := backend.ParseTidalURL(url)
+	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
 		return map[string]interface{}{
 			"valid": false,
@@ -604,7 +604,7 @@ func (a *App) GetCacheStats() map[string]interface{} {
 }
 
 // GetDownloadHistory returns all download history
-func (a *App) GetDownloadHistory() ([]backend.DownloadRecord, error) {
+func (a *App) GetDownloadHistory() ([]core.DownloadRecord, error) {
 	if a.db == nil {
 		return nil, nil
 	}
@@ -618,7 +618,7 @@ func (a *App) GetDownloadHistoryFiltered(filter map[string]interface{}) (map[str
 	}
 
 	// Parse filter options
-	dbFilter := backend.HistoryFilter{}
+	dbFilter := core.HistoryFilter{}
 
 	if ct, ok := filter["contentType"].(string); ok {
 		dbFilter.ContentType = ct
@@ -697,7 +697,7 @@ func (a *App) RefetchFromHistory(tidalContentID string) (map[string]interface{},
 }
 
 // GetMatchFailures returns all match failures
-func (a *App) GetMatchFailures() ([]backend.MatchFailure, error) {
+func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 	if a.db == nil {
 		return nil, nil
 	}
@@ -781,9 +781,9 @@ func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 // =============================================================================
 
 // GetLogs returns all log entries
-func (a *App) GetLogs() []backend.LogEntry {
+func (a *App) GetLogs() []core.LogEntry {
 	if a.logBuffer == nil {
-		return []backend.LogEntry{}
+		return []core.LogEntry{}
 	}
 	return a.logBuffer.GetAll()
 }
@@ -809,7 +809,7 @@ func (a *App) AddLog(level, message string) {
 // =============================================================================
 
 // MatchPlaylistTracks matches all tracks from a Tidal playlist to Spotify
-func (a *App) MatchPlaylistTracks(tracks []backend.TidalTrack) []backend.MatchResult {
+func (a *App) MatchPlaylistTracks(tracks []core.TidalTrack) []core.MatchResult {
 	if a.matcher == nil {
 		return nil
 	}
@@ -817,9 +817,9 @@ func (a *App) MatchPlaylistTracks(tracks []backend.TidalTrack) []backend.MatchRe
 }
 
 // MatchSingleTrack matches a single track
-func (a *App) MatchSingleTrack(track backend.TidalTrack) backend.MatchResult {
+func (a *App) MatchSingleTrack(track core.TidalTrack) core.MatchResult {
 	if a.matcher == nil {
-		return backend.MatchResult{TidalTrack: track, Matched: false, MatchMethod: "none"}
+		return core.MatchResult{TidalTrack: track, Matched: false, MatchMethod: "none"}
 	}
 	return a.matcher.MatchTrack(track)
 }
@@ -864,10 +864,10 @@ func (a *App) GetDownloadFolder() string {
 // SetDownloadFolder saves the download folder to config
 func (a *App) SetDownloadFolder(folder string) error {
 	if a.config == nil {
-		a.config = &backend.Config{}
+		a.config = &core.Config{}
 	}
 	a.config.DownloadFolder = folder
-	return backend.SaveConfig(a.config)
+	return core.SaveConfig(a.config)
 }
 
 // IsDownloaderAvailable checks if the download service is reachable
@@ -879,7 +879,7 @@ func (a *App) IsDownloaderAvailable() bool {
 }
 
 // DownloadTrack downloads a single track by its Tidal ID
-func (a *App) DownloadTrack(trackID int, outputDir string) (*backend.DownloadResult, error) {
+func (a *App) DownloadTrack(trackID int, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
 	}
@@ -890,7 +890,7 @@ func (a *App) DownloadTrack(trackID int, outputDir string) (*backend.DownloadRes
 }
 
 // DownloadTrackFromTidal downloads using TidalTrack data (for UI convenience)
-func (a *App) DownloadTrackFromTidal(track backend.TidalTrack, outputDir string) (*backend.DownloadResult, error) {
+func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
 	}
@@ -901,7 +901,7 @@ func (a *App) DownloadTrackFromTidal(track backend.TidalTrack, outputDir string)
 }
 
 // QueueDownloads queues multiple tracks for concurrent download
-func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
+func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
 	}
@@ -911,7 +911,7 @@ func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, cont
 
 	// Create subfolder with content name (playlist/album/track title)
 	if contentName != "" {
-		outputDir = filepath.Join(outputDir, backend.SanitizeFileName(contentName))
+		outputDir = filepath.Join(outputDir, core.SanitizeFileName(contentName))
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
 			return 0, fmt.Errorf("failed to create folder: %w", err)
 		}
@@ -921,7 +921,7 @@ func (a *App) QueueDownloads(tracks []backend.TidalTrack, outputDir string, cont
 
 	// Save initial history record
 	if a.db != nil && contentID != "" {
-		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+		_ = a.db.SaveDownloadRecord(&core.DownloadRecord{
 			TidalContentID:   contentID,
 			TidalContentName: contentName,
 			ContentType:      contentType,
@@ -952,11 +952,11 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 	}
 
 	// Create {Artist}/{Album} folder structure
-	artistFolder := backend.SanitizeFileName(artistName)
+	artistFolder := core.SanitizeFileName(artistName)
 	if artistFolder == "" {
-		artistFolder = backend.SanitizeFileName(album.Artist)
+		artistFolder = core.SanitizeFileName(album.Artist)
 	}
-	albumFolder := backend.SanitizeFileName(album.Title)
+	albumFolder := core.SanitizeFileName(album.Title)
 	albumDir := filepath.Join(outputDir, artistFolder, albumFolder)
 	if err := os.MkdirAll(albumDir, 0755); err != nil {
 		return 0, fmt.Errorf("failed to create album folder: %w", err)
@@ -987,13 +987,13 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 		artistName = name
 	}
 
-	urls := backend.ArtistImageURLs(pictureID)
+	urls := core.ArtistImageURLs(pictureID)
 	if len(urls) == 0 {
 		return 0, fmt.Errorf("no image URLs generated")
 	}
 
 	// Save to {outputDir}/{artistName}/
-	destDir := filepath.Join(outputDir, backend.SanitizeFileName(artistName))
+	destDir := filepath.Join(outputDir, core.SanitizeFileName(artistName))
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return 0, fmt.Errorf("failed to create artist folder: %w", err)
 	}
@@ -1047,7 +1047,7 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 	err := a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
 	if err == nil && a.db != nil {
 		contentID := strconv.Itoa(trackID)
-		_ = a.db.SaveDownloadRecord(&backend.DownloadRecord{
+		_ = a.db.SaveDownloadRecord(&core.DownloadRecord{
 			TidalContentID:   contentID,
 			TidalContentName: title,
 			ContentType:      "track",
@@ -1109,7 +1109,7 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 // SetDownloadOptions updates download options
 func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders, embedCover, saveCoverFile, autoAnalyze bool) error {
 	if a.config == nil {
-		a.config = &backend.Config{}
+		a.config = &core.Config{}
 	}
 
 	a.config.DownloadQuality = quality
@@ -1125,7 +1125,7 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 		if a.config != nil {
 			autoQualityFallback = a.config.AutoQualityFallback
 		}
-		a.downloader.SetOptions(backend.DownloadOptions{
+		a.downloader.SetOptions(core.DownloadOptions{
 			Quality:             quality,
 			FileNameFormat:      fileNameFormat,
 			OrganizeFolders:     organizeFolders,
@@ -1136,7 +1136,7 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 		})
 	}
 
-	return backend.SaveConfig(a.config)
+	return core.SaveConfig(a.config)
 }
 
 // OpenDownloadFolder opens the download folder in the system file manager
@@ -1153,7 +1153,7 @@ func (a *App) OpenDownloadFolder(folder string) error {
 // =============================================================================
 
 // SearchTidal searches for tracks on Tidal
-func (a *App) SearchTidal(query string) ([]backend.TidalTrack, error) {
+func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
 	}
@@ -1164,7 +1164,7 @@ func (a *App) SearchTidal(query string) ([]backend.TidalTrack, error) {
 	}
 
 	// Convert to TidalTrack format for frontend
-	tracks := make([]backend.TidalTrack, len(results))
+	tracks := make([]core.TidalTrack, len(results))
 	for i, r := range results {
 		// Build artist string
 		var artists []string
@@ -1187,10 +1187,10 @@ func (a *App) SearchTidal(query string) ([]backend.TidalTrack, error) {
 		coverURL := ""
 		if r.Album.Cover != "" {
 			coverURL = fmt.Sprintf("https://resources.tidal.com/images/%s/320x320.jpg",
-				backend.FormatCoverUUID(r.Album.Cover))
+				core.FormatCoverUUID(r.Album.Cover))
 		}
 
-		tracks[i] = backend.TidalTrack{
+		tracks[i] = core.TidalTrack{
 			ID:       r.ID,
 			Title:    r.Title,
 			Artist:   artistStr,
@@ -1207,7 +1207,7 @@ func (a *App) SearchTidal(query string) ([]backend.TidalTrack, error) {
 }
 
 // SearchTidalAlbums searches for albums on Tidal
-func (a *App) SearchTidalAlbums(query string) ([]backend.TidalAlbum, error) {
+func (a *App) SearchTidalAlbums(query string) ([]core.TidalAlbum, error) {
 	if a.tidalClient == nil {
 		return nil, fmt.Errorf("tidal client not initialized")
 	}
@@ -1215,7 +1215,7 @@ func (a *App) SearchTidalAlbums(query string) ([]backend.TidalAlbum, error) {
 }
 
 // SearchTidalArtists searches for artists on Tidal
-func (a *App) SearchTidalArtists(query string) ([]backend.TidalArtist, error) {
+func (a *App) SearchTidalArtists(query string) ([]core.TidalArtist, error) {
 	if a.tidalClient == nil {
 		return nil, fmt.Errorf("tidal client not initialized")
 	}
@@ -1227,28 +1227,28 @@ func (a *App) SearchTidalArtists(query string) ([]backend.TidalArtist, error) {
 // =============================================================================
 
 // ListDownloadedFiles lists all downloaded FLAC files
-func (a *App) ListDownloadedFiles() ([]backend.DownloadedFileInfo, error) {
+func (a *App) ListDownloadedFiles() ([]core.DownloadedFileInfo, error) {
 	folder := a.GetDownloadFolder()
 	if folder == "" {
-		return []backend.DownloadedFileInfo{}, nil
+		return []core.DownloadedFileInfo{}, nil
 	}
 
-	return backend.ListFLACFiles(folder)
+	return core.ListFLACFiles(folder)
 }
 
 // DeleteFile deletes a file from the filesystem
 func (a *App) DeleteFile(path string) error {
-	return backend.DeleteFile(path)
+	return core.DeleteFile(path)
 }
 
 // GetFileMetadata reads and returns metadata from a FLAC file
-func (a *App) GetFileMetadata(filePath string) (*backend.FLACMetadata, error) {
-	return backend.ReadFLACMetadata(filePath)
+func (a *App) GetFileMetadata(filePath string) (*core.FLACMetadata, error) {
+	return core.ReadFLACMetadata(filePath)
 }
 
 // GetFileCoverArt returns cover art as base64 encoded string
 func (a *App) GetFileCoverArt(filePath string) (map[string]string, error) {
-	base64Data, mimeType, err := backend.GetCoverArtBase64(filePath)
+	base64Data, mimeType, err := core.GetCoverArtBase64(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -1260,17 +1260,17 @@ func (a *App) GetFileCoverArt(filePath string) (map[string]string, error) {
 
 // GetRenameTemplates returns available rename templates
 func (a *App) GetRenameTemplates() []map[string]string {
-	return backend.GetRenameTemplates()
+	return core.GetRenameTemplates()
 }
 
 // PreviewRename generates a preview of rename operations
-func (a *App) PreviewRename(files []string, template string) []backend.RenamePreview {
-	return backend.PreviewRename(files, template)
+func (a *App) PreviewRename(files []string, template string) []core.RenamePreview {
+	return core.PreviewRename(files, template)
 }
 
 // RenameFiles renames files according to the template
-func (a *App) RenameFiles(files []string, template string) []backend.RenameResult {
-	results := backend.RenameFiles(files, template)
+func (a *App) RenameFiles(files []string, template string) []core.RenameResult {
+	results := core.RenameFiles(files, template)
 
 	// Log results
 	if a.logBuffer != nil {
@@ -1295,17 +1295,17 @@ func (a *App) RenameFiles(files []string, template string) []backend.RenameResul
 
 // IsConverterAvailable checks if FFmpeg is available
 func (a *App) IsConverterAvailable() bool {
-	return backend.IsConverterAvailable()
+	return core.IsConverterAvailable()
 }
 
 // GetFFmpegInfo returns FFmpeg availability and version
 func (a *App) GetFFmpegInfo() map[string]interface{} {
-	return backend.GetFFmpegInfo()
+	return core.GetFFmpegInfo()
 }
 
 // InstallFFmpeg downloads and installs FFmpeg, emitting progress events
 func (a *App) InstallFFmpeg() error {
-	progressCh := make(chan backend.FFmpegInstallProgress, 10)
+	progressCh := make(chan core.FFmpegInstallProgress, 10)
 
 	go func() {
 		for p := range progressCh {
@@ -1313,41 +1313,41 @@ func (a *App) InstallFFmpeg() error {
 		}
 	}()
 
-	err := backend.InstallFFmpeg(progressCh)
+	err := core.InstallFFmpeg(progressCh)
 	if err != nil {
 		return err
 	}
 
 	// Reinitialize converter with new path
-	backend.ResetConverter()
+	core.ResetConverter()
 	return nil
 }
 
 // GetFFmpegInstallStatus returns whether FFmpeg is available and if local install exists
 func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"systemAvailable": backend.IsConverterAvailable(),
-		"localInstalled":  backend.IsFFmpegInstalledLocally(),
-		"localPath":       backend.GetLocalFFmpegPath(),
+		"systemAvailable": core.IsConverterAvailable(),
+		"localInstalled":  core.IsFFmpegInstalledLocally(),
+		"localPath":       core.GetLocalFFmpegPath(),
 	}
 }
 
 // GetConversionFormats returns available conversion formats
-func (a *App) GetConversionFormats() []backend.ConversionFormat {
-	conv := backend.GetConverter()
+func (a *App) GetConversionFormats() []core.ConversionFormat {
+	conv := core.GetConverter()
 	if conv == nil {
-		return []backend.ConversionFormat{}
+		return []core.ConversionFormat{}
 	}
 	return conv.GetFormats()
 }
 
 // ConvertFiles converts files to the specified format
-func (a *App) ConvertFiles(files []string, format, quality, outputDir string, deleteSource bool) []backend.ConversionResult {
-	conv := backend.GetConverter()
+func (a *App) ConvertFiles(files []string, format, quality, outputDir string, deleteSource bool) []core.ConversionResult {
+	conv := core.GetConverter()
 	if conv == nil {
-		results := make([]backend.ConversionResult, len(files))
+		results := make([]core.ConversionResult, len(files))
 		for i, f := range files {
-			results[i] = backend.ConversionResult{
+			results[i] = core.ConversionResult{
 				SourcePath: f,
 				Error:      "FFmpeg not available",
 			}
@@ -1355,7 +1355,7 @@ func (a *App) ConvertFiles(files []string, format, quality, outputDir string, de
 		return results
 	}
 
-	opts := backend.ConversionOptions{
+	opts := core.ConversionOptions{
 		Format:       format,
 		Quality:      quality,
 		OutputDir:    outputDir,
@@ -1386,7 +1386,7 @@ func (a *App) SelectFolderForConversion() ([]string, error) {
 	if err != nil || dir == "" {
 		return nil, err
 	}
-	files, err := backend.ListFLACFiles(dir)
+	files, err := core.ListFLACFiles(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -1398,7 +1398,7 @@ func (a *App) SelectFolderForConversion() ([]string, error) {
 }
 
 // ConvertFolder converts all .flac files in a folder recursively
-func (a *App) ConvertFolder(folderPath, format, quality, outputDir string, deleteSource bool) []backend.ConversionResult {
+func (a *App) ConvertFolder(folderPath, format, quality, outputDir string, deleteSource bool) []core.ConversionResult {
 	var files []string
 	filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -1547,8 +1547,8 @@ func (a *App) IsQueuePaused() bool {
 // =============================================================================
 
 // AnalyzeFile analyzes a single FLAC file for quality/authenticity
-func (a *App) AnalyzeFile(filePath string) (*backend.AnalysisResult, error) {
-	result, err := backend.AnalyzeFLAC(filePath)
+func (a *App) AnalyzeFile(filePath string) (*core.AnalysisResult, error) {
+	result, err := core.AnalyzeFLAC(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -1561,8 +1561,8 @@ func (a *App) AnalyzeFile(filePath string) (*backend.AnalysisResult, error) {
 }
 
 // AnalyzeMultiple analyzes multiple files
-func (a *App) AnalyzeMultiple(filePaths []string) []backend.AnalysisResult {
-	results := backend.AnalyzeMultiple(filePaths)
+func (a *App) AnalyzeMultiple(filePaths []string) []core.AnalysisResult {
+	results := core.AnalyzeMultiple(filePaths)
 
 	if a.logBuffer != nil {
 		lossless := 0
@@ -1581,8 +1581,8 @@ func (a *App) AnalyzeMultiple(filePaths []string) []backend.AnalysisResult {
 }
 
 // QuickAnalyze performs a fast analysis based on file size heuristics
-func (a *App) QuickAnalyze(filePath string) (*backend.AnalysisResult, error) {
-	return backend.QuickAnalyze(filePath)
+func (a *App) QuickAnalyze(filePath string) (*core.AnalysisResult, error) {
+	return core.QuickAnalyze(filePath)
 }
 
 // =============================================================================
@@ -1590,8 +1590,8 @@ func (a *App) QuickAnalyze(filePath string) (*backend.AnalysisResult, error) {
 // =============================================================================
 
 // FetchLyrics fetches lyrics for a track from LRCLIB
-func (a *App) FetchLyrics(title, artist string, durationSec int) (*backend.Lyrics, error) {
-	client := backend.NewLyricsClient()
+func (a *App) FetchLyrics(title, artist string, durationSec int) (*core.Lyrics, error) {
+	client := core.NewLyricsClient()
 	lyrics, err := client.SearchLyrics(title, artist, durationSec)
 	if err != nil {
 		if a.logBuffer != nil {
@@ -1612,19 +1612,19 @@ func (a *App) FetchLyrics(title, artist string, durationSec int) (*backend.Lyric
 }
 
 // FetchLyricsForFile fetches lyrics based on a FLAC file's metadata
-func (a *App) FetchLyricsForFile(filePath string) (*backend.Lyrics, error) {
-	meta, err := backend.ReadFLACMetadata(filePath)
+func (a *App) FetchLyricsForFile(filePath string) (*core.Lyrics, error) {
+	meta, err := core.ReadFLACMetadata(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read metadata: %w", err)
 	}
 
-	client := backend.NewLyricsClient()
+	client := core.NewLyricsClient()
 	return client.FetchLyricsForFile(meta)
 }
 
 // EmbedLyricsToFile embeds lyrics into a FLAC file
 func (a *App) EmbedLyricsToFile(filePath string, plain, synced string) error {
-	tagger := backend.NewFLACTagger()
+	tagger := core.NewFLACTagger()
 	err := tagger.EmbedLyrics(filePath, plain, synced)
 	if err != nil {
 		if a.logBuffer != nil {
@@ -1640,7 +1640,7 @@ func (a *App) EmbedLyricsToFile(filePath string, plain, synced string) error {
 }
 
 // FetchAndEmbedLyrics fetches and embeds lyrics for a file in one operation
-func (a *App) FetchAndEmbedLyrics(filePath string) (*backend.Lyrics, error) {
+func (a *App) FetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 	// Fetch lyrics based on file metadata
 	lyrics, err := a.FetchLyricsForFile(filePath)
 	if err != nil {
@@ -1655,7 +1655,7 @@ func (a *App) FetchAndEmbedLyrics(filePath string) (*backend.Lyrics, error) {
 
 	// Save lyrics as separate file if enabled
 	if a.config != nil && a.config.SaveLyricsFile {
-		if saveErr := backend.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain); saveErr != nil {
+		if saveErr := core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain); saveErr != nil {
 			a.logBuffer.Warn("Failed to save lyrics file: " + saveErr.Error())
 		}
 	}
@@ -1693,7 +1693,7 @@ func (a *App) FetchAndEmbedLyricsMultiple(filePaths []string) []map[string]inter
 // =============================================================================
 
 // GetAvailableSources returns info about all registered music sources
-func (a *App) GetAvailableSources() []backend.SourceInfo {
+func (a *App) GetAvailableSources() []core.SourceInfo {
 	return a.sourceManager.GetSourcesInfo()
 }
 
@@ -1764,7 +1764,7 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 	}
 
 	// Helper to convert SourceTrack to frontend-compatible format
-	convertTrack := func(t backend.SourceTrack) map[string]interface{} {
+	convertTrack := func(t core.SourceTrack) map[string]interface{} {
 		// Convert ID to int if possible, otherwise use string
 		trackID, _ := strconv.Atoi(t.ID)
 		artists := t.Artist
@@ -1785,7 +1785,7 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		}
 	}
 
-	convertTracks := func(tracks []backend.SourceTrack) []map[string]interface{} {
+	convertTracks := func(tracks []core.SourceTrack) []map[string]interface{} {
 		result := make([]map[string]interface{}, len(tracks))
 		for i, t := range tracks {
 			result[i] = convertTrack(t)
@@ -1802,7 +1802,7 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		result["title"] = track.Title
 		result["creator"] = track.Artist
 		result["coverUrl"] = track.CoverURL
-		result["tracks"] = convertTracks([]backend.SourceTrack{*track})
+		result["tracks"] = convertTracks([]core.SourceTrack{*track})
 
 	case "album":
 		album, err := source.GetAlbum(id)
@@ -1832,9 +1832,9 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		result["title"] = mix.Title
 		result["creator"] = mix.Creator
 		result["coverUrl"] = mix.CoverURL
-		tidalTracks := make([]backend.SourceTrack, len(mix.Tracks))
+		tidalTracks := make([]core.SourceTrack, len(mix.Tracks))
 		for i, t := range mix.Tracks {
-			tidalTracks[i] = backend.SourceTrack{
+			tidalTracks[i] = core.SourceTrack{
 				ID:          strconv.Itoa(t.ID),
 				Title:       t.Title,
 				Artist:      t.Artist,
@@ -1860,7 +1860,7 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 }
 
 // GetSourceTrack fetches a track from a specific source
-func (a *App) GetSourceTrack(sourceName, trackID string) (*backend.SourceTrack, error) {
+func (a *App) GetSourceTrack(sourceName, trackID string) (*core.SourceTrack, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
 		return nil, fmt.Errorf("source not found: %s", sourceName)
@@ -1869,7 +1869,7 @@ func (a *App) GetSourceTrack(sourceName, trackID string) (*backend.SourceTrack, 
 }
 
 // GetSourceAlbum fetches an album from a specific source
-func (a *App) GetSourceAlbum(sourceName, albumID string) (*backend.SourceAlbum, error) {
+func (a *App) GetSourceAlbum(sourceName, albumID string) (*core.SourceAlbum, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
 		return nil, fmt.Errorf("source not found: %s", sourceName)
@@ -1878,7 +1878,7 @@ func (a *App) GetSourceAlbum(sourceName, albumID string) (*backend.SourceAlbum, 
 }
 
 // GetSourcePlaylist fetches a playlist from a specific source
-func (a *App) GetSourcePlaylist(sourceName, playlistID string) (*backend.SourcePlaylist, error) {
+func (a *App) GetSourcePlaylist(sourceName, playlistID string) (*core.SourcePlaylist, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
 		return nil, fmt.Errorf("source not found: %s", sourceName)
@@ -1896,7 +1896,7 @@ func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 	a.config.QobuzAuthToken = authToken
 	a.config.QobuzEnabled = appID != "" && appSecret != ""
 
-	if err := backend.SaveConfig(a.config); err != nil {
+	if err := core.SaveConfig(a.config); err != nil {
 		return err
 	}
 
