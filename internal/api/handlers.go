@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"flacidal/backend"
+	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
 // Health check
@@ -24,11 +24,11 @@ func (s *Server) handleGetConfig(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
-	var config backend.Config
+	var config core.Config
 	if err := c.BodyParser(&config); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := backend.SaveConfig(&config); err != nil {
+	if err := core.SaveConfig(&config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	s.config = &config
@@ -36,8 +36,8 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleResetConfig(c *fiber.Ctx) error {
-	config := backend.GetDefaultConfig()
-	if err := backend.SaveConfig(config); err != nil {
+	config := core.GetDefaultConfig()
+	if err := core.SaveConfig(config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	s.config = config
@@ -131,7 +131,7 @@ func (s *Server) handleFetchContent(c *fiber.Ctx) error {
 		result["title"] = track.Title
 		result["creator"] = track.Artist
 		result["coverUrl"] = track.CoverURL
-		result["tracks"] = []backend.SourceTrack{*track}
+		result["tracks"] = []core.SourceTrack{*track}
 
 	case "album":
 		album, err := source.GetAlbum(id)
@@ -201,7 +201,7 @@ func (s *Server) handleGetQueue(c *fiber.Ctx) error {
 
 func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 	var req struct {
-		Tracks      []backend.TidalTrack `json:"tracks"`
+		Tracks      []core.TidalTrack `json:"tracks"`
 		OutputDir   string               `json:"outputDir"`
 		ContentName string               `json:"contentName"`
 	}
@@ -214,7 +214,7 @@ func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 		outputDir = s.config.DownloadFolder
 	}
 	if outputDir == "" {
-		outputDir = backend.GetDefaultDownloadFolder()
+		outputDir = core.GetDefaultDownloadFolder()
 	}
 
 	count := s.downloadManager.QueueMultiple(req.Tracks, outputDir)
@@ -237,7 +237,7 @@ func (s *Server) handleQueueSingle(c *fiber.Ctx) error {
 		outputDir = s.config.DownloadFolder
 	}
 	if outputDir == "" {
-		outputDir = backend.GetDefaultDownloadFolder()
+		outputDir = core.GetDefaultDownloadFolder()
 	}
 
 	err := s.downloadManager.QueueDownload(req.TrackID, outputDir, req.Title, req.Artist)
@@ -287,7 +287,7 @@ func (s *Server) handleSetDownloadOptions(c *fiber.Ctx) error {
 	s.config.EmbedCover = req.EmbedCover
 	s.config.SaveCoverFile = req.SaveCoverFile
 
-	if err := backend.SaveConfig(s.config); err != nil {
+	if err := core.SaveConfig(s.config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -303,7 +303,7 @@ func (s *Server) handleRetryDownload(c *fiber.Ctx) error {
 	// Re-queue the download - the download manager tracks failed jobs internally
 	outputDir := s.config.DownloadFolder
 	if outputDir == "" {
-		outputDir = backend.GetDefaultDownloadFolder()
+		outputDir = core.GetDefaultDownloadFolder()
 	}
 	if err := s.downloadManager.QueueDownload(id, outputDir, "", ""); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -347,7 +347,7 @@ func (s *Server) handleIsPaused(c *fiber.Ctx) error {
 // History handlers
 func (s *Server) handleGetHistory(c *fiber.Ctx) error {
 	if s.db == nil {
-		return c.JSON([]backend.DownloadRecord{})
+		return c.JSON([]core.DownloadRecord{})
 	}
 
 	records, err := s.db.GetAllDownloadRecords()
@@ -364,10 +364,10 @@ func (s *Server) handleGetHistoryFiltered(c *fiber.Ctx) error {
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
 
 	if s.db == nil {
-		return c.JSON(fiber.Map{"records": []backend.DownloadRecord{}, "total": 0})
+		return c.JSON(fiber.Map{"records": []core.DownloadRecord{}, "total": 0})
 	}
 
-	filter := backend.HistoryFilter{
+	filter := core.HistoryFilter{
 		Limit:  limit,
 		Offset: offset,
 	}
@@ -446,7 +446,7 @@ func (s *Server) handleGetCoverArt(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetRenameTemplates(c *fiber.Ctx) error {
-	return c.JSON(backend.GetRenameTemplates())
+	return c.JSON(core.GetRenameTemplates())
 }
 
 func (s *Server) handlePreviewRename(c *fiber.Ctx) error {
@@ -458,7 +458,7 @@ func (s *Server) handlePreviewRename(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	previews := backend.PreviewRename(req.Files, req.Template)
+	previews := core.PreviewRename(req.Files, req.Template)
 	return c.JSON(previews)
 }
 
@@ -471,7 +471,7 @@ func (s *Server) handleRenameFiles(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	results := backend.RenameFiles(req.Files, req.Template)
+	results := core.RenameFiles(req.Files, req.Template)
 	return c.JSON(results)
 }
 
@@ -554,7 +554,7 @@ func (s *Server) handleEmbedLyrics(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	tagger := backend.NewFLACTagger()
+	tagger := core.NewFLACTagger()
 	if err := tagger.EmbedLyrics(req.FilePath, req.Plain, req.Synced); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -589,7 +589,7 @@ func (s *Server) handleUpdateQobuzCredentials(c *fiber.Ctx) error {
 	s.config.QobuzAppID = req.AppID
 	s.config.QobuzAppSecret = req.AppSecret
 	s.config.QobuzAuthToken = req.AuthToken
-	if err := backend.SaveConfig(s.config); err != nil {
+	if err := core.SaveConfig(s.config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -614,7 +614,7 @@ func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
 	}
 
 	s.config.DownloadFolder = req.Folder
-	if err := backend.SaveConfig(s.config); err != nil {
+	if err := core.SaveConfig(s.config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -628,7 +628,7 @@ func (s *Server) handleGetVersion(c *fiber.Ctx) error {
 
 func (s *Server) handleGetLogs(c *fiber.Ctx) error {
 	// Implement log retrieval
-	return c.JSON([]backend.LogEntry{})
+	return c.JSON([]core.LogEntry{})
 }
 
 func (s *Server) handleClearLogs(c *fiber.Ctx) error {
