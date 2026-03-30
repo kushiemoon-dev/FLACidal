@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/websocket/v2 v2.2.1
-	github.com/kushiemoon-dev/flacidal-core v0.0.0
+	github.com/kushiemoon-dev/flacidal-core v0.1.0
 	github.com/mattn/go-sqlite3 v1.14.37
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/net v0.52.0
@@ -47,6 +47,5 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 )
 
-replace github.com/kushiemoon-dev/flacidal-core => ../flacidal-core
-
-// replace github.com/wailsapp/wails/v2 v2.11.0 => /home/kushie/go/pkg/mod
+// For local dev, uncomment:
+// replace github.com/kushiemoon-dev/flacidal-core => ../flacidal-core
