@@ -50,6 +50,11 @@
 | Windows x64 | `flacidal.exe` |
 | macOS Universal | `flacidal.dmg` |
 | Linux x64 | `flacidal.AppImage` |
+| **Android** | [`FLACidal.apk`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) |
+| **iOS** | [`FLACidal.ipa`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) (via AltStore) |
+
+> **New!** FLACidal is now available on mobile. Same features, same quality, on your phone.
+> **[FLACidal Mobile →](https://github.com/kushiemoon-dev/flacidal-mobile)**
 
 All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal/releases)
 
@@ -141,7 +146,7 @@ FLACidal is intended for **educational and personal use only**. It is not affili
 
 <div align="center">
 
-**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
+**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
 
 Made with ♥ by [KushieMoon](https://codeberg.org/KushieMoon-dev)
 
