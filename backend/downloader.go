@@ -482,6 +482,9 @@ func (t *TidalHifiService) getStreamURLForQuality(trackID int, quality string) (
 
 	var manifest TidalManifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		if len(manifestBytes) > 0 && manifestBytes[0] == '<' {
+			return nil, fmt.Errorf("quality %s unavailable for track %d (endpoint returned HTML instead of manifest)", quality, trackID)
+		}
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
