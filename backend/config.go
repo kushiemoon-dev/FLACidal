@@ -80,7 +80,8 @@ type Config struct {
 var defaultConfig = Config{
 	Theme:               "dark",
 	AccentColor:         "#f472b6", // Pink (default)
-	DownloadQuality:     "LOSSLESS",
+	DownloadQuality:     "HI_RES_LOSSLESS",
+	AutoQualityFallback: true,
 	FileNameFormat:      "{artist} - {title}",
 	OrganizeFolders:     false,
 	EmbedCover:          true,
