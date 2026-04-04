@@ -933,6 +933,23 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 	return queued, nil
 }
 
+// QueueQobuzDownloads queues Qobuz-sourced tracks for concurrent download
+func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, contentName string) (int, error) {
+	if a.downloadManager == nil {
+		return 0, fmt.Errorf("download manager not initialized")
+	}
+	if outputDir == "" {
+		return 0, fmt.Errorf("no output directory specified")
+	}
+	if contentName != "" {
+		outputDir = filepath.Join(outputDir, core.SanitizeFileName(contentName))
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return 0, fmt.Errorf("failed to create folder: %w", err)
+		}
+	}
+	return a.downloadManager.QueueQobuzTracks(tracks, outputDir), nil
+}
+
 // QueueArtistAlbum fetches a Tidal album's tracks and queues them all for download.
 // outputDir should be the artist folder; an album subfolder is created automatically.
 func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string) (int, error) {
