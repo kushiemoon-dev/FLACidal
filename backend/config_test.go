@@ -46,8 +46,8 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Errorf("Default theme = %q, want 'dark'", cfg.Theme)
 	}
 
-	if cfg.DownloadQuality != "HI_RES_LOSSLESS" {
-		t.Errorf("Default download quality = %q, want 'HI_RES_LOSSLESS'", cfg.DownloadQuality)
+	if cfg.DownloadQuality != "HI_RES" {
+		t.Errorf("Default download quality = %q, want 'HI_RES'", cfg.DownloadQuality)
 	}
 
 	if cfg.FileNameFormat != "{artist} - {title}" {
