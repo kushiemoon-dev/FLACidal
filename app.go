@@ -199,12 +199,9 @@ func (a *App) startup(ctx context.Context) {
 			}
 		}
 
-		// Queue event for serialized emission (non-blocking)
-		select {
-		case eventCh <- progressEvent{trackID, status, result}:
-		default:
-			// Channel full — drop event rather than block workers
-		}
+		// Queue event for serialized emission (blocking — workers wait
+		// briefly if buffer is full, which is negligible vs download time)
+		eventCh <- progressEvent{trackID, status, result}
 	})
 	a.downloadManager.Start()
 	a.logBuffer.Success("Download manager started (4 workers)")
@@ -710,7 +707,7 @@ func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "3.2.0"
+	return "3.2.1"
 }
 
 // UpdateInfo represents available update information

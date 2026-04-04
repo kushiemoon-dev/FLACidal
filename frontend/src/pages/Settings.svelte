@@ -46,7 +46,7 @@
     firstArtistOnly: false,
     autoQualityFallback: false,
     sourceOrder: ['tidal', 'qobuz'] as string[],
-    qualityOrder: ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'] as string[],
+    qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
     proxyUrl: '',
     skipExisting: true,
     artistSeparator: '; ',
@@ -253,7 +253,7 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
-        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.proxyUrl = result.proxyUrl || '';
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
@@ -389,7 +389,7 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
-        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES_LOSSLESS', 'HI_RES', 'LOSSLESS', 'HIGH'];
+        config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
@@ -482,8 +482,7 @@
         </div>
         <div class="setting-control">
           <select id="download-quality" bind:value={config.downloadQuality} class="select-input">
-            <option value="HI_RES_LOSSLESS">Hi-Res Lossless (24-bit/192kHz)</option>
-            <option value="HI_RES">Hi-Res (24-bit/96kHz)</option>
+            <option value="HI_RES">Hi-Res Lossless (24-bit, max available)</option>
             <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
             <option value="HIGH">High (320kbps)</option>
           </select>
@@ -1099,7 +1098,7 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 3.1.0</span>
+            <span class="version">Version 3.2.1</span>
           </div>
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
