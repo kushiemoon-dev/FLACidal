@@ -309,7 +309,7 @@ func TestDownloadedFileInfoStruct(t *testing.T) {
 }
 
 func TestQualityFallbackChain(t *testing.T) {
-	expected := []string{"HI_RES_LOSSLESS", "HI_RES", "LOSSLESS", "HIGH"}
+	expected := []string{"HI_RES", "LOSSLESS", "HIGH"}
 
 	if len(qualityFallbackChain) != len(expected) {
 		t.Errorf("Expected %d fallback qualities, got %d", len(expected), len(qualityFallbackChain))
