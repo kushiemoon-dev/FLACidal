@@ -254,6 +254,10 @@ export function QueueDownloads(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['QueueDownloads'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function QueueQobuzDownloads(arg1, arg2, arg3) {
+  return window['go']['main']['App']['QueueQobuzDownloads'](arg1, arg2, arg3);
+}
+
 export function QueueSingleDownload(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['QueueSingleDownload'](arg1, arg2, arg3, arg4);
 }
