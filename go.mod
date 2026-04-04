@@ -48,4 +48,4 @@ require (
 )
 
 // For local dev, uncomment:
-// replace github.com/kushiemoon-dev/flacidal-core => ../flacidal-core
+replace github.com/kushiemoon-dev/flacidal-core => ./flacidal-core
