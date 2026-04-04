@@ -26,6 +26,8 @@ github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/kushiemoon-dev/flacidal-core v0.2.1 h1:yxGKGIadrA7cngagqyQ/xP/TWO53QYl8BP5IFh3AWfo=
 github.com/kushiemoon-dev/flacidal-core v0.2.1/go.mod h1:kVOGn5MOMZFK0PCnTdGDrg2iyilOZvN7nFiSZaLfkOM=
+github.com/kushiemoon-dev/flacidal-core v0.2.2 h1:XDdQlsDD2YjIvWifrrQmowL7LBYOBTUZYi7OVWwDmSM=
+github.com/kushiemoon-dev/flacidal-core v0.2.2/go.mod h1:kVOGn5MOMZFK0PCnTdGDrg2iyilOZvN7nFiSZaLfkOM=
 github.com/labstack/echo/v4 v4.13.3 h1:pwhpCPrTl5qry5HRdM5FwdXnhXSLSY+WE+YQSeCaafY=
 github.com/labstack/echo/v4 v4.13.3/go.mod h1:o90YNEeQWjDozo584l7AwhJMHN0bOC4tAfg+Xox9q5g=
 github.com/labstack/gommon v0.4.2 h1:F8qTUNXgG1+6WQmqoUWnz8WiEU60mXVVw0P4ht1WRA0=
