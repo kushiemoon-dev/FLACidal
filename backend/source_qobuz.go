@@ -561,6 +561,10 @@ func (q *QobuzSource) DownloadTrack(trackID string, outputDir string, options Do
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("qobuz stream request failed: HTTP %d", resp.StatusCode)
+	}
+
 	// Create output file
 	file, err := createFile(filepath)
 	if err != nil {
