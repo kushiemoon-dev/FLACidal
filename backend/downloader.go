@@ -144,7 +144,7 @@ type DownloadResult struct {
 
 // DownloadOptions configures download behavior
 type DownloadOptions struct {
-	Quality              string   // "HI_RES", "HI_RES_LOSSLESS", "LOSSLESS", "HIGH"
+	Quality              string   // "HI_RES", "LOSSLESS", "HIGH"
 	FileNameFormat       string   // "{artist} - {title}", "{track} - {title}", etc.
 	OrganizeFolders      bool     // Create Artist/Album/ subfolders
 	FolderTemplate       string   // Folder structure template e.g. "{artist}/{album}"
@@ -162,7 +162,7 @@ type DownloadOptions struct {
 }
 
 // qualityFallbackChain defines the descending quality order used for auto-fallback.
-var qualityFallbackChain = []string{"HI_RES_LOSSLESS", "HI_RES", "LOSSLESS", "HIGH"}
+var qualityFallbackChain = []string{"HI_RES", "LOSSLESS", "HIGH"}
 
 // NewTidalHifiService creates a new Tidal HiFi download service
 func NewTidalHifiService() *TidalHifiService {
@@ -445,6 +445,11 @@ func (t *TidalHifiService) GetStreamURL(trackID int) (*StreamInfo, error) {
 
 // getStreamURLForQuality fetches the stream URL requesting a specific quality level.
 func (t *TidalHifiService) getStreamURLForQuality(trackID int, quality string) (*StreamInfo, error) {
+	// Normalize UI labels to valid Tidal API parameters
+	switch quality {
+	case "HI_RES_LOSSLESS", "HI_RES_MAX":
+		quality = "HI_RES"
+	}
 	body, err := t.makeAPIRequest(fmt.Sprintf("/track/?id=%d&quality=%s", trackID, quality))
 	if err != nil {
 		return nil, fmt.Errorf("stream request failed: %w", err)
