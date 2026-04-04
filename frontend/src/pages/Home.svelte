@@ -8,6 +8,7 @@
     SetDownloadFolder,
     OpenDownloadFolder,
     QueueDownloads,
+    QueueQobuzDownloads,
     QueueSingleDownload,
     QueueArtistAlbum,
     DownloadArtistAssets,
@@ -295,7 +296,11 @@
     });
 
     try {
-      await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
+      if (content.source === 'qobuz') {
+        await QueueQobuzDownloads(tracksToDownload, $downloadFolder, content.title);
+      } else {
+        await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
+      }
     } catch (e: any) {
       error = e.message || 'Failed to queue downloads';
     }
