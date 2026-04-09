@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import Sidebar from './components/Sidebar.svelte';
   import Home from './pages/Home.svelte';
@@ -126,31 +127,35 @@
   />
 
   <div class="main-content">
-    {#if activePage === 'home'}
-      <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
-    {:else if activePage === 'search'}
-      <Search />
-    {:else if activePage === 'queue'}
-      <Queue />
-    {:else if activePage === 'files'}
-      <Files />
-    {:else if activePage === 'history'}
-      <History onRefetch={handleHistoryRefetch} />
-    {:else if activePage === 'settings'}
-      <Settings />
-    {:else if activePage === 'terminal'}
-      <Terminal />
-    {:else if activePage === 'about'}
-      <About />
-    {:else if activePage === 'tool-analyzer'}
-      <AudioQualityAnalyzer />
-    {:else if activePage === 'tool-resampler'}
-      <AudioResampler />
-    {:else if activePage === 'tool-converter'}
-      <AudioConverter />
-    {:else if activePage === 'tool-filemanager'}
-      <FileManager />
-    {/if}
+    {#key activePage}
+    <div transition:fade={{ duration: 150 }}>
+      {#if activePage === 'home'}
+        <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
+      {:else if activePage === 'search'}
+        <Search />
+      {:else if activePage === 'queue'}
+        <Queue />
+      {:else if activePage === 'files'}
+        <Files />
+      {:else if activePage === 'history'}
+        <History onRefetch={handleHistoryRefetch} />
+      {:else if activePage === 'settings'}
+        <Settings />
+      {:else if activePage === 'terminal'}
+        <Terminal />
+      {:else if activePage === 'about'}
+        <About />
+      {:else if activePage === 'tool-analyzer'}
+        <AudioQualityAnalyzer />
+      {:else if activePage === 'tool-resampler'}
+        <AudioResampler />
+      {:else if activePage === 'tool-converter'}
+        <AudioConverter />
+      {:else if activePage === 'tool-filemanager'}
+        <FileManager />
+      {/if}
+    </div>
+    {/key}
   </div>
 </main>
 <Toast />
