@@ -85,21 +85,7 @@
     <div class="support-card">
       <div class="support-inner">
         <div class="kofi-logo-area">
-          <!-- Ko-fi SVG logo inline (cup + heart) -->
-          <svg class="kofi-svg" width="260" height="80" viewBox="0 0 260 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Cup body -->
-            <rect x="20" y="22" width="80" height="40" rx="8" fill="#ffffff"/>
-            <!-- Cup bottom curve -->
-            <path d="M20 54 Q20 62, 28 62 L92 62 Q100 62, 100 54" fill="#ffffff"/>
-            <!-- Cup handle -->
-            <path d="M100 30 C116 30, 120 42, 116 50 C112 56, 100 54, 100 54" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-            <!-- Heart in cup (animated) -->
-            <g class="kofi-heart">
-              <path d="M46 30 C46 25, 52 22, 56 26 C60 22, 66 25, 66 30 C66 39, 56 45, 56 45 C56 45, 46 39, 46 30Z" fill="#FF5E5B"/>
-            </g>
-            <!-- Ko-fi text -->
-            <text x="185" y="52" font-family="var(--font-family, sans-serif)" font-size="32" font-weight="800" fill="currentColor" text-anchor="middle">Ko-fi</text>
-          </svg>
+          <img src="../assets/logos/kofi-logo.png" alt="Ko-fi" class="kofi-logo-img" />
         </div>
 
         <div class="kofi-content">
@@ -256,22 +242,18 @@
     justify-content: center;
   }
 
-  .kofi-svg {
-    color: var(--color-text-primary);
-    filter: drop-shadow(0 2px 12px rgba(255, 94, 91, 0.15));
+  .kofi-logo-img {
+    height: 100px;
+    object-fit: contain;
+    animation: kofi-bounce 2s ease-in-out infinite;
+    filter: drop-shadow(0 4px 16px rgba(255, 94, 91, 0.2));
   }
 
-  .kofi-svg :global(.kofi-heart) {
-    animation: kofi-heartbeat 1.3s ease-in-out infinite;
-    transform-origin: 58px 38px;
-  }
-
-  @keyframes kofi-heartbeat {
-    0%, 100% { transform: scale(1); }
-    14% { transform: scale(1.2); }
-    28% { transform: scale(1); }
-    42% { transform: scale(1.12); }
-    56% { transform: scale(1); }
+  @keyframes kofi-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-6px) scale(1.03); }
+    50% { transform: translateY(0) scale(1); }
+    75% { transform: translateY(-3px) scale(1.01); }
   }
 
   .kofi-content {
