@@ -2,17 +2,10 @@
   import { onMount } from 'svelte';
   import { GetAppVersion } from '../../wailsjs/go/main/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
-  import TabBar from '../components/TabBar.svelte';
-  import { Heart, ExternalLink, Copy, Check, LayoutGrid } from 'lucide-svelte';
+  import { Heart, ExternalLink, LayoutGrid } from 'lucide-svelte';
 
   let version = $state('...');
   let activeTab = $state('projects');
-  let copied = $state(false);
-
-  const tabs = [
-    { id: 'projects', label: 'Other Projects' },
-    { id: 'support', label: 'Support Me' },
-  ];
 
   const projects = [
     {
@@ -29,7 +22,6 @@
     },
   ];
 
-  const cryptoAddress = 'YOUR_USDT_TRC20_ADDRESS';
   const kofiUrl = 'https://ko-fi.com/kushiemoon';
 
   onMount(async () => {
@@ -42,16 +34,6 @@
 
   function openURL(url: string) {
     BrowserOpenURL(url);
-  }
-
-  async function copyAddress() {
-    try {
-      await navigator.clipboard.writeText(cryptoAddress);
-      copied = true;
-      setTimeout(() => { copied = false; }, 2000);
-    } catch {
-      // silently fail
-    }
   }
 </script>
 
@@ -102,16 +84,25 @@
   {#if activeTab === 'support'}
     <div class="support-card">
       <div class="support-inner">
-        <!-- Ko-fi side -->
-        <div class="support-col kofi-col">
-          <div class="kofi-logo-wrapper">
-            <img
-              src="https://storage.ko-fi.com/cdn/brandasset/v2/kofi_s_logo_nolabel.png"
-              alt="Ko-fi"
-              class="kofi-logo-img"
-            />
-            <span class="kofi-brand-text">Ko-fi</span>
-          </div>
+        <div class="kofi-logo-area">
+          <!-- Ko-fi SVG logo inline (cup + heart) -->
+          <svg class="kofi-svg" width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Cup body -->
+            <rect x="20" y="22" width="85" height="42" rx="8" fill="#ffffff"/>
+            <!-- Cup bottom curve -->
+            <path d="M20 56 Q20 64, 28 64 L97 64 Q105 64, 105 56" fill="#ffffff"/>
+            <!-- Cup handle -->
+            <path d="M105 30 C122 30, 126 42, 122 50 C118 58, 105 56, 105 56" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+            <!-- Heart in cup (animated) -->
+            <g class="kofi-heart">
+              <path d="M48 32 C48 27, 54 23, 58 28 C62 23, 68 27, 68 32 C68 42, 58 48, 58 48 C58 48, 48 42, 48 32Z" fill="#FF5E5B"/>
+            </g>
+            <!-- Ko-fi text -->
+            <text x="138" y="52" font-family="var(--font-family, sans-serif)" font-size="28" font-weight="800" fill="currentColor" text-anchor="middle">Ko-fi</text>
+          </svg>
+        </div>
+
+        <div class="kofi-content">
           <h3 class="support-subtitle">Support via Ko-fi</h3>
           <p class="support-desc">
             Enjoying the project? You can support ongoing development by buying me a coffee.
@@ -120,29 +111,6 @@
             <Heart size={16} />
             Support me on Ko-fi
           </button>
-        </div>
-
-        <!-- Crypto side -->
-        <div class="support-col crypto-col">
-          <h3 class="crypto-title">USDT (TRC20)</h3>
-          <p class="support-desc">
-            Crypto donations are also accepted. Scan the QR code or copy the address.
-          </p>
-          <div class="crypto-address-row">
-            <input
-              class="crypto-input"
-              type="text"
-              readonly
-              value={cryptoAddress}
-            />
-            <button class="copy-btn" onclick={copyAddress} title="Copy address">
-              {#if copied}
-                <Check size={16} />
-              {:else}
-                <Copy size={16} />
-              {/if}
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -166,7 +134,7 @@
     margin: 0;
   }
 
-  /* Tab badges like SpotiFLAC */
+  /* Tab badges */
   .tab-row {
     display: flex;
     gap: 10px;
@@ -263,80 +231,58 @@
     color: var(--color-text-tertiary);
   }
 
-  /* Support - single card, 2 columns */
+  /* Support card — single centered */
   .support-card {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 16px;
     overflow: hidden;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
   .support-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .support-col {
-    padding: 32px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .kofi-col {
     align-items: center;
     text-align: center;
-    border-right: 1px solid var(--color-border);
+    padding: 40px 32px;
+    gap: 20px;
   }
 
-  .crypto-col {
+  /* Ko-fi SVG logo animated */
+  .kofi-logo-area {
+    display: flex;
+    justify-content: center;
+  }
+
+  .kofi-svg {
+    color: var(--color-text-primary);
+    filter: drop-shadow(0 2px 12px rgba(255, 94, 91, 0.15));
+  }
+
+  .kofi-svg :global(.kofi-heart) {
+    animation: kofi-heartbeat 1.3s ease-in-out infinite;
+    transform-origin: 58px 38px;
+  }
+
+  @keyframes kofi-heartbeat {
+    0%, 100% { transform: scale(1); }
+    14% { transform: scale(1.2); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.12); }
+    56% { transform: scale(1); }
+  }
+
+  .kofi-content {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  /* Ko-fi logo */
-  .kofi-logo-wrapper {
-    display: flex;
     align-items: center;
-    justify-content: center;
     gap: 12px;
-    margin-bottom: 8px;
-  }
-
-  .kofi-logo-img {
-    width: 64px;
-    height: 64px;
-    object-fit: contain;
-    animation: kofi-wiggle 2s ease-in-out infinite;
-  }
-
-  @keyframes kofi-wiggle {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    10% { transform: rotate(-8deg) scale(1.1); }
-    20% { transform: rotate(8deg) scale(1.1); }
-    30% { transform: rotate(-4deg) scale(1.05); }
-    40% { transform: rotate(4deg) scale(1.05); }
-    50% { transform: rotate(0deg) scale(1); }
-  }
-
-  .kofi-brand-text {
-    font-size: 42px;
-    font-weight: 800;
-    color: var(--color-text-primary);
-    letter-spacing: -1px;
   }
 
   .support-subtitle {
     font-size: 16px;
-    font-weight: 600;
-    margin: 0;
-    color: var(--color-text-primary);
-  }
-
-  .crypto-title {
-    font-size: 18px;
     font-weight: 600;
     margin: 0;
     color: var(--color-text-primary);
@@ -347,6 +293,7 @@
     color: var(--color-text-secondary);
     line-height: 1.6;
     margin: 0;
+    max-width: 360px;
   }
 
   .kofi-btn {
@@ -354,7 +301,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 24px;
+    padding: 12px 32px;
     background: #29ABE0;
     color: #fff;
     border: none;
@@ -364,49 +311,11 @@
     font-family: var(--font-family);
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
-    margin-top: auto;
-    width: 100%;
+    margin-top: 4px;
   }
 
   .kofi-btn:hover {
     opacity: 0.9;
     transform: translateY(-1px);
-  }
-
-  .crypto-address-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .crypto-input {
-    flex: 1;
-    background: var(--color-bg-tertiary, rgba(255,255,255,0.05));
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 11px;
-    color: var(--color-text-secondary);
-    font-family: 'JetBrains Mono', monospace;
-    min-width: 0;
-  }
-
-  .copy-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    background: var(--color-bg-tertiary, rgba(255,255,255,0.05));
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: color 0.2s, border-color 0.2s;
-    flex-shrink: 0;
-  }
-
-  .copy-btn:hover {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
   }
 </style>
