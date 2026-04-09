@@ -16,32 +16,27 @@
 
   const projects = [
     {
-      name: 'FLACidal',
-      description: 'Get Tidal & Qobuz tracks in true lossless FLAC',
-      icon: '🎵',
-      url: 'https://github.com/kushiemoon-dev/flacidal',
-      stars: 0,
-      version: 'v3.3.0',
+      name: 'FLACidal Mobile',
+      description: 'FLACidal on the go — download lossless FLAC from your phone',
+      icon: '📱',
+      url: 'https://github.com/kushiemoon-dev/FLACidal-Mobile',
     },
     {
-      name: 'Project Alpha',
-      description: 'A placeholder for your next awesome project',
-      icon: '🚀',
-      url: 'https://github.com/kushiemoon-dev',
-      stars: 0,
-      version: 'v0.1.0',
+      name: 'YouFLAC',
+      description: 'Download YouTube audio in true lossless quality',
+      icon: '🎬',
+      url: 'https://github.com/kushiemoon-dev/YouFLAC',
     },
     {
-      name: 'Project Beta',
-      description: 'Another cool tool in the works',
-      icon: '🛠️',
-      url: 'https://github.com/kushiemoon-dev',
-      stars: 0,
-      version: 'v0.1.0',
+      name: 'YouFLAC Mobile',
+      description: 'YouFLAC for mobile — lossless YouTube audio anywhere',
+      icon: '📲',
+      url: 'https://github.com/kushiemoon-dev/YouFLAC-Mobile',
     },
   ];
 
-  const cryptoAddress = 'TXxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+  const cryptoAddress = 'YOUR_USDT_TRC20_ADDRESS';
+  const kofiUrl = 'https://ko-fi.com/kushiemoon';
 
   onMount(async () => {
     try {
@@ -80,12 +75,10 @@
         <div class="project-card">
           <div class="project-top">
             <span class="project-icon">{project.icon}</span>
-            <span class="project-version">{project.version}</span>
           </div>
           <h3 class="project-name">{project.name}</h3>
           <p class="project-desc">{project.description}</p>
           <div class="project-footer">
-            <span class="project-stars">⭐ {project.stars}</span>
             <button class="icon-link-btn" onclick={() => openURL(project.url)} title="Open on GitHub">
               <ExternalLink size={14} />
               GitHub
@@ -98,26 +91,27 @@
 
   {#if activeTab === 'support'}
     <div class="support-grid">
-      <div class="support-card">
-        <div class="support-card-header">
-          <Heart size={20} class="heart-icon" />
-          <h2>Ko-fi</h2>
+      <div class="support-card kofi-card">
+        <div class="kofi-logo-container">
+          <div class="kofi-logo">
+            <span class="kofi-heart-animated">❤️</span>
+            <span class="kofi-text">Ko-fi</span>
+          </div>
         </div>
+        <h2 class="support-title">Support via Ko-fi</h2>
         <p class="support-desc">
           Enjoying the project? You can support ongoing development by buying me a coffee.
         </p>
-        <button class="kofi-btn" onclick={() => openURL('https://ko-fi.com/')}>
+        <button class="kofi-btn" onclick={() => openURL(kofiUrl)}>
           <Heart size={16} />
           Support me on Ko-fi
         </button>
       </div>
 
-      <div class="support-card">
-        <div class="support-card-header">
-          <h2>USDT (TRC20)</h2>
-        </div>
+      <div class="support-card crypto-card">
+        <h2>USDT (TRC20)</h2>
         <p class="support-desc">
-          Crypto donations are also accepted.
+          Crypto donations are also accepted. Scan the QR code or copy the address.
         </p>
         <div class="crypto-row">
           <input
@@ -202,15 +196,6 @@
     font-size: 24px;
   }
 
-  .project-version {
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    background: var(--color-bg-tertiary, rgba(255,255,255,0.05));
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 2px 6px;
-  }
-
   .project-name {
     font-size: 15px;
     font-weight: 600;
@@ -231,11 +216,6 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 4px;
-  }
-
-  .project-stars {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
   }
 
   .icon-link-btn {
@@ -280,21 +260,51 @@
     gap: 12px;
   }
 
-  .support-card-header {
-    display: flex;
+  .kofi-card {
     align-items: center;
-    gap: 10px;
+    text-align: center;
   }
 
-  .support-card-header h2 {
-    font-size: 18px;
+  .kofi-logo-container {
+    margin-bottom: 8px;
+  }
+
+  .kofi-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .kofi-heart-animated {
+    font-size: 32px;
+    animation: kofi-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes kofi-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+
+  .kofi-text {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--color-text-primary);
+    letter-spacing: -1px;
+  }
+
+  .support-title {
+    font-size: 16px;
     font-weight: 600;
     margin: 0;
     color: var(--color-text-primary);
   }
 
-  :global(.heart-icon) {
-    color: #ff5e5b;
+  .support-card h2:not(.support-title) {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text-primary);
   }
 
   .support-desc {
