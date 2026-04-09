@@ -15,6 +15,10 @@
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
+  import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
+  import AudioResampler from './pages/tools/AudioResampler.svelte';
+  import AudioConverter from './pages/tools/AudioConverter.svelte';
+  import FileManager from './pages/tools/FileManager.svelte';
 
   let activePage = 'home';
   let unsubscribeProgress: () => void;
@@ -139,13 +143,13 @@
     {:else if activePage === 'about'}
       <About />
     {:else if activePage === 'tool-analyzer'}
-      <div class="page-placeholder"><h2>Audio Quality Analyzer</h2><p>Coming soon</p></div>
+      <AudioQualityAnalyzer />
     {:else if activePage === 'tool-resampler'}
-      <div class="page-placeholder"><h2>Audio Resampler</h2><p>Coming soon</p></div>
+      <AudioResampler />
     {:else if activePage === 'tool-converter'}
-      <div class="page-placeholder"><h2>Audio Converter</h2><p>Coming soon</p></div>
+      <AudioConverter />
     {:else if activePage === 'tool-filemanager'}
-      <div class="page-placeholder"><h2>File Manager</h2><p>Coming soon</p></div>
+      <FileManager />
     {/if}
   </div>
 </main>
