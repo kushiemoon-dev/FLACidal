@@ -138,6 +138,14 @@
       <Terminal />
     {:else if activePage === 'about'}
       <About />
+    {:else if activePage === 'tool-analyzer'}
+      <div class="page-placeholder"><h2>Audio Quality Analyzer</h2><p>Coming soon</p></div>
+    {:else if activePage === 'tool-resampler'}
+      <div class="page-placeholder"><h2>Audio Resampler</h2><p>Coming soon</p></div>
+    {:else if activePage === 'tool-converter'}
+      <div class="page-placeholder"><h2>Audio Converter</h2><p>Coming soon</p></div>
+    {:else if activePage === 'tool-filemanager'}
+      <div class="page-placeholder"><h2>File Manager</h2><p>Coming soon</p></div>
     {/if}
   </div>
 </main>
@@ -247,7 +255,21 @@
 
   .main-content {
     flex: 1;
+    margin-left: 56px;
     overflow-y: auto;
     max-height: 100vh;
+  }
+
+  .page-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    color: var(--color-text-tertiary);
+  }
+  .page-placeholder h2 {
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
   }
 </style>
