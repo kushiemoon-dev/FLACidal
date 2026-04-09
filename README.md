@@ -22,7 +22,7 @@
 **FLACidal** is a desktop application that downloads lossless FLAC audio directly from Tidal and Qobuz — no account credentials required. Paste a URL, choose a folder, and get Hi-Res 24-bit or Lossless 16-bit FLAC files with full metadata, embedded cover art, and customizable filename templates.
 
 <div align="center">
-<img src="showcase.gif" alt="FLACidal v4.0 Showcase" width="800">
+<img src="screenshot.png" alt="FLACidal Screenshot" width="800">
 </div>
 
 ---
