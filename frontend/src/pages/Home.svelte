@@ -17,6 +17,7 @@
     FetchContentFromURL,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
 
   // Accept initial content from history refetch
@@ -467,7 +468,7 @@
         <span class="version-badge">v{version}</span>
       {/if}
     </div>
-    <p class="subtitle">Download lossless FLAC from Tidal & Qobuz</p>
+    <p class="subtitle">Get Tidal & Qobuz tracks in true FLAC — no account required</p>
   </header>
 
   <!-- URL Input -->
@@ -526,10 +527,7 @@
         {#if loading}
           <span class="spinner"></span>
         {:else}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
+          <Search size={18} />
           Fetch
         {/if}
       </button>
@@ -1062,6 +1060,11 @@
     background: #ec4899;
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(244, 114, 182, 0.4);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(244, 114, 182, 0.3);
   }
 
   .btn-primary:disabled {
