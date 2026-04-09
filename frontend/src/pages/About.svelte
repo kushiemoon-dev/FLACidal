@@ -2,286 +2,303 @@
   import { onMount } from 'svelte';
   import { GetAppVersion } from '../../wailsjs/go/main/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
+  import { Heart, ExternalLink, LayoutGrid } from 'lucide-svelte';
+  import kofiLogo from '../assets/logos/kofi-logo.png';
 
-  let version = '...';
+  let version = $state('...');
+  let activeTab = $state('projects');
+
+  const projects = [
+    {
+      name: 'FLACidal Mobile',
+      description: 'FLACidal on the go — download lossless FLAC from your phone',
+      logo: 'https://raw.githubusercontent.com/kushiemoon-dev/FLACidal-Mobile/main/assets/icon.png',
+      url: 'https://github.com/kushiemoon-dev/FLACidal-Mobile',
+    },
+    {
+      name: 'YouFLAC',
+      description: 'YouTube video + lossless FLAC audio — create high-quality music videos',
+      logo: 'https://raw.githubusercontent.com/kushiemoon-dev/YouFLAC/main/build/appicon.png',
+      url: 'https://github.com/kushiemoon-dev/YouFLAC',
+    },
+  ];
+
+  const kofiUrl = 'https://ko-fi.com/kushiemoon';
 
   onMount(async () => {
     try {
       version = await GetAppVersion();
-    } catch (error) {
+    } catch {
       version = '0.0.0';
     }
   });
 
-  function openGitHub() {
-    BrowserOpenURL('https://github.com/kushiemoon-dev/flacidal');
+  function openURL(url: string) {
+    BrowserOpenURL(url);
   }
 </script>
 
 <div class="about-page">
-  <div class="about-card main-card">
-    <div class="logo-container">
-      <div class="logo">
-        <div class="waveform">
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
+  <div class="about-header">
+    <h1>About</h1>
+  </div>
+
+  <div class="tab-row">
+    <button
+      class="tab-badge"
+      class:active={activeTab === 'projects'}
+      style="--badge-color: #22c55e"
+      onclick={() => activeTab = 'projects'}
+    >
+      <LayoutGrid size={14} />
+      Other Projects
+    </button>
+    <button
+      class="tab-badge"
+      class:active={activeTab === 'support'}
+      style="--badge-color: #ef4444"
+      onclick={() => activeTab = 'support'}
+    >
+      <Heart size={14} />
+      Support Me
+    </button>
+  </div>
+
+  {#if activeTab === 'projects'}
+    <div class="projects-grid">
+      {#each projects as project (project.name)}
+        <button class="project-card" onclick={() => openURL(project.url)}>
+          <img class="project-logo" src={project.logo} alt={project.name} />
+          <h3 class="project-name">{project.name}</h3>
+          <p class="project-desc">{project.description}</p>
+          <div class="project-footer">
+            <span class="project-link">
+              <ExternalLink size={12} />
+              GitHub
+            </span>
+          </div>
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if activeTab === 'support'}
+    <div class="support-card">
+      <div class="support-inner">
+        <div class="kofi-logo-area">
+          <img src={kofiLogo} alt="Ko-fi" class="kofi-logo-img" />
+        </div>
+
+        <div class="kofi-content">
+          <h3 class="support-subtitle">Support via Ko-fi</h3>
+          <p class="support-desc">
+            Enjoying the project? You can support ongoing development by buying me a coffee.
+          </p>
+          <button class="kofi-btn" onclick={() => openURL(kofiUrl)}>
+            <Heart size={16} />
+            Support me on Ko-fi
+          </button>
         </div>
       </div>
-      <div class="logo-glow"></div>
     </div>
-
-    <h1>FLACidal</h1>
-    <p class="tagline">High-quality FLAC downloader for Tidal</p>
-
-    <div class="version-badge">
-      <span>Version {version}</span>
-    </div>
-
-    <div class="tech-stack">
-      <span class="badge">Go</span>
-      <span class="badge">Wails v2</span>
-      <span class="badge">Svelte</span>
-      <span class="badge">TypeScript</span>
-    </div>
-
-    <div class="links">
-      <button class="link-btn github" onclick={openGitHub}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-        </svg>
-        GitHub
-      </button>
-    </div>
-  </div>
-
-  <div class="about-card credits-card">
-    <h2>Powered By</h2>
-    <div class="credits-list">
-      <div class="credit-item">
-        <span class="credit-name">Tidal API</span>
-        <span class="credit-desc">Lossless music streaming</span>
-      </div>
-      <div class="credit-item">
-        <span class="credit-name">Wails</span>
-        <span class="credit-desc">Desktop application framework</span>
-      </div>
-      <div class="credit-item">
-        <span class="credit-name">Svelte</span>
-        <span class="credit-desc">Frontend framework</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="about-card disclaimer-card">
-    <h2>Disclaimer</h2>
-    <p>
-      FLACidal is for educational and personal use only.
-      This tool is not affiliated with or endorsed by Tidal or any streaming service.
-      Please respect copyright laws and support artists by purchasing their music.
-    </p>
-  </div>
+  {/if}
 </div>
 
 <style>
   .about-page {
     padding: 32px;
-    max-width: 600px;
+    max-width: 800px;
     margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
   }
 
-  .about-card {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 32px;
+  .about-header {
+    margin-bottom: 20px;
   }
 
-  .main-card {
-    text-align: center;
-    background: linear-gradient(135deg,
-      rgba(244, 114, 182, 0.05),
-      rgba(168, 85, 247, 0.05)
-    );
-    border-color: rgba(244, 114, 182, 0.2);
-  }
-
-  .logo-container {
-    position: relative;
-    display: inline-block;
-    margin-bottom: 24px;
-  }
-
-  .logo {
-    width: 80px;
-    height: 80px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #f472b6, #a855f7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 1;
-  }
-
-  .logo-glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100px;
-    height: 100px;
-    background: linear-gradient(135deg, #f472b6, #a855f7);
-    border-radius: 24px;
-    filter: blur(30px);
-    opacity: 0.4;
-    z-index: 0;
-  }
-
-  .waveform {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: 32px;
-  }
-
-  .waveform .bar {
-    width: 4px;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 2px;
-    animation: waveform 0.8s ease-in-out infinite;
-  }
-
-  .waveform .bar:nth-child(1) { height: 40%; animation-delay: 0s; }
-  .waveform .bar:nth-child(2) { height: 70%; animation-delay: 0.1s; }
-  .waveform .bar:nth-child(3) { height: 100%; animation-delay: 0.2s; }
-  .waveform .bar:nth-child(4) { height: 60%; animation-delay: 0.3s; }
-
-  @keyframes waveform {
-    0%, 100% { transform: scaleY(0.3); }
-    50% { transform: scaleY(1); }
-  }
-
-  h1 {
-    font-size: 32px;
+  .about-header h1 {
+    font-size: 28px;
     font-weight: 700;
-    margin: 0 0 8px 0;
+    margin: 0;
   }
 
-  .tagline {
-    color: var(--color-text-secondary);
-    margin: 0 0 20px 0;
-    font-size: 16px;
-  }
-
-  .version-badge {
-    display: inline-block;
-    padding: 6px 16px;
-    background: var(--color-bg-tertiary);
-    border-radius: 20px;
-    font-size: 13px;
-    color: var(--color-text-secondary);
+  /* Tab badges */
+  .tab-row {
+    display: flex;
+    gap: 10px;
     margin-bottom: 24px;
   }
 
-  .tech-stack {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-  }
-
-  .badge {
-    padding: 6px 12px;
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-  }
-
-  .links {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  .link-btn {
+  .tab-badge {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    font-size: 14px;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: 13px;
     font-weight: 500;
+    font-family: var(--font-family);
     cursor: pointer;
     transition: all 0.2s;
   }
 
-  .link-btn.github {
-    background: var(--color-bg-tertiary);
+  .tab-badge:hover {
+    border-color: var(--badge-color);
     color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
   }
 
-  .link-btn.github:hover {
-    background: var(--color-bg-hover);
-  }
-
-  .credits-card h2,
-  .disclaimer-card h2 {
-    font-size: 14px;
+  .tab-badge.active {
+    background: var(--badge-color);
+    border-color: var(--badge-color);
+    color: #fff;
     font-weight: 600;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 0 0 16px 0;
   }
 
-  .credits-list {
+  /* Projects grid */
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .project-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
   }
 
-  .credit-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--color-border);
+  .project-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-accent);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   }
 
-  .credit-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+  .project-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    object-fit: cover;
   }
 
-  .credit-name {
-    font-weight: 500;
+  .project-name {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
     color: var(--color-text-primary);
   }
 
-  .credit-desc {
-    font-size: 13px;
+  .project-desc {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .project-footer {
+    margin-top: 4px;
+  }
+
+  .project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
     color: var(--color-text-tertiary);
   }
 
-  .disclaimer-card {
-    background: rgba(245, 158, 11, 0.05);
-    border-color: rgba(245, 158, 11, 0.2);
+  /* Support card — single centered */
+  .support-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
-  .disclaimer-card p {
+  .support-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 32px;
+    gap: 20px;
+  }
+
+  /* Ko-fi SVG logo animated */
+  .kofi-logo-area {
+    display: flex;
+    justify-content: center;
+  }
+
+  .kofi-logo-img {
+    height: 100px;
+    object-fit: contain;
+    animation: kofi-bounce 2s ease-in-out infinite;
+    filter: drop-shadow(0 4px 16px rgba(255, 94, 91, 0.2));
+  }
+
+  @keyframes kofi-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-6px) scale(1.03); }
+    50% { transform: translateY(0) scale(1); }
+    75% { transform: translateY(-3px) scale(1.01); }
+  }
+
+  .kofi-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .support-subtitle {
+    font-size: 16px;
+    font-weight: 600;
     margin: 0;
+    color: var(--color-text-primary);
+  }
+
+  .support-desc {
     font-size: 13px;
     color: var(--color-text-secondary);
     line-height: 1.6;
+    margin: 0;
+    max-width: 360px;
+  }
+
+  .kofi-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 32px;
+    background: #29ABE0;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    margin-top: 4px;
+  }
+
+  .kofi-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
   }
 </style>
