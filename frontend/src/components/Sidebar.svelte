@@ -5,10 +5,11 @@
     AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug
   } from 'lucide-svelte';
 
-  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0 }: {
+  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0, onBugReport = () => {} }: {
     activePage?: string;
     onNavigate?: (page: string) => void;
     queueCount?: number;
+    onBugReport?: () => void;
   } = $props();
 
   let showToolsFlyout = $state(false);
@@ -51,7 +52,7 @@
   }
 
   function handleBugReport() {
-    window.open('https://github.com/flacidal/flacidal/issues', '_blank');
+    onBugReport();
   }
 </script>
 
