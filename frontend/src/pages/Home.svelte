@@ -41,17 +41,53 @@
   let previewingTrackId: number | null = $state(null);
   let previewPlaying = $state(false);
 
-  // Animated placeholder
+  // Animated placeholder (typewriter effect)
   const exampleUrls = [
     'https://tidal.com/browse/album/123456789',
     'https://tidal.com/browse/track/987654321',
     'https://tidal.com/browse/playlist/abc-def-123',
     'https://tidal.com/browse/artist/12345',
     'https://tidal.com/browse/mix/abcdef123',
+    'https://www.qobuz.com/us-en/album/discovery-daft-punk/0060075335265',
   ];
-  let placeholderIndex = $state(0);
-  let placeholderUrl = $derived(exampleUrls[placeholderIndex]);
-  let placeholderInterval: ReturnType<typeof setInterval> | undefined;
+  let placeholderText = $state('|');
+  let typewriterTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function startTypewriter() {
+    let urlIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+
+    function tick() {
+      const currentUrl = exampleUrls[urlIndex];
+
+      if (!deleting) {
+        // Typing
+        charIndex++;
+        placeholderText = currentUrl.slice(0, charIndex) + '|';
+        if (charIndex >= currentUrl.length) {
+          // Fully typed — pause then delete
+          typewriterTimeout = setTimeout(() => { deleting = true; tick(); }, 2000);
+          return;
+        }
+        typewriterTimeout = setTimeout(tick, 45);
+      } else {
+        // Deleting
+        charIndex--;
+        placeholderText = currentUrl.slice(0, charIndex) + '|';
+        if (charIndex <= 0) {
+          // Fully deleted — pause then move to next URL
+          deleting = false;
+          urlIndex = (urlIndex + 1) % exampleUrls.length;
+          typewriterTimeout = setTimeout(tick, 400);
+          return;
+        }
+        typewriterTimeout = setTimeout(tick, 25);
+      }
+    }
+
+    tick();
+  }
 
   // Context menu state
   let contextMenu: { x: number; y: number; track: TidalTrack } | null = $state(null);
@@ -175,13 +211,11 @@
       downloadFolder.set(savedFolder);
     }
 
-    placeholderInterval = setInterval(() => {
-      placeholderIndex = (placeholderIndex + 1) % exampleUrls.length;
-    }, 3000);
+    startTypewriter();
   });
 
   onDestroy(() => {
-    if (placeholderInterval) clearInterval(placeholderInterval);
+    if (typewriterTimeout) clearTimeout(typewriterTimeout);
   });
 
   async function fetchContent() {
@@ -425,7 +459,7 @@
           type="text"
           bind:value={tidalUrl}
           bind:this={urlInputEl}
-          placeholder={placeholderUrl}
+          placeholder={placeholderText || 'Paste a Tidal or Qobuz URL...'}
           onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
@@ -865,6 +899,8 @@
 
   .url-input::placeholder {
     color: var(--color-text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
   }
 
   .clear-input-btn {
