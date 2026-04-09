@@ -37,6 +37,8 @@
     preferSyncedLyrics: true,
     saveLyricsFile: false,
     autoAnalyze: false,
+    embedGenre: true,
+    useSingleGenre: false,
     tidalEnabled: true,
     qobuzEnabled: false,
     qobuzAppId: '',
@@ -938,6 +940,32 @@
           <div class="setting-control">
             <label class="toggle">
               <input type="checkbox" bind:checked={config.firstArtistOnly} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Embed Genre</label>
+            <span class="setting-desc">Include genre tag in downloaded files</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.embedGenre} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Use Single Genre</label>
+            <span class="setting-desc">Use only the primary genre instead of all</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.useSingleGenre} />
               <span class="toggle-slider"></span>
             </label>
           </div>
