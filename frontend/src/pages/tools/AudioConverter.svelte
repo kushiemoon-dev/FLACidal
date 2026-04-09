@@ -165,9 +165,9 @@
         {/if}
 
         <div class="option-group option-wide">
-          <label class="option-label">Output Folder</label>
+          <label class="option-label" for="output-folder">Output Folder</label>
           <div class="folder-row">
-            <input type="text" class="input" value={outputDir} readonly placeholder="Select output folder..." />
+            <input id="output-folder" type="text" class="input" value={outputDir} readonly placeholder="Select output folder..." />
             <button class="btn btn-accent" onclick={selectOutputFolder}>
               <FolderOpen size={16} />
               Browse
