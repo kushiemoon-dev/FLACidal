@@ -3,7 +3,7 @@
   import { GetAppVersion } from '../../wailsjs/go/main/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
   import TabBar from '../components/TabBar.svelte';
-  import { Heart, ExternalLink, Copy, Check, LayoutGrid } from 'lucide-svelte';
+  import { Heart, ExternalLink, Copy, Check } from 'lucide-svelte';
 
   let version = $state('...');
   let activeTab = $state('projects');
