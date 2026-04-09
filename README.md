@@ -34,10 +34,16 @@
 - **Concurrent Downloads** — Up to 10 parallel downloads with real-time queue progress
 - **Smart Metadata** — Automatic Vorbis comment tagging with embedded cover art
 - **Built-in Search** — Search Tidal directly within the app without opening a browser
-- **File Manager** — Download history, re-download support, and FLAC quality analyzer
+- **Audio Tools Suite** — Dedicated pages for Quality Analyzer, Resampler, Converter, and File Manager
 - **Custom Templates** — Define your own filename format (e.g. `{artist} - {title}`)
 - **Artist Artwork** — Download artist profile pictures alongside music
 - **Proxy Support** — HTTP and SOCKS5 proxy for all outbound requests
+- **Redesigned UI** — New design system with Plus Jakarta Sans, accent colors, and animated tab transitions
+- **Typewriter URL Input** — Animated input with Recent Fetches cards for quick re-downloads
+- **Region Selector** — Per-request region selection for correct ISRC handling
+- **Tabbed Settings** — Organized into General, File Management, and Status panels
+- **Tabbed History** — Separate Downloads and Fetches tabs with search and sort
+- **Sound Effects & Page Transitions** — Polished interaction feedback throughout
 
 ---
 
@@ -104,7 +110,7 @@ Settings are stored at `~/.flacidal/config.json`.
 
 ## Build from Source
 
-**Requirements:** [Go](https://go.dev) 1.21+ and [Wails](https://wails.io) v2
+**Requirements:** [Go](https://go.dev) 1.22+ and [Wails](https://wails.io) v2
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -144,7 +150,7 @@ Yes. HTTP and SOCKS5 proxies are configurable in Settings.
 
 ### FLACidal Ecosystem
 
-[![Star History Chart](https://api.star-history.com/svg?repos=kushiemoon-dev/FLACidal,kushiemoon-dev/flacidal-core,kushiemoon-dev/FLACidal-Mobile&type=Date)](https://star-history.com/#kushiemoon-dev/FLACidal&kushiemoon-dev/flacidal-core&kushiemoon-dev/FLACidal-Mobile&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=kushiemoon-dev/FLACidal,kushiemoon-dev/flacidal-core,kushiemoon-dev/FLACidal-Mobile,kushiemoon-dev/YouFLAC,kushiemoon-dev/OpenDrop-VJ&type=Date)](https://star-history.com/#kushiemoon-dev/FLACidal&kushiemoon-dev/flacidal-core&kushiemoon-dev/FLACidal-Mobile&kushiemoon-dev/YouFLAC&kushiemoon-dev/OpenDrop-VJ&Date)
 
 ---
 
@@ -156,7 +162,7 @@ FLACidal is intended for **educational and personal use only**. It is not affili
 
 <div align="center">
 
-**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
+**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [YouFLAC](https://github.com/kushiemoon-dev/YouFLAC) · [OpenDrop-VJ](https://github.com/kushiemoon-dev/OpenDrop-VJ) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
 
 Made with ♥ by [KushieMoon](https://codeberg.org/KushieMoon-dev)
 
