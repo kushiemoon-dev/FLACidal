@@ -417,6 +417,25 @@
     }
   }
 
+  // Region selector
+  const regionCountries = [
+    { code: 'US', flag: '🇺🇸' }, { code: 'GB', flag: '🇬🇧' }, { code: 'DE', flag: '🇩🇪' },
+    { code: 'FR', flag: '🇫🇷' }, { code: 'JP', flag: '🇯🇵' }, { code: 'BR', flag: '🇧🇷' },
+    { code: 'AU', flag: '🇦🇺' }, { code: 'CA', flag: '🇨🇦' }, { code: 'SE', flag: '🇸🇪' },
+    { code: 'NO', flag: '🇳🇴' }, { code: 'DK', flag: '🇩🇰' }, { code: 'NL', flag: '🇳🇱' },
+    { code: 'ES', flag: '🇪🇸' }, { code: 'IT', flag: '🇮🇹' }, { code: 'PL', flag: '🇵🇱' },
+    { code: 'KR', flag: '🇰🇷' }, { code: 'MX', flag: '🇲🇽' }, { code: 'AR', flag: '🇦🇷' },
+  ];
+  let selectedRegion = $state(
+    (typeof localStorage !== 'undefined' && localStorage.getItem('flacidal-region')) || 'US'
+  );
+
+  function onRegionChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value;
+    selectedRegion = value;
+    localStorage.setItem('flacidal-region', value);
+  }
+
   let downloadingAssets = $state(false);
   let assetsResult = $state('');
 
@@ -498,6 +517,11 @@
           </div>
         {/if}
       </div>
+      <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">
+        {#each regionCountries as country}
+          <option value={country.code}>{country.flag} {country.code}</option>
+        {/each}
+      </select>
       <button class="btn-primary" onclick={fetchContent} disabled={loading || (detectedSource && !detectedSource.available)}>
         {#if loading}
           <span class="spinner"></span>
@@ -901,6 +925,32 @@
     color: var(--color-text-muted);
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.88rem;
+  }
+
+  .region-select {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 10px 32px 10px 12px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  .region-select:hover {
+    border-color: var(--color-accent);
+  }
+
+  .region-select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-subtle);
   }
 
   .clear-input-btn {
