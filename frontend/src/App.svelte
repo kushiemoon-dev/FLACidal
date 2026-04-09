@@ -11,7 +11,7 @@
   import Terminal from './pages/Terminal.svelte';
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
-  import { themeStore, initializeAccentColor } from './stores/theme';
+  import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
@@ -43,9 +43,9 @@
       initializeAccentColor(config?.accentColor || '#f472b6');
       // Initialize audio settings
       initializeAudioSettings(config?.soundEffects || false, config?.soundVolume || 70);
-      // Apply custom font family
+      // Initialize font family
       if (config?.fontFamily) {
-        document.documentElement.style.setProperty('--font-family', config.fontFamily);
+        initializeFontFamily(config.fontFamily);
       }
     } catch {
       themeStore.initialize('system');
@@ -152,7 +152,7 @@
 <Toast />
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
   /* Dark theme (default) */
   :global(:root), :global([data-theme="dark"]) {
