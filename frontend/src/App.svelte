@@ -144,7 +144,7 @@
 <Toast />
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
   /* Dark theme (default) */
   :global(:root), :global([data-theme="dark"]) {
@@ -168,6 +168,9 @@
     --color-warning: #f59e0b;
     --color-error: #ef4444;
     --color-info: #3b82f6;
+    --color-highlight-gold: #fbbf24;
+    --color-highlight-gold-hover: #f59e0b;
+    --font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
   }
 
   /* Light theme */
@@ -192,6 +195,9 @@
     --color-warning: #d97706;
     --color-error: #dc2626;
     --color-info: #2563eb;
+    --color-highlight-gold: #d97706;
+    --color-highlight-gold-hover: #b45309;
+    --font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
   }
 
   :global(*) {
@@ -201,7 +207,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
-    font-family: var(--font-family, 'Outfit', system-ui, -apple-system, sans-serif);
+    font-family: var(--font-family, 'Plus Jakarta Sans', 'Outfit', sans-serif);
     background: var(--color-bg-void);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
