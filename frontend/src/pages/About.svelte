@@ -86,19 +86,19 @@
       <div class="support-inner">
         <div class="kofi-logo-area">
           <!-- Ko-fi SVG logo inline (cup + heart) -->
-          <svg class="kofi-svg" width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="kofi-svg" width="260" height="80" viewBox="0 0 260 80" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Cup body -->
-            <rect x="20" y="22" width="85" height="42" rx="8" fill="#ffffff"/>
+            <rect x="20" y="22" width="80" height="40" rx="8" fill="#ffffff"/>
             <!-- Cup bottom curve -->
-            <path d="M20 56 Q20 64, 28 64 L97 64 Q105 64, 105 56" fill="#ffffff"/>
+            <path d="M20 54 Q20 62, 28 62 L92 62 Q100 62, 100 54" fill="#ffffff"/>
             <!-- Cup handle -->
-            <path d="M105 30 C122 30, 126 42, 122 50 C118 58, 105 56, 105 56" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+            <path d="M100 30 C116 30, 120 42, 116 50 C112 56, 100 54, 100 54" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
             <!-- Heart in cup (animated) -->
             <g class="kofi-heart">
-              <path d="M48 32 C48 27, 54 23, 58 28 C62 23, 68 27, 68 32 C68 42, 58 48, 58 48 C58 48, 48 42, 48 32Z" fill="#FF5E5B"/>
+              <path d="M46 30 C46 25, 52 22, 56 26 C60 22, 66 25, 66 30 C66 39, 56 45, 56 45 C56 45, 46 39, 46 30Z" fill="#FF5E5B"/>
             </g>
             <!-- Ko-fi text -->
-            <text x="138" y="52" font-family="var(--font-family, sans-serif)" font-size="28" font-weight="800" fill="currentColor" text-anchor="middle">Ko-fi</text>
+            <text x="185" y="52" font-family="var(--font-family, sans-serif)" font-size="32" font-weight="800" fill="currentColor" text-anchor="middle">Ko-fi</text>
           </svg>
         </div>
 
