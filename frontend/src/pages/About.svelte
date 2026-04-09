@@ -4,6 +4,8 @@
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
   import { Heart, ExternalLink, LayoutGrid } from 'lucide-svelte';
   import kofiLogo from '../assets/logos/kofi-logo.png';
+  import youflacLogo from '../assets/logos/youflac.png';
+  import flacidalLogo from '../assets/logos/flacidal.png';
 
   let version = $state('...');
   let activeTab = $state('projects');
@@ -12,13 +14,13 @@
     {
       name: 'FLACidal Mobile',
       description: 'FLACidal on the go — download lossless FLAC from your phone',
-      logo: 'https://raw.githubusercontent.com/kushiemoon-dev/FLACidal-Mobile/main/assets/icon.png',
+      logo: flacidalLogo,
       url: 'https://github.com/kushiemoon-dev/FLACidal-Mobile',
     },
     {
       name: 'YouFLAC',
       description: 'YouTube video + lossless FLAC audio — create high-quality music videos',
-      logo: 'https://raw.githubusercontent.com/kushiemoon-dev/YouFLAC/main/build/appicon.png',
+      logo: youflacLogo,
       url: 'https://github.com/kushiemoon-dev/YouFLAC',
     },
   ];
