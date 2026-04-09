@@ -163,11 +163,11 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #f472b6, #a855f7);
+    background: var(--color-accent, #f472b6);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 16px rgba(244, 114, 182, 0.3);
+    box-shadow: 0 0 16px var(--color-accent-subtle, rgba(244, 114, 182, 0.3));
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: default;
   }
