@@ -2,36 +2,97 @@
   import { onMount } from 'svelte';
   import { GetAppVersion } from '../../wailsjs/go/main/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
-  import { Heart, ExternalLink, LayoutGrid } from 'lucide-svelte';
+  import { Heart, ExternalLink, LayoutGrid, Star, GitFork } from 'lucide-svelte';
   import kofiLogo from '../assets/logos/kofi-logo.png';
-  import youflacLogo from '../assets/logos/youflac.png';
   import flacidalLogo from '../assets/logos/flacidal.png';
+  import youflacLogo from '../assets/logos/youflac.png';
+  import opendropLogo from '../assets/logos/opendrop-vj.png';
 
   let version = $state('...');
   let activeTab = $state('projects');
 
-  const projects = [
+  interface Project {
+    name: string;
+    repo: string;
+    description: string;
+    logo: string;
+    color: string;
+    tag: string;
+    url: string;
+    stars: number;
+    forks: number;
+    updatedAt: string;
+  }
+
+  let projects = $state<Project[]>([
     {
       name: 'FLACidal Mobile',
+      repo: 'kushiemoon-dev/FLACidal-Mobile',
       description: 'FLACidal on the go — download lossless FLAC from your phone',
       logo: flacidalLogo,
+      color: '#f472b6',
+      tag: 'flutter',
       url: 'https://github.com/kushiemoon-dev/FLACidal-Mobile',
+      stars: 0, forks: 0, updatedAt: '',
     },
     {
       name: 'YouFLAC',
+      repo: 'kushiemoon-dev/YouFLAC',
       description: 'YouTube video + lossless FLAC audio — create high-quality music videos',
       logo: youflacLogo,
+      color: '#ef4444',
+      tag: 'go',
       url: 'https://github.com/kushiemoon-dev/YouFLAC',
+      stars: 0, forks: 0, updatedAt: '',
     },
-  ];
+    {
+      name: 'OpenDrop VJ',
+      repo: 'kushiemoon-dev/OpenDrop-VJ',
+      description: 'Open-source multi-deck audio visualizer with MilkDrop presets and MIDI control',
+      logo: opendropLogo,
+      color: '#38bdf8',
+      tag: 'rust',
+      url: 'https://github.com/kushiemoon-dev/OpenDrop-VJ',
+      stars: 0, forks: 0, updatedAt: '',
+    },
+  ]);
 
   const kofiUrl = 'https://ko-fi.com/kushiemoon';
+
+  function timeAgo(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'today';
+    if (days === 1) return '1 day ago';
+    if (days < 30) return `${days} days ago`;
+    const months = Math.floor(days / 30);
+    return months === 1 ? '1 month ago' : `${months} months ago`;
+  }
 
   onMount(async () => {
     try {
       version = await GetAppVersion();
     } catch {
       version = '0.0.0';
+    }
+
+    // Fetch GitHub stats for each project
+    for (let i = 0; i < projects.length; i++) {
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${projects[i].repo}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          projects[i] = {
+            ...projects[i],
+            stars: data.stargazers_count || 0,
+            forks: data.forks_count || 0,
+            updatedAt: data.updated_at || '',
+          };
+        }
+      } catch {
+        // silently fail — stats stay at 0
+      }
     }
   });
 
@@ -70,13 +131,24 @@
     <div class="projects-grid">
       {#each projects as project (project.name)}
         <button class="project-card" onclick={() => openURL(project.url)}>
-          <img class="project-logo" src={project.logo} alt={project.name} />
+          <div class="card-top">
+            <img class="project-logo" src={project.logo} alt={project.name} />
+            {#if project.updatedAt}
+              <span class="updated-ago">{timeAgo(project.updatedAt)}</span>
+            {/if}
+          </div>
           <h3 class="project-name">{project.name}</h3>
+          <span class="project-tag" style="background: {project.color}20; color: {project.color}; border-color: {project.color}40">
+            {project.tag}
+          </span>
           <p class="project-desc">{project.description}</p>
           <div class="project-footer">
+            <div class="project-stats">
+              <span class="stat"><Star size={12} /> {project.stars}</span>
+              <span class="stat"><GitFork size={12} /> {project.forks}</span>
+            </div>
             <span class="project-link">
               <ExternalLink size={12} />
-              GitHub
             </span>
           </div>
         </button>
@@ -109,7 +181,7 @@
 <style>
   .about-page {
     padding: 32px;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
   }
 
@@ -158,21 +230,21 @@
     font-weight: 600;
   }
 
-  /* Projects grid */
+  /* Projects grid — compact 3 columns */
   .projects-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
   }
 
   .project-card {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: 14px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
     text-align: left;
@@ -186,41 +258,87 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   }
 
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
   .project-logo {
-    width: 64px;
-    height: 64px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     object-fit: cover;
   }
 
+  .updated-ago {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+
   .project-name {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     margin: 0;
     color: var(--color-text-primary);
   }
 
+  .project-tag {
+    display: inline-block;
+    width: fit-content;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    text-transform: lowercase;
+  }
+
   .project-desc {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--color-text-secondary);
     margin: 0;
     line-height: 1.5;
     flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .project-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border);
   }
 
-  .project-link {
+  .project-stats {
+    display: flex;
+    gap: 10px;
+  }
+
+  .stat {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     font-size: 11px;
     color: var(--color-text-tertiary);
   }
 
-  /* Support card — single centered */
+  .project-link {
+    color: var(--color-text-tertiary);
+    transition: color 0.2s;
+  }
+
+  .project-card:hover .project-link {
+    color: var(--color-accent);
+  }
+
+  /* Support card — centered */
   .support-card {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
@@ -239,7 +357,6 @@
     gap: 20px;
   }
 
-  /* Ko-fi SVG logo animated */
   .kofi-logo-area {
     display: flex;
     justify-content: center;
