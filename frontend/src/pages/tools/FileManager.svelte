@@ -29,26 +29,11 @@
   ];
   let selectedTemplate = $state('{title} - {artist}');
 
-  const tabs = [
-    { id: 'tracks', label: 'Tracks' },
-    { id: 'lyrics', label: 'Lyrics' },
-    { id: 'covers', label: 'Covers' },
-  ];
-
-  $effect(() => {
-    const tabCounts = getTabCounts();
-    tabs[0] = { id: 'tracks', label: `Track (${tabCounts.tracks})` };
-    tabs[1] = { id: 'lyrics', label: `Lyric (${tabCounts.lyrics})` };
-    tabs[2] = { id: 'covers', label: `Cover (${tabCounts.covers})` };
-  });
-
-  function getTabCounts() {
-    return {
-      tracks: files.length,
-      lyrics: 0,
-      covers: 0,
-    };
-  }
+  let tabs = $derived([
+    { id: 'tracks', label: `Track (${files.length})` },
+    { id: 'lyrics', label: `Lyric (0)` },
+    { id: 'covers', label: `Cover (0)` },
+  ]);
 
   function toggleSelectAll() {
     selectAll = !selectAll;
