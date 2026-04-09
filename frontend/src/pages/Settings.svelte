@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor } from '../stores/theme';
+  import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor, fontPresets, applyFontFamily } from '../stores/theme';
   import { updateAudioSettings, testSound } from '../stores/audio';
   import { toastStore } from '../stores/toast';
+  import TabBar from '../components/TabBar.svelte';
+  import { FolderOpen } from 'lucide-svelte';
   import {
     GetConfig,
     SaveConfig,
@@ -35,6 +37,8 @@
     preferSyncedLyrics: true,
     saveLyricsFile: false,
     autoAnalyze: false,
+    embedGenre: true,
+    useSingleGenre: false,
     tidalEnabled: true,
     qobuzEnabled: false,
     qobuzAppId: '',
@@ -66,6 +70,12 @@
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
 
+  const settingsTabs = [
+    { id: 'general', label: 'General' },
+    { id: 'file-management', label: 'File Management' },
+    { id: 'status', label: 'Status' },
+  ];
+
   const folderPresets = [
     '{artist}/{album}',
     '{albumartist}/{album}',
@@ -92,14 +102,6 @@
       folderTemplatePreset = 'custom';
     }
   }
-
-  const settingsTabs = [
-    { id: 'general', label: 'General' },
-    { id: 'sources', label: 'Sources' },
-    { id: 'metadata', label: 'Metadata' },
-    { id: 'appearance', label: 'Appearance' },
-    { id: 'advanced', label: 'Advanced' },
-  ];
 
   const namingPresets = [
     { name: 'Simple', template: '{artist} - {title}' },
@@ -141,14 +143,6 @@
     { code: 'KR', name: 'South Korea' },
     { code: 'MX', name: 'Mexico' },
     { code: 'AR', name: 'Argentina' },
-  ];
-
-  const fontOptions = [
-    { label: 'System Default', value: '' },
-    { label: 'Inter', value: 'Inter' },
-    { label: 'JetBrains Mono', value: 'JetBrains Mono' },
-    { label: 'Outfit', value: 'Outfit' },
-    { label: 'Geist', value: 'Geist' },
   ];
 
   async function checkAPI() {
@@ -212,6 +206,15 @@
     config.accentColor = color;
     accentColor.set(color);
     applyAccentColor(color);
+  }
+
+  function handleFontChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    config.fontFamily = value;
+    if (value) {
+      applyFontFamily(value);
+    }
   }
 
   onMount(() => {
@@ -416,357 +419,580 @@
 <div class="settings-page">
   <div class="settings-header">
     <h1>Settings</h1>
-    <div class="tab-bar">
-      {#each settingsTabs as tab}
-        <button
-          class="tab-btn"
-          class:active={activeTab === tab.id}
-          onclick={() => activeTab = tab.id}
-        >{tab.label}</button>
-      {/each}
+    <div class="header-actions">
+      <button class="btn-secondary" onclick={openConfig}>
+        <FolderOpen size={16} />
+        Open Config Folder
+      </button>
+      <button class="btn-secondary" onclick={() => showResetConfirm = true} disabled={isResetting}>
+        Reset to Default
+      </button>
+      <button class="btn-accent" onclick={saveConfig} disabled={isSaving}>
+        {#if isSaving}
+          <div class="spinner"></div>
+          Saving...
+        {:else}
+          Save Changes
+        {/if}
+      </button>
     </div>
   </div>
 
-  <div class="settings-sections">
+  <TabBar tabs={settingsTabs} bind:activeTab />
+
+  <div class="settings-content">
     <!-- ==================== GENERAL TAB ==================== -->
     {#if activeTab === 'general'}
+    <div class="settings-grid">
+      <!-- Left Column -->
+      <div class="settings-column">
+        <div class="group-title">Downloads &amp; Appearance</div>
 
-    <!-- Download Settings -->
-    <section class="settings-section">
-      <h2>Downloads</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="download-folder">Download Folder</label>
-          <span class="setting-desc">Where your FLAC files will be saved</span>
-        </div>
-        <div class="setting-control folder-control">
-          <input
-            type="text"
-            id="download-folder"
-            bind:value={config.downloadFolder}
-            readonly
-            placeholder="Select a folder..."
-            class="folder-input"
-          />
-          <button class="browse-btn" onclick={selectFolder}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            Browse
-          </button>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="concurrent">Concurrent Downloads</label>
-          <span class="setting-desc">Number of simultaneous downloads</span>
-        </div>
-        <div class="setting-control">
-          <select id="concurrent" bind:value={config.concurrentDownloads} class="select-input">
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-            <option value={4}>4</option>
-            <option value={6}>6</option>
-            <option value={8}>8</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="download-quality">Download Quality</label>
-          <span class="setting-desc">Preferred audio quality tier</span>
-        </div>
-        <div class="setting-control">
-          <select id="download-quality" bind:value={config.downloadQuality} class="select-input">
-            <option value="HI_RES">Hi-Res Lossless (24-bit, max available)</option>
-            <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
-            <option value="HIGH">High (320kbps)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="skip-existing">Skip Existing Files</label>
-          <span class="setting-desc">Skip files already on disk (matched by ISRC tag)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.skipExisting} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="auto-quality-fallback">Auto Quality Fallback</label>
-          <span class="setting-desc">Retry with lower quality when requested tier is unavailable</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.autoQualityFallback} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="skip-unavailable">Skip Unavailable Tracks</label>
-          <span class="setting-desc">Skip tracks not available for streaming</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="playlist-subfolder">Playlist Subfolder</label>
-          <span class="setting-desc">Create a subfolder for playlist downloads</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.playlistSubfolder} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="generate-m3u8">Generate M3U8 Playlist</label>
-          <span class="setting-desc">Create .m3u8 playlist after batch downloads</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.generateM3u8} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="folder-template">Folder Structure</label>
-          <span class="setting-desc">Organize downloads into subfolders (leave empty for flat)</span>
-        </div>
-        <div class="setting-control">
-          <select
-            id="folder-template"
-            class="select-input"
-            value={folderTemplatePreset}
-            onchange={handleFolderTemplateChange}
-          >
-            <option value="">No organization</option>
-            <option value={'{artist}/{album}'}>Artist / Album</option>
-            <option value={'{albumartist}/{album}'}>Album Artist / Album</option>
-            <option value={'{artist}/{year} - {album}'}>Artist / Year - Album</option>
-            <option value={'{year}/{artist}/{album}'}>Year / Artist / Album</option>
-            <option value="custom">Custom template...</option>
-          </select>
-        </div>
-      </div>
-      {#if folderTemplatePreset === 'custom'}
         <div class="setting-item">
           <div class="setting-info">
-            <label for="folder-template-custom">Custom Template</label>
-            <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{album}'}, {'{year}'}, {'{label}'}</span>
+            <label for="download-folder">Download Path</label>
+            <span class="setting-desc">Where your FLAC files will be saved</span>
+          </div>
+          <div class="setting-control folder-control">
+            <input
+              type="text"
+              id="download-folder"
+              bind:value={config.downloadFolder}
+              readonly
+              placeholder="Select a folder..."
+              class="setting-input folder-input"
+            />
+            <button class="browse-btn" onclick={selectFolder}>
+              <FolderOpen size={16} />
+              Browse
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="theme">Mode</label>
+            <span class="setting-desc">Color scheme</span>
+          </div>
+          <div class="setting-control">
+            <select id="theme" value={config.theme} onchange={handleThemeChange} class="setting-select">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="system">System</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Accent Color</span>
+          </div>
+          <div class="accent-swatches" role="radiogroup" aria-label="Accent color selection">
+            {#each accentPresets as preset}
+              <button
+                class="swatch"
+                class:active={config.accentColor === preset.color}
+                style="background-color: {preset.color}"
+                title={preset.name}
+                onclick={() => handleAccentColorChange(preset.color)}
+              ></button>
+            {/each}
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="font-family">Font</label>
+          </div>
+          <div class="setting-control">
+            <select id="font-family" value={config.fontFamily} onchange={handleFontChange} class="setting-select">
+              <option value="">System Default</option>
+              {#each fontPresets as font}
+                <option value={font.value}>{font.name}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="sound-effects">Sound Effects</label>
+            <span class="setting-desc">Play sounds on download events</span>
+          </div>
+          <div class="setting-control sound-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.soundEffects} />
+              <span class="toggle-slider"></span>
+            </label>
+            <button class="test-sound-btn" onclick={testSound} title="Test sound">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {#if config.soundEffects}
+          <div class="setting-item">
+            <div class="setting-info">
+              <label for="sound-volume">Volume</label>
+              <span class="setting-desc">{config.soundVolume}%</span>
+            </div>
+            <div class="setting-control volume-control">
+              <input
+                type="range"
+                id="sound-volume"
+                min="0"
+                max="100"
+                bind:value={config.soundVolume}
+                class="volume-slider"
+              />
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Right Column -->
+      <div class="settings-column">
+        <div class="group-title">Sources &amp; Quality</div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="preferred-source">Source Mode</label>
+            <span class="setting-desc">Primary download source</span>
+          </div>
+          <div class="setting-control">
+            <select id="preferred-source" bind:value={config.preferredSource} class="setting-select">
+              <option value="tidal">Tidal</option>
+              <option value="qobuz">Qobuz</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="download-quality">Quality</label>
+            <span class="setting-desc">Preferred audio quality tier</span>
+          </div>
+          <div class="setting-control">
+            <select id="download-quality" bind:value={config.downloadQuality} class="setting-select">
+              <option value="HI_RES">Hi-Res (24-bit/48kHz+)</option>
+              <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
+              <option value="HIGH">High (320kbps)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Allow Quality Fallback</label>
+            <span class="setting-desc">Retry with lower quality when unavailable</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.autoQualityFallback} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="country-code">Region</label>
+            <span class="setting-desc">Country code for API (affects availability)</span>
+          </div>
+          <div class="setting-control">
+            <select id="country-code" bind:value={config.countryCode} class="setting-select">
+              {#each countries as c}
+                <option value={c.code}>{c.name} ({c.code})</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Tidal</label>
+            <span class="setting-desc">Enable Tidal source</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.tidalEnabled} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Qobuz</label>
+            <span class="setting-desc">Enable Qobuz source (requires credentials)</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.qobuzEnabled} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        {#if config.qobuzEnabled}
+          <div class="setting-item">
+            <div class="setting-info">
+              <label for="qobuz-app-id">Qobuz App ID</label>
+            </div>
+            <div class="setting-control">
+              <input type="text" id="qobuz-app-id" bind:value={config.qobuzAppId} placeholder="Enter App ID..." class="setting-input" />
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label for="qobuz-app-secret">Qobuz App Secret</label>
+            </div>
+            <div class="setting-control">
+              <input type="password" id="qobuz-app-secret" bind:value={config.qobuzAppSecret} placeholder="Enter App Secret..." class="setting-input" />
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-info">
+              <label for="qobuz-auth-token">Qobuz Auth Token</label>
+            </div>
+            <div class="setting-control">
+              <input type="password" id="qobuz-auth-token" bind:value={config.qobuzAuthToken} placeholder="Enter Auth Token..." class="setting-input" />
+            </div>
+          </div>
+        {/if}
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Skip Existing Files</label>
+            <span class="setting-desc">Skip files already on disk (matched by ISRC)</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.skipExisting} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Skip Unavailable Tracks</label>
+            <span class="setting-desc">Skip tracks not available for streaming</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="concurrent">Concurrent Downloads</label>
+            <span class="setting-desc">Simultaneous downloads</span>
+          </div>
+          <div class="setting-control">
+            <select id="concurrent" bind:value={config.concurrentDownloads} class="setting-select">
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
+              <option value={6}>6</option>
+              <option value={8}>8</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">HTTP / SOCKS5 Proxy</span>
+            <span class="setting-desc">Route requests through a proxy</span>
           </div>
           <div class="setting-control wide">
             <input
               type="text"
-              id="folder-template-custom"
-              bind:value={config.folderTemplate}
-              class="text-input"
-              placeholder="{'{artist}'}/{'{album}'}"
+              class="setting-input"
+              bind:value={config.proxyUrl}
+              placeholder="e.g. socks5://127.0.0.1:1080"
             />
           </div>
         </div>
-      {/if}
-    </section>
-
-    <!-- File Naming -->
-    <section class="settings-section">
-      <h2>File Naming</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="naming-preset">Preset</label>
-          <span class="setting-desc">Quick-select a naming template</span>
-        </div>
-        <div class="setting-control">
-          <select
-            id="naming-preset"
-            class="select-input"
-            onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) config.fileNameFormat = v; }}
-          >
-            <option value="">Custom...</option>
-            {#each namingPresets as preset}
-              <option value={preset.template} selected={config.fileNameFormat === preset.template}>{preset.name}: {preset.template}</option>
-            {/each}
-          </select>
-        </div>
       </div>
+    </div>
 
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="file-naming">Template</label>
-          <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{discnumber}'}, {'{year}'}, {'{date}'}, {'{isrc}'}</span>
-        </div>
-        <div class="setting-control wide">
-          <input
-            type="text"
-            id="file-naming"
-            bind:value={config.fileNameFormat}
-            class="text-input"
-            placeholder="{'{artist}'} - {'{title}'}"
-          />
-        </div>
-      </div>
-    </section>
+    <!-- ==================== FILE MANAGEMENT TAB ==================== -->
+    {:else if activeTab === 'file-management'}
+    <div class="settings-grid">
+      <!-- Left Column -->
+      <div class="settings-column">
+        <div class="group-title">File Naming</div>
 
-    <!-- Quality Verification -->
-    <section class="settings-section">
-      <h2>Quality</h2>
-
-      <div class="setting-item order-setting">
-        <div class="setting-info">
-          <span class="setting-label">Quality Priority</span>
-          <span class="setting-desc">Order in which quality tiers are attempted</span>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="naming-preset">Naming Preset</label>
+            <span class="setting-desc">Quick-select a naming template</span>
+          </div>
+          <div class="setting-control">
+            <select
+              id="naming-preset"
+              class="setting-select"
+              onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) config.fileNameFormat = v; }}
+            >
+              <option value="">Custom...</option>
+              {#each namingPresets as preset}
+                <option value={preset.template} selected={config.fileNameFormat === preset.template}>{preset.name}: {preset.template}</option>
+              {/each}
+            </select>
+          </div>
         </div>
-        <div class="order-list">
-          {#each config.qualityOrder as tier, i}
-            <div class="order-item">
-              <span class="order-label">{tier}</span>
-              <div class="order-btns">
-                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, -1)} disabled={i === 0}>&#8593;</button>
-                <button class="order-btn" onclick={() => config.qualityOrder = moveItem(config.qualityOrder, i, 1)} disabled={i === config.qualityOrder.length - 1}>&#8595;</button>
-              </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="file-naming">Template</label>
+            <span class="setting-desc">Variables: {'{artist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{year}'}, {'{isrc}'}</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              id="file-naming"
+              bind:value={config.fileNameFormat}
+              class="setting-input"
+              placeholder="{'{artist}'} - {'{title}'}"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="artist-separator">Artist Separator</label>
+            <span class="setting-desc">How multiple artists are joined</span>
+          </div>
+          <div class="setting-control">
+            <select id="artist-separator" bind:value={config.artistSeparator} class="setting-select">
+              {#each artistSeparators as sep}
+                <option value={sep.value}>{sep.label}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="folder-template">Folder Structure</label>
+            <span class="setting-desc">Organize downloads into subfolders</span>
+          </div>
+          <div class="setting-control">
+            <select
+              id="folder-template"
+              class="setting-select"
+              value={folderTemplatePreset}
+              onchange={handleFolderTemplateChange}
+            >
+              <option value="">No organization</option>
+              <option value={'{artist}/{album}'}>Artist / Album</option>
+              <option value={'{albumartist}/{album}'}>Album Artist / Album</option>
+              <option value={'{artist}/{year} - {album}'}>Artist / Year - Album</option>
+              <option value={'{year}/{artist}/{album}'}>Year / Artist / Album</option>
+              <option value="custom">Custom template...</option>
+            </select>
+          </div>
+        </div>
+        {#if folderTemplatePreset === 'custom'}
+          <div class="setting-item">
+            <div class="setting-info">
+              <label for="folder-template-custom">Custom Template</label>
+              <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{album}'}, {'{year}'}, {'{label}'}</span>
             </div>
-          {/each}
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="auto-analyze">Auto-analyze Downloads</label>
-          <span class="setting-desc">Detect upscaled files after download</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.autoAnalyze} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== SOURCES TAB ==================== -->
-    {:else if activeTab === 'sources'}
-
-    <section class="settings-section">
-      <h2>Music Sources</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Tidal</label>
-          <span class="setting-desc">Download from Tidal (no account required)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.tidalEnabled} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Qobuz</label>
-          <span class="setting-desc">Download from Qobuz (requires credentials)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.qobuzEnabled} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      {#if config.qobuzEnabled}
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-app-id">Qobuz App ID</label>
-          </div>
-          <div class="setting-control">
-            <input type="text" id="qobuz-app-id" bind:value={config.qobuzAppId} placeholder="Enter App ID..." class="text-input" />
-          </div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-app-secret">Qobuz App Secret</label>
-          </div>
-          <div class="setting-control">
-            <input type="password" id="qobuz-app-secret" bind:value={config.qobuzAppSecret} placeholder="Enter App Secret..." class="text-input" />
-          </div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="qobuz-auth-token">Qobuz Auth Token</label>
-          </div>
-          <div class="setting-control">
-            <input type="password" id="qobuz-auth-token" bind:value={config.qobuzAuthToken} placeholder="Enter Auth Token..." class="text-input" />
-          </div>
-        </div>
-      {/if}
-
-      <div class="setting-item order-setting">
-        <div class="setting-info">
-          <span class="setting-label">Source Priority</span>
-          <span class="setting-desc">First source is tried first for every download</span>
-        </div>
-        <div class="order-list">
-          {#each config.sourceOrder as source, i}
-            <div class="order-item">
-              <span class="order-label">{source === 'tidal' ? 'Tidal' : 'Qobuz'}</span>
-              <div class="order-btns">
-                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, -1)} disabled={i === 0}>&#8593;</button>
-                <button class="order-btn" onclick={() => config.sourceOrder = moveItem(config.sourceOrder, i, 1)} disabled={i === config.sourceOrder.length - 1}>&#8595;</button>
-              </div>
+            <div class="setting-control wide">
+              <input
+                type="text"
+                id="folder-template-custom"
+                bind:value={config.folderTemplate}
+                class="setting-input"
+                placeholder="{'{artist}'}/{'{album}'}"
+              />
             </div>
-          {/each}
+          </div>
+        {/if}
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Playlist Subfolder</label>
+            <span class="setting-desc">Create subfolder for playlist downloads</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.playlistSubfolder} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Generate M3U8 Playlist</label>
+            <span class="setting-desc">Create .m3u8 after batch downloads</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.generateM3u8} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="country-code">Region</label>
-          <span class="setting-desc">Country code for Tidal API (affects availability)</span>
+      <!-- Right Column -->
+      <div class="settings-column">
+        <div class="group-title">Metadata &amp; Tags</div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Embed Lyrics</label>
+            <span class="setting-desc">Fetch and embed lyrics during download</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.embedLyrics} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
-        <div class="setting-control">
-          <select id="country-code" bind:value={config.countryCode} class="select-input">
-            {#each countries as c}
-              <option value={c.code}>{c.name} ({c.code})</option>
-            {/each}
-          </select>
+
+        {#if config.embedLyrics}
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Prefer Synced Lyrics</label>
+              <span class="setting-desc">Prioritize time-synced (LRC) lyrics</span>
+            </div>
+            <div class="setting-control">
+              <label class="toggle">
+                <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Save Lyrics File</label>
+              <span class="setting-desc">Save .lrc or .txt alongside FLAC</span>
+            </div>
+            <div class="setting-control">
+              <label class="toggle">
+                <input type="checkbox" bind:checked={config.saveLyricsFile} />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        {/if}
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Embed Cover Art</label>
+            <span class="setting-desc">Include album artwork in FLAC files</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.embedCover} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Save Cover as File</label>
+            <span class="setting-desc">Save album artwork as .jpg next to each track</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.saveCoverFile} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Save Folder Cover</label>
+            <span class="setting-desc">Save folder.jpg in album directories (Plex, Jellyfin)</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.saveFolderCover} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>First Artist Only</label>
+            <span class="setting-desc">Use only primary artist in tags and filenames</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.firstArtistOnly} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Embed Genre</label>
+            <span class="setting-desc">Include genre tag in downloaded files</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.embedGenre} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Use Single Genre</label>
+            <span class="setting-desc">Use only the primary genre instead of all</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.useSingleGenre} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Auto-analyze Downloads</label>
+            <span class="setting-desc">Detect upscaled files after download</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.autoAnalyze} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- API Status -->
+    <!-- ==================== STATUS TAB ==================== -->
+    {:else if activeTab === 'status'}
+
     <section class="settings-section">
-      <h2>API Status</h2>
+      <div class="group-title">API Status</div>
       <div class="api-status-header">
-        <button class="action-btn" onclick={checkAPI} disabled={checkingAPI}>
+        <button class="btn-secondary" onclick={checkAPI} disabled={checkingAPI}>
           {checkingAPI ? 'Checking...' : 'Check Status'}
         </button>
       </div>
@@ -775,7 +1001,7 @@
           {#each apiStatuses as ep}
             <div class="api-status-item">
               <span class="api-name">{ep.name}</span>
-              <span class="api-indicator" class:online={ep.status === 'online'} class:offline={ep.status === 'offline'} class:slow={ep.status === 'slow'}>
+              <span class="status-badge" class:ok={ep.status === 'online'} class:error={ep.status === 'offline'} class:slow={ep.status === 'slow'}>
                 {ep.status} ({ep.latencyMs}ms)
               </span>
             </div>
@@ -784,257 +1010,8 @@
       {/if}
     </section>
 
-    <!-- ==================== METADATA TAB ==================== -->
-    {:else if activeTab === 'metadata'}
-
     <section class="settings-section">
-      <h2>Cover Art</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Embed Cover Art</label>
-          <span class="setting-desc">Include album artwork in FLAC files</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.embedCover} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Save Cover as File</label>
-          <span class="setting-desc">Save album artwork as .jpg next to each track</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.saveCoverFile} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Save Folder Cover</label>
-          <span class="setting-desc">Save folder.jpg in album directories (for Plex, Jellyfin, Kodi)</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.saveFolderCover} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <section class="settings-section">
-      <h2>Tags</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>First Artist Only</label>
-          <span class="setting-desc">Use only the primary artist in tags and filenames</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.firstArtistOnly} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="artist-separator">Artist Separator</label>
-          <span class="setting-desc">How multiple artists are joined in tags and filenames</span>
-        </div>
-        <div class="setting-control">
-          <select id="artist-separator" bind:value={config.artistSeparator} class="select-input">
-            {#each artistSeparators as sep}
-              <option value={sep.value}>{sep.label}</option>
-            {/each}
-          </select>
-        </div>
-      </div>
-    </section>
-
-    <section class="settings-section">
-      <h2>Lyrics</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label>Auto-fetch Lyrics</label>
-          <span class="setting-desc">Automatically fetch and embed lyrics during download</span>
-        </div>
-        <div class="setting-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.embedLyrics} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      {#if config.embedLyrics}
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>Prefer Synced Lyrics</label>
-            <span class="setting-desc">Prioritize time-synced (LRC) lyrics</span>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>Save Lyrics File</label>
-            <span class="setting-desc">Save .lrc or .txt lyrics file alongside FLAC</span>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" bind:checked={config.saveLyricsFile} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      {/if}
-    </section>
-
-    <!-- ==================== APPEARANCE TAB ==================== -->
-    {:else if activeTab === 'appearance'}
-
-    <section class="settings-section">
-      <h2>Appearance</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="theme">Theme</label>
-          <span class="setting-desc">Choose your preferred color scheme</span>
-        </div>
-        <div class="setting-control">
-          <select id="theme" value={config.theme} onchange={handleThemeChange} class="select-input">
-            <option value="system">System</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-label">Accent Color</span>
-          <span class="setting-desc">Customize the app's primary color</span>
-        </div>
-        <div class="setting-control accent-colors" role="radiogroup" aria-label="Accent color selection">
-          {#each accentPresets as preset}
-            <button
-              class="color-swatch"
-              class:active={config.accentColor === preset.color}
-              style="background-color: {preset.color}"
-              title={preset.name}
-              onclick={() => handleAccentColorChange(preset.color)}
-            ></button>
-          {/each}
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="sound-effects">Sound Effects</label>
-          <span class="setting-desc">Play sounds on download events</span>
-        </div>
-        <div class="setting-control sound-control">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={config.soundEffects} />
-            <span class="toggle-slider"></span>
-          </label>
-          <button class="test-sound-btn" onclick={testSound} title="Test sound">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {#if config.soundEffects}
-        <div class="setting-item">
-          <div class="setting-info">
-            <label for="sound-volume">Volume</label>
-            <span class="setting-desc">Sound effects volume ({config.soundVolume}%)</span>
-          </div>
-          <div class="setting-control volume-control">
-            <input
-              type="range"
-              id="sound-volume"
-              min="0"
-              max="100"
-              bind:value={config.soundVolume}
-              class="volume-slider"
-            />
-          </div>
-        </div>
-      {/if}
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <label for="font-family">Font</label>
-          <span class="setting-desc">Choose the UI font</span>
-        </div>
-        <div class="setting-control">
-          <select id="font-family" bind:value={config.fontFamily} class="select-input">
-            {#each fontOptions as font}
-              <option value={font.value}>{font.label}</option>
-            {/each}
-          </select>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== ADVANCED TAB ==================== -->
-    {:else if activeTab === 'advanced'}
-
-    <section class="settings-section">
-      <h2>Network</h2>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-label">HTTP / SOCKS5 Proxy</span>
-          <span class="setting-desc">Route all requests through a proxy. Supports http://, https://, and socks5:// URLs.</span>
-        </div>
-        <div class="setting-control wide">
-          <input
-            type="text"
-            class="text-input"
-            bind:value={config.proxyUrl}
-            placeholder="e.g. socks5://127.0.0.1:1080"
-          />
-        </div>
-      </div>
-    </section>
-
-    <section class="settings-section">
-      <h2>Data</h2>
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-label">Config Folder</span>
-          <span class="setting-desc">Open the app's configuration directory</span>
-        </div>
-        <div class="setting-control">
-          <button class="action-btn" onclick={openConfig}>Open Folder</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="settings-section">
-      <h2>FFmpeg</h2>
+      <div class="group-title">FFmpeg</div>
       <div class="setting-item">
         <div class="setting-info">
           <span class="setting-label">FFmpeg Status</span>
@@ -1042,9 +1019,9 @@
         </div>
         <div class="setting-control">
           {#if ffmpegInfo?.available}
-            <span class="ffmpeg-status installed">Installed</span>
+            <span class="status-badge ok">Installed</span>
           {:else}
-            <span class="ffmpeg-status missing">Not Found</span>
+            <span class="status-badge error">Not Found</span>
           {/if}
         </div>
       </div>
@@ -1076,7 +1053,7 @@
                 </span>
               </div>
             {:else}
-              <button class="action-btn primary" onclick={installFFmpegHandler}>Install FFmpeg</button>
+              <button class="btn-accent" onclick={installFFmpegHandler}>Install FFmpeg</button>
             {/if}
           </div>
         </div>
@@ -1085,7 +1062,7 @@
 
     <!-- About & Updates -->
     <section class="settings-section about">
-      <h2>About</h2>
+      <div class="group-title">About</div>
       <div class="about-content">
         <div class="app-info">
           <div class="app-logo">
@@ -1103,7 +1080,7 @@
         </div>
         <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
         <div class="update-check">
-          <button class="action-btn" onclick={checkUpdate} disabled={checkingUpdate}>
+          <button class="btn-secondary" onclick={checkUpdate} disabled={checkingUpdate}>
             {checkingUpdate ? 'Checking...' : 'Check for Updates'}
           </button>
           {#if updateInfo}
@@ -1118,40 +1095,6 @@
     </section>
 
     {/if}
-    <!-- End of tab content -->
-    <!-- End settings-sections: old duplicate removed -->
-  </div>
-  
-
-  <div class="settings-footer">
-    <button
-      class="reset-btn"
-      onclick={() => showResetConfirm = true}
-      disabled={isResetting}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-        <path d="M3 3v5h5"/>
-      </svg>
-      Reset to Defaults
-    </button>
-    <button
-      class="save-btn"
-      onclick={saveConfig}
-      disabled={isSaving}
-    >
-      {#if isSaving}
-        <div class="spinner"></div>
-        Saving...
-      {:else}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-          <polyline points="17 21 17 13 7 13 7 21"/>
-          <polyline points="7 3 7 8 15 8"/>
-        </svg>
-        Save Settings
-      {/if}
-    </button>
   </div>
 </div>
 
@@ -1187,240 +1130,130 @@
 <style>
   .settings-page {
     padding: 32px;
-    max-width: 700px;
+    max-width: 960px;
   }
 
+  /* Header */
   .settings-header {
-    margin-bottom: 32px;
-  }
-
-  .tab-bar {
-    display: flex;
-    gap: 4px;
-    margin-top: 16px;
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: 0;
-  }
-
-  .tab-btn {
-    padding: 10px 18px;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--color-text-tertiary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-bottom: -1px;
-  }
-
-  .tab-btn:hover {
-    color: var(--color-text-primary);
-  }
-
-  .tab-btn.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
-  }
-
-  .action-btn {
-    padding: 8px 16px;
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
-    color: var(--color-text-secondary);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .action-btn:hover:not(:disabled) {
-    background: var(--color-bg-hover);
-    color: var(--color-text-primary);
-  }
-
-  .action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .api-status-header {
-    margin-bottom: 16px;
-  }
-
-  .api-status-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .api-status-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
-  }
-
-  .api-name {
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  .api-indicator {
-    font-size: 13px;
-    font-weight: 500;
-    padding: 2px 10px;
-    border-radius: 12px;
-  }
-
-  .api-indicator.online {
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
-  }
-
-  .api-indicator.offline {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
-  }
-
-  .api-indicator.slow {
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.1);
-  }
-
-  .update-check {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 8px;
-  }
-
-  .update-available {
-    color: var(--color-accent);
-    font-size: 14px;
-  }
-
-  .update-available a {
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-
-  .update-current {
-    color: #10b981;
-    font-size: 14px;
-  }
-
-  .ffmpeg-status {
-    font-size: 14px;
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: 6px;
-  }
-
-  .ffmpeg-status.installed {
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
-  }
-
-  .ffmpeg-status.missing {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
-  }
-
-  .ffmpeg-version {
-    font-family: monospace;
-    font-size: 12px !important;
-  }
-
-  .ffmpeg-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 200px;
-  }
-
-  .ffmpeg-progress-bar {
-    height: 8px;
-    background: var(--color-bg-tertiary);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .ffmpeg-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #f472b6, #a855f7);
-    border-radius: 4px;
-    transition: width 0.3s ease;
-  }
-
-  .ffmpeg-progress-text {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-  }
-
-  .action-btn.primary {
-    background: rgba(244, 114, 182, 0.15);
-    border-color: rgba(244, 114, 182, 0.3);
-    color: #f472b6;
-  }
-
-  .action-btn.primary:hover {
-    background: rgba(244, 114, 182, 0.25);
-  }
-
-  .setting-control.wide {
-    flex: 1;
-    max-width: 350px;
-    margin-left: 24px;
-  }
-
-  .setting-control.wide .text-input {
-    width: 100%;
+    margin-bottom: 24px;
   }
 
   .settings-header h1 {
     font-size: 28px;
     font-weight: 700;
-    margin: 0 0 8px 0;
-  }
-
-  .subtitle {
-    color: var(--color-text-tertiary);
     margin: 0;
   }
 
-  .settings-sections {
+  .header-actions {
     display: flex;
-    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* Buttons */
+  .btn-accent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--color-accent, #f472b6);
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
+  }
+
+  .btn-accent:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .btn-accent:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid var(--color-border, #1a1a1a);
+    border-radius: 8px;
+    color: var(--color-text-secondary, #a1a1a1);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-bg-hover, #1a1a1a);
+    color: var(--color-text-primary, #fafafa);
+    border-color: var(--color-text-tertiary, #525252);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Grid Layout */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 32px;
   }
 
+  .settings-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .group-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-tertiary, #525252);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border, #1a1a1a);
+  }
+
+  /* Settings Content */
+  .settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
   .settings-section {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary, #0a0a0a);
+    border: 1px solid var(--color-border, #1a1a1a);
     border-radius: 16px;
     padding: 24px;
   }
 
-  .settings-section h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0 0 20px 0;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .settings-section .group-title {
+    margin-top: 0;
   }
 
+  /* Setting Items */
   .setting-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--color-border);
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border, #1a1a1a);
   }
 
   .setting-item:last-child {
@@ -1441,65 +1274,40 @@
   .setting-info label,
   .setting-info .setting-label {
     font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--color-text-primary, #fafafa);
+    font-size: 14px;
   }
 
   .setting-desc {
     font-size: 13px;
-    color: var(--color-text-tertiary);
+    color: var(--color-text-tertiary, #525252);
   }
 
   .setting-control {
     flex-shrink: 0;
   }
 
-  .folder-control {
-    display: flex;
-    gap: 8px;
+  .setting-control.wide {
     flex: 1;
-    max-width: 350px;
+    max-width: 280px;
     margin-left: 24px;
   }
 
-  .folder-input {
-    flex: 1;
+  .setting-control.wide .setting-input {
+    width: 100%;
+  }
+
+  /* Inputs */
+  .setting-select {
     padding: 10px 14px;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-primary, #000);
+    border: 1px solid var(--color-border-subtle, #222);
     border-radius: 8px;
-    color: var(--color-text-secondary);
-    font-size: 13px;
-    font-family: monospace;
-  }
-
-  .browse-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
-    color: var(--color-text-primary);
+    color: var(--color-text-primary, #fafafa);
     font-size: 14px;
+    min-width: 170px;
     cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .browse-btn:hover {
-    background: var(--color-bg-hover);
-  }
-
-  .select-input {
-    padding: 10px 14px;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
-    color: var(--color-text-primary);
-    font-size: 14px;
-    min-width: 180px;
-    cursor: pointer;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
@@ -1509,20 +1317,46 @@
     padding-right: 36px;
   }
 
-  .select-input option {
-    background: var(--color-bg-secondary);
-    color: var(--color-text-primary);
+  .setting-select option {
+    background: var(--color-bg-secondary, #0a0a0a);
+    color: var(--color-text-primary, #fafafa);
     padding: 8px;
   }
 
+  .setting-select:focus {
+    outline: none;
+    border-color: var(--color-accent, #f472b6);
+  }
+
+  .setting-input {
+    padding: 10px 14px;
+    background: var(--color-bg-primary, #000);
+    border: 1px solid var(--color-border-subtle, #222);
+    border-radius: 8px;
+    color: var(--color-text-primary, #fafafa);
+    font-size: 14px;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
+  }
+
+  .setting-input:focus {
+    border-color: var(--color-accent, #f472b6);
+  }
+
+  .setting-input::placeholder {
+    color: #555;
+  }
+
   /* Fix for WebKit in light theme */
-  :global([data-theme="light"]) .select-input {
+  :global([data-theme="light"]) .setting-select {
     background-color: #ffffff;
     color: #171717;
     border-color: #d4d4d4;
   }
 
-  :global([data-theme="light"]) .select-input option {
+  :global([data-theme="light"]) .setting-select option {
     background-color: #fafafa;
     color: #171717;
   }
@@ -1533,122 +1367,87 @@
     border-color: #d4d4d4;
   }
 
-  .select-input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
-  /* Accent Color Swatches */
-  .accent-colors {
+  /* Folder Control */
+  .folder-control {
     display: flex;
     gap: 8px;
+    flex: 1;
+    max-width: 320px;
+    margin-left: 24px;
   }
 
-  .color-swatch {
-    width: 32px;
-    height: 32px;
+  .folder-input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13px;
+  }
+
+  .browse-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--color-bg-tertiary, #171717);
+    border: 1px solid var(--color-border-subtle, #222);
+    border-radius: 8px;
+    color: var(--color-text-primary, #fafafa);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
+  }
+
+  .browse-btn:hover {
+    background: var(--color-bg-hover, #1a1a1a);
+  }
+
+  /* Accent Swatches */
+  .accent-swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
+    padding: 0;
   }
 
-  .color-swatch:hover {
-    transform: scale(1.1);
+  .swatch:hover {
+    transform: scale(1.15);
   }
 
-  .color-swatch.active {
-    border-color: var(--color-text-primary);
-    box-shadow: 0 0 0 2px var(--color-bg-primary);
+  .swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px var(--color-bg-primary, #000);
   }
 
-  .color-swatch.active::after {
+  .swatch.active::after {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     background: white;
     border-radius: 50%;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Volume Slider */
-  .volume-control {
-    width: 150px;
-  }
-
-  .volume-slider {
-    width: 100%;
-    height: 6px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: var(--color-bg-hover);
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: var(--color-accent);
-    border-radius: 50%;
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-
-  .volume-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-  }
-
-  .volume-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: var(--color-accent);
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-  }
-
-  /* Sound Control */
-  .sound-control {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .test-sound-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 6px;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .test-sound-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-accent);
-    border-color: var(--color-accent);
   }
 
   /* Toggle Switch */
   .toggle {
     position: relative;
     display: inline-block;
-    width: 48px;
-    height: 26px;
+    width: 44px;
+    height: 24px;
   }
 
   .toggle input {
@@ -1664,30 +1463,178 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--color-bg-hover);
+    background: var(--color-bg-hover, #1a1a1a);
     transition: 0.3s;
-    border-radius: 26px;
+    border-radius: 24px;
   }
 
   .toggle-slider:before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
+    height: 18px;
+    width: 18px;
     left: 3px;
     bottom: 3px;
-    background: var(--color-text-tertiary);
+    background: var(--color-text-tertiary, #525252);
     transition: 0.3s;
     border-radius: 50%;
   }
 
   .toggle input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #f472b6, #a855f7);
+    background: var(--color-accent, #f472b6);
   }
 
   .toggle input:checked + .toggle-slider:before {
-    transform: translateX(22px);
+    transform: translateX(20px);
     background: #fff;
+  }
+
+  /* Sound Control */
+  .sound-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .test-sound-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary, #171717);
+    border: 1px solid var(--color-border-subtle, #222);
+    border-radius: 6px;
+    color: var(--color-text-secondary, #a1a1a1);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .test-sound-btn:hover {
+    background: var(--color-bg-hover, #1a1a1a);
+    color: var(--color-accent, #f472b6);
+    border-color: var(--color-accent, #f472b6);
+  }
+
+  /* Volume */
+  .volume-control {
+    width: 150px;
+  }
+
+  .volume-slider {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--color-bg-hover, #1a1a1a);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--color-accent, #f472b6);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--color-accent, #f472b6);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  /* Status Badge */
+  .status-badge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  .status-badge.ok {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .status-badge.error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .status-badge.slow {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  /* API Status */
+  .api-status-header {
+    margin-bottom: 16px;
+  }
+
+  .api-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--color-bg-primary, #000);
+    border: 1px solid var(--color-border-subtle, #222);
+    border-radius: 8px;
+  }
+
+  .api-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* FFmpeg */
+  .ffmpeg-version {
+    font-family: monospace;
+    font-size: 12px !important;
+  }
+
+  .ffmpeg-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+  }
+
+  .ffmpeg-progress-bar {
+    height: 8px;
+    background: var(--color-bg-tertiary, #171717);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .ffmpeg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-accent, #f472b6), #a855f7);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+
+  .ffmpeg-progress-text {
+    font-size: 12px;
+    color: var(--color-text-tertiary, #525252);
   }
 
   /* About Section */
@@ -1750,51 +1697,39 @@
 
   .version {
     font-size: 13px;
-    color: var(--color-text-tertiary);
+    color: var(--color-text-tertiary, #525252);
   }
 
   .app-desc {
     margin: 0;
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary, #a1a1a1);
     font-size: 14px;
     line-height: 1.5;
   }
 
-  /* Footer */
-  .settings-footer {
+  .update-check {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 16px;
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border);
+    gap: 12px;
+    margin-top: 8px;
   }
 
-  .save-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #f472b6, #a855f7);
-    border: none;
-    border-radius: 10px;
-    color: #000;
+  .update-available {
+    color: var(--color-accent, #f472b6);
     font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
   }
 
-  .save-btn:hover:not(:disabled) {
-    opacity: 0.9;
+  .update-available a {
+    color: var(--color-accent, #f472b6);
+    text-decoration: underline;
   }
 
-  .save-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+  .update-current {
+    color: #10b981;
+    font-size: 14px;
   }
 
+  /* Spinner */
   .spinner {
     width: 16px;
     height: 16px;
@@ -1806,33 +1741,6 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-
-  /* Reset Button */
-  .reset-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    color: var(--color-text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .reset-btn:hover:not(:disabled) {
-    border-color: var(--color-warning);
-    color: var(--color-warning);
-    background: rgba(245, 158, 11, 0.1);
-  }
-
-  .reset-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 
   /* Modal */
@@ -1856,8 +1764,8 @@
   }
 
   .modal {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary, #0a0a0a);
+    border: 1px solid var(--color-border, #1a1a1a);
     border-radius: 16px;
     padding: 32px;
     max-width: 400px;
@@ -1882,7 +1790,7 @@
     height: 64px;
     border-radius: 50%;
     background: rgba(245, 158, 11, 0.15);
-    color: var(--color-warning);
+    color: var(--color-warning, #f59e0b);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1897,7 +1805,7 @@
 
   .modal p {
     margin: 0 0 24px 0;
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary, #a1a1a1);
     font-size: 14px;
     line-height: 1.5;
   }
@@ -1915,21 +1823,22 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
   }
 
   .modal-btn.cancel {
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary, #171717);
+    border: 1px solid var(--color-border, #1a1a1a);
+    color: var(--color-text-secondary, #a1a1a1);
   }
 
   .modal-btn.cancel:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text-primary);
+    background: var(--color-bg-hover, #1a1a1a);
+    color: var(--color-text-primary, #fafafa);
   }
 
   .modal-btn.confirm {
-    background: var(--color-warning);
+    background: var(--color-warning, #f59e0b);
     border: none;
     color: #000;
   }
@@ -1940,150 +1849,6 @@
 
   .modal-btn.confirm:disabled {
     opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .lyrics-info {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
-    background: rgba(59, 130, 246, 0.08);
-    border: 1px solid rgba(59, 130, 246, 0.15);
-    border-radius: 8px;
-    font-size: 13px;
-    color: #888;
-    margin-top: 8px;
-  }
-
-  .lyrics-info svg {
-    color: #3b82f6;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .source-info {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.15);
-    border-radius: 8px;
-    font-size: 13px;
-    color: #888;
-    margin-top: 8px;
-  }
-
-  .source-info svg {
-    color: #22c55e;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .quality-info {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.15);
-    border-radius: 8px;
-    font-size: 13px;
-    color: #888;
-    margin-top: 8px;
-  }
-
-  .quality-info svg {
-    color: #f59e0b;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .text-input {
-    padding: 10px 14px;
-    background: #0a0a0a;
-    border: 1px solid #222;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 14px;
-    width: 250px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .text-input:focus {
-    border-color: var(--accent-color, #f472b6);
-  }
-
-  .text-input::placeholder {
-    color: #555;
-  }
-
-  /* Order List */
-  .order-setting {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .order-setting .setting-info {
-    width: 100%;
-  }
-
-  .order-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-  }
-
-  .order-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
-  }
-
-  .order-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    font-family: monospace;
-  }
-
-  .order-btns {
-    display: flex;
-    gap: 4px;
-  }
-
-  .order-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 6px;
-    color: var(--color-text-secondary);
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.15s;
-    line-height: 1;
-  }
-
-  .order-btn:hover:not(:disabled) {
-    background: var(--color-bg-hover);
-    color: var(--color-accent);
-    border-color: var(--color-accent);
-  }
-
-  .order-btn:disabled {
-    opacity: 0.3;
     cursor: not-allowed;
   }
 </style>
