@@ -659,7 +659,8 @@
           {#if content.type === 'artist'}
             <p class="track-count">{(content as any).albums?.length || 0} albums</p>
           {:else}
-            <p class="track-count">{content.tracks?.length || 0} tracks</p>
+            {@const totalMin = Math.round((content.tracks || []).reduce((sum: number, t: TidalTrack) => sum + (t.duration || 0), 0) / 60)}
+            <p class="track-count">{content.tracks?.length || 0} tracks · {totalMin} min</p>
           {/if}
         </div>
         <div class="folder-section">
@@ -708,11 +709,7 @@
                 <span class="album-type-badge">{getAlbumTypeLabel(album.albumType)}</span>
               {/if}
               <button class="btn-icon download" onclick={() => downloadArtistAlbum(album.id)} disabled={!folder} aria-label="Download album">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
+                <Download size={16} />
               </button>
             </div>
           {/each}
@@ -721,11 +718,7 @@
         <!-- Download All Albums + Artist Assets -->
         <div class="download-section">
           <button class="btn-primary btn-large" onclick={downloadAllFilteredAlbums} disabled={!folder}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
+            <Download size={20} />
             Download All {albumTypeFilter === 'all' ? '' : getContentTypeLabel(albumTypeFilter)} Albums
           </button>
           <button class="btn-secondary" onclick={downloadArtistAssetsHandler} disabled={!folder || downloadingAssets}>
@@ -837,11 +830,7 @@
                   </button>
                 {:else}
                   <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder} aria-label="Download track">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="7 10 12 15 17 10"/>
-                      <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
+                    <Download size={16} />
                   </button>
                 {/if}
               </div>
@@ -891,11 +880,7 @@
               </svg>
               All Downloaded
             {:else}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
+              <Download size={20} />
               Download All FLAC
             {/if}
           </button>
@@ -1313,8 +1298,8 @@
     letter-spacing: 0.5px;
     border-radius: 6px;
     width: fit-content;
-    background: rgba(244, 114, 182, 0.15);
-    color: #f472b6;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
   }
 
   .badge.badge-ep {
@@ -1438,9 +1423,9 @@
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 3px;
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     letter-spacing: 0.5px;
   }
 
