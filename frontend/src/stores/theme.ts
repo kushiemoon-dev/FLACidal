@@ -86,6 +86,25 @@ export const accentPresets = [
   { name: 'Red', color: '#ef4444' }
 ];
 
+export const fontPresets = [
+  { name: 'Plus Jakarta Sans', value: "'Plus Jakarta Sans', sans-serif" },
+  { name: 'Outfit', value: "'Outfit', sans-serif" },
+  { name: 'Bricolage Grotesque', value: "'Bricolage Grotesque', sans-serif" },
+] as const;
+
+export const fontFamily = writable<string>(fontPresets[0].value);
+
+export function applyFontFamily(font: string): void {
+  document.documentElement.style.setProperty('--font-family', font);
+  fontFamily.set(font);
+}
+
+export function initializeFontFamily(font: string): void {
+  if (font) {
+    applyFontFamily(font);
+  }
+}
+
 // Apply accent color to CSS variables
 export function applyAccentColor(color: string) {
   const root = document.documentElement;
