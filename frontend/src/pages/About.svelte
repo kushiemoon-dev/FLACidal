@@ -3,6 +3,7 @@
   import { GetAppVersion } from '../../wailsjs/go/main/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
   import { Heart, ExternalLink, LayoutGrid } from 'lucide-svelte';
+  import kofiLogo from '../assets/logos/kofi-logo.png';
 
   let version = $state('...');
   let activeTab = $state('projects');
@@ -85,7 +86,7 @@
     <div class="support-card">
       <div class="support-inner">
         <div class="kofi-logo-area">
-          <img src="../assets/logos/kofi-logo.png" alt="Ko-fi" class="kofi-logo-img" />
+          <img src={kofiLogo} alt="Ko-fi" class="kofi-logo-img" />
         </div>
 
         <div class="kofi-content">
