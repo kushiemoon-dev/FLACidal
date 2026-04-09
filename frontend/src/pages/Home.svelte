@@ -263,6 +263,19 @@
           artistId: result.artistId
         });
       }
+      // Save to recent fetches on success
+      const currentData = $currentContent;
+      if (currentData) {
+        saveRecentFetch({
+          url: tidalUrl,
+          title: currentData.title,
+          creator: currentData.creator,
+          coverUrl: currentData.coverUrl || '',
+          type: currentData.type,
+          source: currentData.source || 'tidal',
+          timestamp: Date.now(),
+        });
+      }
     } catch (e: any) {
       error = e.message || (typeof e === 'string' ? e : 'Failed to fetch content');
     }
@@ -437,6 +450,43 @@
     localStorage.setItem('flacidal-region', value);
   }
 
+  // Recent fetches
+  interface RecentFetch {
+    url: string;
+    title: string;
+    creator: string;
+    coverUrl: string;
+    type: string;
+    source: string;
+    timestamp: number;
+  }
+
+  let recentFetches: RecentFetch[] = $state(loadRecentFetches());
+
+  function loadRecentFetches(): RecentFetch[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('flacidal-recent-fetches') || '[]');
+    } catch { return []; }
+  }
+
+  function saveRecentFetch(fetch: RecentFetch) {
+    const existing = recentFetches.filter(f => f.url !== fetch.url);
+    const updated = [fetch, ...existing].slice(0, 12);
+    recentFetches = updated;
+    localStorage.setItem('flacidal-recent-fetches', JSON.stringify(updated));
+  }
+
+  function clearRecentFetches() {
+    recentFetches = [];
+    localStorage.removeItem('flacidal-recent-fetches');
+  }
+
+  function refetchFromRecent(recent: RecentFetch) {
+    tidalUrl = recent.url;
+    fetchContent();
+  }
+
   let downloadingAssets = $state(false);
   let assetsResult = $state('');
 
@@ -549,6 +599,37 @@
           <line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
+    </div>
+  {/if}
+
+  <!-- Recent Fetches -->
+  {#if recentFetches.length > 0 && !content && !loading}
+    <div class="recent-fetches">
+      <div class="recent-header">
+        <div class="recent-title">
+          <Clock size={16} />
+          <span>Recent Fetches</span>
+        </div>
+        <button class="btn-ghost" onclick={clearRecentFetches}>Clear</button>
+      </div>
+      <div class="recent-grid">
+        {#each recentFetches as recent}
+          <button class="recent-card" onclick={() => refetchFromRecent(recent)}>
+            {#if recent.coverUrl}
+              <img src={recent.coverUrl} alt="" class="recent-cover" />
+            {:else}
+              <div class="recent-cover placeholder">
+                <Music size={24} />
+              </div>
+            {/if}
+            <span class="recent-card-title">{recent.title}</span>
+            <span class="recent-card-artist">{recent.creator}</span>
+            <span class="recent-type-badge" class:type-album={recent.type === 'album'} class:type-track={recent.type === 'track'} class:type-playlist={recent.type === 'playlist'} class:type-artist={recent.type === 'artist'}>
+              {recent.type}
+            </span>
+          </button>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -1665,5 +1746,117 @@
     font-size: 0.85rem;
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Recent Fetches */
+  .recent-fetches {
+    margin-bottom: 24px;
+  }
+
+  .recent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .recent-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .recent-grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .recent-card {
+    flex-shrink: 0;
+    width: 140px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    text-align: left;
+    font-family: inherit;
+    color: var(--color-text-primary);
+  }
+
+  .recent-card:hover {
+    border-color: var(--color-accent);
+    background: var(--color-bg-tertiary);
+    transform: translateY(-2px);
+  }
+
+  .recent-cover {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  .recent-cover.placeholder {
+    background: var(--color-bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+  }
+
+  .recent-card-title {
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .recent-card-artist {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .recent-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(244, 114, 182, 0.15);
+    color: #f472b6;
+  }
+
+  .recent-type-badge.type-track {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+  }
+
+  .recent-type-badge.type-playlist {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+  }
+
+  .recent-type-badge.type-artist {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
   }
 </style>
