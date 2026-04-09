@@ -22,10 +22,10 @@
   import AudioConverter from './pages/tools/AudioConverter.svelte';
   import FileManager from './pages/tools/FileManager.svelte';
 
-  let activePage = 'home';
+  let activePage = $state('home');
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
-  let refetchedContent: any = null;
+  let refetchedContent: any = $state(null);
   let showIssueReporter = $state(false);
 
   function handleNavigate(page: string) {
@@ -141,7 +141,7 @@
       {:else if activePage === 'files'}
         <Files />
       {:else if activePage === 'history'}
-        <History onRefetch={handleHistoryRefetch} />
+        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url }; activePage = 'home'; }} />
       {:else if activePage === 'settings'}
         <Settings />
       {:else if activePage === 'terminal'}
@@ -271,19 +271,6 @@
     margin-left: 56px;
     overflow-y: auto;
     max-height: 100vh;
-  }
-
-  .page-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 60vh;
-    color: var(--color-text-tertiary);
-  }
-  .page-placeholder h2 {
-    margin-bottom: 8px;
-    color: var(--color-text-primary);
   }
 
   /* Card hover effect utility */
