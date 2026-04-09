@@ -17,6 +17,7 @@
     FetchContentFromURL,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
 
   // Accept initial content from history refetch
@@ -41,17 +42,53 @@
   let previewingTrackId: number | null = $state(null);
   let previewPlaying = $state(false);
 
-  // Animated placeholder
+  // Animated placeholder (typewriter effect)
   const exampleUrls = [
     'https://tidal.com/browse/album/123456789',
     'https://tidal.com/browse/track/987654321',
     'https://tidal.com/browse/playlist/abc-def-123',
     'https://tidal.com/browse/artist/12345',
     'https://tidal.com/browse/mix/abcdef123',
+    'https://www.qobuz.com/us-en/album/discovery-daft-punk/0060075335265',
   ];
-  let placeholderIndex = $state(0);
-  let placeholderUrl = $derived(exampleUrls[placeholderIndex]);
-  let placeholderInterval: ReturnType<typeof setInterval> | undefined;
+  let placeholderText = $state('|');
+  let typewriterTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function startTypewriter() {
+    let urlIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+
+    function tick() {
+      const currentUrl = exampleUrls[urlIndex];
+
+      if (!deleting) {
+        // Typing
+        charIndex++;
+        placeholderText = currentUrl.slice(0, charIndex) + '|';
+        if (charIndex >= currentUrl.length) {
+          // Fully typed — pause then delete
+          typewriterTimeout = setTimeout(() => { deleting = true; tick(); }, 2000);
+          return;
+        }
+        typewriterTimeout = setTimeout(tick, 45);
+      } else {
+        // Deleting
+        charIndex--;
+        placeholderText = currentUrl.slice(0, charIndex) + '|';
+        if (charIndex <= 0) {
+          // Fully deleted — pause then move to next URL
+          deleting = false;
+          urlIndex = (urlIndex + 1) % exampleUrls.length;
+          typewriterTimeout = setTimeout(tick, 400);
+          return;
+        }
+        typewriterTimeout = setTimeout(tick, 25);
+      }
+    }
+
+    tick();
+  }
 
   // Context menu state
   let contextMenu: { x: number; y: number; track: TidalTrack } | null = $state(null);
@@ -175,13 +212,11 @@
       downloadFolder.set(savedFolder);
     }
 
-    placeholderInterval = setInterval(() => {
-      placeholderIndex = (placeholderIndex + 1) % exampleUrls.length;
-    }, 3000);
+    startTypewriter();
   });
 
   onDestroy(() => {
-    if (placeholderInterval) clearInterval(placeholderInterval);
+    if (typewriterTimeout) clearTimeout(typewriterTimeout);
   });
 
   async function fetchContent() {
@@ -226,6 +261,19 @@
           tracks: result.tracks || [],
           source: 'tidal',
           artistId: result.artistId
+        });
+      }
+      // Save to recent fetches on success
+      const currentData = $currentContent;
+      if (currentData) {
+        saveRecentFetch({
+          url: tidalUrl,
+          title: currentData.title,
+          creator: currentData.creator,
+          coverUrl: currentData.coverUrl || '',
+          type: currentData.type,
+          source: currentData.source || 'tidal',
+          timestamp: Date.now(),
         });
       }
     } catch (e: any) {
@@ -383,6 +431,62 @@
     }
   }
 
+  // Region selector
+  const regionCountries = [
+    { code: 'US', flag: '🇺🇸' }, { code: 'GB', flag: '🇬🇧' }, { code: 'DE', flag: '🇩🇪' },
+    { code: 'FR', flag: '🇫🇷' }, { code: 'JP', flag: '🇯🇵' }, { code: 'BR', flag: '🇧🇷' },
+    { code: 'AU', flag: '🇦🇺' }, { code: 'CA', flag: '🇨🇦' }, { code: 'SE', flag: '🇸🇪' },
+    { code: 'NO', flag: '🇳🇴' }, { code: 'DK', flag: '🇩🇰' }, { code: 'NL', flag: '🇳🇱' },
+    { code: 'ES', flag: '🇪🇸' }, { code: 'IT', flag: '🇮🇹' }, { code: 'PL', flag: '🇵🇱' },
+    { code: 'KR', flag: '🇰🇷' }, { code: 'MX', flag: '🇲🇽' }, { code: 'AR', flag: '🇦🇷' },
+  ];
+  let selectedRegion = $state(
+    (typeof localStorage !== 'undefined' && localStorage.getItem('flacidal-region')) || 'US'
+  );
+
+  function onRegionChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value;
+    selectedRegion = value;
+    localStorage.setItem('flacidal-region', value);
+  }
+
+  // Recent fetches
+  interface RecentFetch {
+    url: string;
+    title: string;
+    creator: string;
+    coverUrl: string;
+    type: string;
+    source: string;
+    timestamp: number;
+  }
+
+  let recentFetches: RecentFetch[] = $state(loadRecentFetches());
+
+  function loadRecentFetches(): RecentFetch[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('flacidal-recent-fetches') || '[]');
+    } catch { return []; }
+  }
+
+  function saveRecentFetch(fetch: RecentFetch) {
+    const existing = recentFetches.filter(f => f.url !== fetch.url);
+    const updated = [fetch, ...existing].slice(0, 12);
+    recentFetches = updated;
+    localStorage.setItem('flacidal-recent-fetches', JSON.stringify(updated));
+  }
+
+  function clearRecentFetches() {
+    recentFetches = [];
+    localStorage.removeItem('flacidal-recent-fetches');
+  }
+
+  function refetchFromRecent(recent: RecentFetch) {
+    tidalUrl = recent.url;
+    fetchContent();
+  }
+
   let downloadingAssets = $state(false);
   let assetsResult = $state('');
 
@@ -414,7 +518,7 @@
         <span class="version-badge">v{version}</span>
       {/if}
     </div>
-    <p class="subtitle">Download lossless FLAC from Tidal & Qobuz</p>
+    <p class="subtitle">Get Tidal & Qobuz tracks in true FLAC — no account required</p>
   </header>
 
   <!-- URL Input -->
@@ -425,7 +529,7 @@
           type="text"
           bind:value={tidalUrl}
           bind:this={urlInputEl}
-          placeholder={placeholderUrl}
+          placeholder={placeholderText || 'Paste a Tidal or Qobuz URL...'}
           onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
@@ -464,14 +568,16 @@
           </div>
         {/if}
       </div>
+      <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">
+        {#each regionCountries as country}
+          <option value={country.code}>{country.flag} {country.code}</option>
+        {/each}
+      </select>
       <button class="btn-primary" onclick={fetchContent} disabled={loading || (detectedSource && !detectedSource.available)}>
         {#if loading}
           <span class="spinner"></span>
         {:else}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
+          <Search size={18} />
           Fetch
         {/if}
       </button>
@@ -493,6 +599,37 @@
           <line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
+    </div>
+  {/if}
+
+  <!-- Recent Fetches -->
+  {#if recentFetches.length > 0 && !content && !loading}
+    <div class="recent-fetches">
+      <div class="recent-header">
+        <div class="recent-title">
+          <Clock size={16} />
+          <span>Recent Fetches</span>
+        </div>
+        <button class="btn-ghost" onclick={clearRecentFetches}>Clear</button>
+      </div>
+      <div class="recent-grid">
+        {#each recentFetches as recent}
+          <button class="recent-card" onclick={() => refetchFromRecent(recent)}>
+            {#if recent.coverUrl}
+              <img src={recent.coverUrl} alt="" class="recent-cover" />
+            {:else}
+              <div class="recent-cover placeholder">
+                <Music size={24} />
+              </div>
+            {/if}
+            <span class="recent-card-title">{recent.title}</span>
+            <span class="recent-card-artist">{recent.creator}</span>
+            <span class="recent-type-badge" class:type-album={recent.type === 'album'} class:type-track={recent.type === 'track'} class:type-playlist={recent.type === 'playlist'} class:type-artist={recent.type === 'artist'}>
+              {recent.type}
+            </span>
+          </button>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -522,7 +659,8 @@
           {#if content.type === 'artist'}
             <p class="track-count">{(content as any).albums?.length || 0} albums</p>
           {:else}
-            <p class="track-count">{content.tracks?.length || 0} tracks</p>
+            {@const totalMin = Math.round((content.tracks || []).reduce((sum: number, t: TidalTrack) => sum + (t.duration || 0), 0) / 60)}
+            <p class="track-count">{content.tracks?.length || 0} tracks · {totalMin} min</p>
           {/if}
         </div>
         <div class="folder-section">
@@ -571,11 +709,7 @@
                 <span class="album-type-badge">{getAlbumTypeLabel(album.albumType)}</span>
               {/if}
               <button class="btn-icon download" onclick={() => downloadArtistAlbum(album.id)} disabled={!folder} aria-label="Download album">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
+                <Download size={16} />
               </button>
             </div>
           {/each}
@@ -584,11 +718,7 @@
         <!-- Download All Albums + Artist Assets -->
         <div class="download-section">
           <button class="btn-primary btn-large" onclick={downloadAllFilteredAlbums} disabled={!folder}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
+            <Download size={20} />
             Download All {albumTypeFilter === 'all' ? '' : getContentTypeLabel(albumTypeFilter)} Albums
           </button>
           <button class="btn-secondary" onclick={downloadArtistAssetsHandler} disabled={!folder || downloadingAssets}>
@@ -700,11 +830,7 @@
                   </button>
                 {:else}
                   <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder} aria-label="Download track">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="7 10 12 15 17 10"/>
-                      <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
+                    <Download size={16} />
                   </button>
                 {/if}
               </div>
@@ -754,11 +880,7 @@
               </svg>
               All Downloaded
             {:else}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
+              <Download size={20} />
               Download All FLAC
             {/if}
           </button>
@@ -865,6 +987,34 @@
 
   .url-input::placeholder {
     color: var(--color-text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
+  }
+
+  .region-select {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 10px 32px 10px 12px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  .region-select:hover {
+    border-color: var(--color-accent);
+  }
+
+  .region-select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-subtle);
   }
 
   .clear-input-btn {
@@ -976,6 +1126,11 @@
     background: #ec4899;
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(244, 114, 182, 0.4);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(244, 114, 182, 0.3);
   }
 
   .btn-primary:disabled {
@@ -1143,8 +1298,8 @@
     letter-spacing: 0.5px;
     border-radius: 6px;
     width: fit-content;
-    background: rgba(244, 114, 182, 0.15);
-    color: #f472b6;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
   }
 
   .badge.badge-ep {
@@ -1268,9 +1423,9 @@
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 3px;
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     letter-spacing: 0.5px;
   }
 
@@ -1576,5 +1731,117 @@
     font-size: 0.85rem;
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Recent Fetches */
+  .recent-fetches {
+    margin-bottom: 24px;
+  }
+
+  .recent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .recent-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .recent-grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .recent-card {
+    flex-shrink: 0;
+    width: 140px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    text-align: left;
+    font-family: inherit;
+    color: var(--color-text-primary);
+  }
+
+  .recent-card:hover {
+    border-color: var(--color-accent);
+    background: var(--color-bg-tertiary);
+    transform: translateY(-2px);
+  }
+
+  .recent-cover {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  .recent-cover.placeholder {
+    background: var(--color-bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+  }
+
+  .recent-card-title {
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .recent-card-artist {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .recent-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(244, 114, 182, 0.15);
+    color: #f472b6;
+  }
+
+  .recent-type-badge.type-track {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+  }
+
+  .recent-type-badge.type-playlist {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+  }
+
+  .recent-type-badge.type-artist {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
   }
 </style>

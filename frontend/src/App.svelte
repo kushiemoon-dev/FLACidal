@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import Sidebar from './components/Sidebar.svelte';
   import Home from './pages/Home.svelte';
@@ -11,15 +12,21 @@
   import Terminal from './pages/Terminal.svelte';
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
-  import { themeStore, initializeAccentColor } from './stores/theme';
+  import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
+  import IssueReporterModal from './components/IssueReporterModal.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
+  import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
+  import AudioResampler from './pages/tools/AudioResampler.svelte';
+  import AudioConverter from './pages/tools/AudioConverter.svelte';
+  import FileManager from './pages/tools/FileManager.svelte';
 
-  let activePage = 'home';
+  let activePage = $state('home');
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
-  let refetchedContent: any = null;
+  let refetchedContent: any = $state(null);
+  let showIssueReporter = $state(false);
 
   function handleNavigate(page: string) {
     activePage = page;
@@ -43,9 +50,9 @@
       initializeAccentColor(config?.accentColor || '#f472b6');
       // Initialize audio settings
       initializeAudioSettings(config?.soundEffects || false, config?.soundVolume || 70);
-      // Apply custom font family
+      // Initialize font family
       if (config?.fontFamily) {
-        document.documentElement.style.setProperty('--font-family', config.fontFamily);
+        initializeFontFamily(config.fontFamily);
       }
     } catch {
       themeStore.initialize('system');
@@ -119,32 +126,46 @@
     {activePage}
     onNavigate={handleNavigate}
     queueCount={$queueStats.pending + $queueStats.downloading}
+    onBugReport={() => showIssueReporter = true}
   />
 
   <div class="main-content">
-    {#if activePage === 'home'}
-      <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
-    {:else if activePage === 'search'}
-      <Search />
-    {:else if activePage === 'queue'}
-      <Queue />
-    {:else if activePage === 'files'}
-      <Files />
-    {:else if activePage === 'history'}
-      <History onRefetch={handleHistoryRefetch} />
-    {:else if activePage === 'settings'}
-      <Settings />
-    {:else if activePage === 'terminal'}
-      <Terminal />
-    {:else if activePage === 'about'}
-      <About />
-    {/if}
+    {#key activePage}
+    <div transition:fade={{ duration: 150 }}>
+      {#if activePage === 'home'}
+        <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
+      {:else if activePage === 'search'}
+        <Search />
+      {:else if activePage === 'queue'}
+        <Queue />
+      {:else if activePage === 'files'}
+        <Files />
+      {:else if activePage === 'history'}
+        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url }; activePage = 'home'; }} />
+      {:else if activePage === 'settings'}
+        <Settings />
+      {:else if activePage === 'terminal'}
+        <Terminal />
+      {:else if activePage === 'about'}
+        <About />
+      {:else if activePage === 'tool-analyzer'}
+        <AudioQualityAnalyzer />
+      {:else if activePage === 'tool-resampler'}
+        <AudioResampler />
+      {:else if activePage === 'tool-converter'}
+        <AudioConverter />
+      {:else if activePage === 'tool-filemanager'}
+        <FileManager />
+      {/if}
+    </div>
+    {/key}
   </div>
 </main>
+<IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/flacidal/flacidal/issues" />
 <Toast />
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
   /* Dark theme (default) */
   :global(:root), :global([data-theme="dark"]) {
@@ -168,6 +189,9 @@
     --color-warning: #f59e0b;
     --color-error: #ef4444;
     --color-info: #3b82f6;
+    --color-highlight-gold: #fbbf24;
+    --color-highlight-gold-hover: #f59e0b;
+    --font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
   }
 
   /* Light theme */
@@ -192,6 +216,9 @@
     --color-warning: #d97706;
     --color-error: #dc2626;
     --color-info: #2563eb;
+    --color-highlight-gold: #d97706;
+    --color-highlight-gold-hover: #b45309;
+    --font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
   }
 
   :global(*) {
@@ -201,7 +228,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
-    font-family: var(--font-family, 'Outfit', system-ui, -apple-system, sans-serif);
+    font-family: var(--font-family, 'Plus Jakarta Sans', 'Outfit', sans-serif);
     background: var(--color-bg-void);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
@@ -241,7 +268,18 @@
 
   .main-content {
     flex: 1;
+    margin-left: 56px;
     overflow-y: auto;
     max-height: 100vh;
+  }
+
+  /* Card hover effect utility */
+  :global(.card-hover) {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  :global(.card-hover:hover) {
+    transform: translateY(-2px);
+    border-color: var(--color-accent);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 </style>

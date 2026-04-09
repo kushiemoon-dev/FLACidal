@@ -1,24 +1,62 @@
 <script lang="ts">
-  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0 }: {
+  import {
+    Home, Search, Download, FolderOpen, Clock,
+    Terminal, Settings, Info, LayoutGrid,
+    AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug
+  } from 'lucide-svelte';
+
+  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0, onBugReport = () => {} }: {
     activePage?: string;
     onNavigate?: (page: string) => void;
     queueCount?: number;
+    onBugReport?: () => void;
   } = $props();
 
+  let showToolsFlyout = $state(false);
+
   const navItems = [
-    { id: 'home', label: 'Home', icon: 'home' },
-    { id: 'search', label: 'Search', icon: 'search' },
-    { id: 'queue', label: 'Queue', icon: 'download' },
-    { id: 'files', label: 'Files', icon: 'folder' },
-    { id: 'history', label: 'History', icon: 'clock' },
+    { id: 'home',    label: 'Home',    Icon: Home },
+    { id: 'search',  label: 'Search',  Icon: Search },
+    { id: 'queue',   label: 'Queue',   Icon: Download },
+    { id: 'files',   label: 'Files',   Icon: FolderOpen },
+    { id: 'history', label: 'History', Icon: Clock },
+  ];
+
+  const toolItems = [
+    { id: 'tool-analyzer',    label: 'Audio Quality Analyzer', Icon: AudioWaveform },
+    { id: 'tool-resampler',   label: 'Audio Resampler',        Icon: SlidersHorizontal },
+    { id: 'tool-converter',   label: 'Audio Converter',        Icon: FileAudio },
+    { id: 'tool-filemanager', label: 'File Manager',           Icon: FolderCog },
   ];
 
   const bottomItems = [
-    { id: 'terminal', label: 'Terminal', icon: 'terminal' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
-    { id: 'about', label: 'About', icon: 'info' },
+    { id: 'settings', label: 'Settings', Icon: Settings },
+    { id: 'terminal', label: 'Terminal', Icon: Terminal },
+    { id: 'about',    label: 'About',    Icon: Info },
   ];
+
+  function toggleToolsFlyout() {
+    showToolsFlyout = !showToolsFlyout;
+  }
+
+  function navigateTool(id: string) {
+    showToolsFlyout = false;
+    onNavigate(id);
+  }
+
+  function handleWindowClick(event: MouseEvent) {
+    const sidebar = (event.target as Element).closest('.sidebar');
+    if (!sidebar) {
+      showToolsFlyout = false;
+    }
+  }
+
+  function handleBugReport() {
+    onBugReport();
+  }
 </script>
+
+<svelte:window onclick={handleWindowClick} />
 
 <aside class="sidebar">
   <!-- Logo -->
@@ -33,131 +71,118 @@
     </div>
   </div>
 
-  <!-- Navigation -->
+  <!-- Main navigation -->
   <nav class="nav-main">
     {#each navItems as item}
       <button
         class="nav-item"
         class:active={activePage === item.id}
-        data-icon={item.icon}
         onclick={() => onNavigate(item.id)}
         title={item.label}
       >
-        {#if item.icon === 'home'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        {:else if item.icon === 'search'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
-        {:else if item.icon === 'download'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          {#if queueCount > 0}
-            <span class="badge">{queueCount}</span>
-          {/if}
-        {:else if item.icon === 'folder'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-        {:else if item.icon === 'clock'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
+        <item.Icon size={20} />
+        {#if item.id === 'queue' && queueCount > 0}
+          <span class="badge">{queueCount}</span>
         {/if}
       </button>
     {/each}
   </nav>
 
-  <!-- Bottom nav -->
+  <!-- Bottom navigation -->
   <nav class="nav-bottom">
+    <!-- Tools flyout button -->
+    <div class="flyout-wrapper">
+      <button
+        class="nav-item"
+        class:active={showToolsFlyout || ['tool-analyzer','tool-resampler','tool-converter','tool-filemanager'].includes(activePage)}
+        onclick={toggleToolsFlyout}
+        title="Tools"
+      >
+        <LayoutGrid size={20} />
+      </button>
+
+      {#if showToolsFlyout}
+        <div class="flyout">
+          <div class="flyout-title">Tools</div>
+          {#each toolItems as tool}
+            <button
+              class="flyout-item"
+              class:active={activePage === tool.id}
+              onclick={() => navigateTool(tool.id)}
+            >
+              <tool.Icon size={16} />
+              <span>{tool.label}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
     {#each bottomItems as item}
       <button
         class="nav-item"
         class:active={activePage === item.id}
-        data-icon={item.icon}
         onclick={() => onNavigate(item.id)}
         title={item.label}
       >
-        {#if item.icon === 'terminal'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="4 17 10 11 4 5"/>
-            <line x1="12" y1="19" x2="20" y2="19"/>
-          </svg>
-        {:else if item.icon === 'settings'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        {:else if item.icon === 'info'}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="16" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
-        {/if}
+        <item.Icon size={20} />
       </button>
     {/each}
+
+    <!-- Bug report -->
+    <button
+      class="nav-item"
+      onclick={handleBugReport}
+      title="Report a Bug"
+    >
+      <Bug size={20} />
+    </button>
   </nav>
 </aside>
 
 <style>
   .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 64px;
-    min-height: 100vh;
-    padding: 16px 0;
+    width: 56px;
+    height: 100vh;
+    padding: 12px 0;
     background: var(--color-bg-primary);
     border-right: 1px solid var(--color-border);
+    z-index: 100;
   }
 
   .logo {
-    margin-bottom: 24px;
-    animation: logoEntrance 0.5s ease-out both;
-  }
-
-  @keyframes logoEntrance {
-    from {
-      opacity: 0;
-      transform: scale(0.8) rotate(-10deg);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) rotate(0);
-    }
+    margin-bottom: 20px;
   }
 
   .logo-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f472b6, #a855f7);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--color-accent, #f472b6);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(244, 114, 182, 0.3);
+    box-shadow: 0 0 16px var(--color-accent-subtle, rgba(244, 114, 182, 0.3));
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
   }
 
   .logo-icon:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 30px rgba(244, 114, 182, 0.5);
+    transform: scale(1.06);
+    box-shadow: 0 0 24px rgba(244, 114, 182, 0.5);
   }
 
   .waveform {
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 18px;
+    height: 16px;
   }
 
   .waveform .bar {
@@ -180,44 +205,15 @@
   .nav-main {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     flex: 1;
   }
-
-  .nav-main .nav-item {
-    animation: slideIn 0.3s ease-out both;
-  }
-
-  .nav-main .nav-item:nth-child(1) { animation-delay: 0.05s; }
-  .nav-main .nav-item:nth-child(2) { animation-delay: 0.1s; }
-  .nav-main .nav-item:nth-child(3) { animation-delay: 0.15s; }
-  .nav-main .nav-item:nth-child(4) { animation-delay: 0.2s; }
-  .nav-main .nav-item:nth-child(5) { animation-delay: 0.25s; }
 
   .nav-bottom {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     margin-top: auto;
-  }
-
-  .nav-bottom .nav-item {
-    animation: slideIn 0.3s ease-out both;
-  }
-
-  .nav-bottom .nav-item:nth-child(1) { animation-delay: 0.3s; }
-  .nav-bottom .nav-item:nth-child(2) { animation-delay: 0.35s; }
-  .nav-bottom .nav-item:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
   }
 
   .nav-item {
@@ -225,20 +221,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border: none;
-    border-radius: 12px;
+    border-radius: 10px;
     background: transparent;
     color: var(--color-text-tertiary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s, color 0.15s;
   }
 
   .nav-item:hover {
-    background: var(--color-bg-tertiary);
+    background: var(--color-bg-secondary);
     color: var(--color-text-secondary);
-    transform: scale(1.05);
   }
 
   .nav-item.active {
@@ -246,142 +241,86 @@
     color: var(--color-accent);
   }
 
+  /* Left indicator bar for active state */
   .nav-item.active::before {
     content: '';
     position: absolute;
-    left: -10px;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 3px;
     height: 20px;
     background: var(--color-accent);
     border-radius: 0 3px 3px 0;
-    animation: activeIndicator 0.2s ease-out;
-  }
-
-  @keyframes activeIndicator {
-    from {
-      height: 0;
-      opacity: 0;
-    }
-    to {
-      height: 20px;
-      opacity: 1;
-    }
   }
 
   .badge {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 16px;
+    top: 5px;
+    right: 5px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 15px;
     text-align: center;
     color: #000;
-    background: #f472b6;
+    background: var(--color-accent);
     border-radius: 8px;
-    animation: badge-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
-  /* ── SVG icon transition base ────────────────────────────── */
-  .nav-item svg {
-    transition: transform 0.15s ease;
-    transform-origin: center;
+  /* Flyout */
+  .flyout-wrapper {
+    position: relative;
   }
 
-  /* ── Per-icon hover animations ───────────────────────────── */
-
-  /* Home: bounces up */
-  [data-icon="home"]:hover svg {
-    animation: icon-bounce 0.35s ease both;
-  }
-  @keyframes icon-bounce {
-    0%        { transform: translateY(0); }
-    40%       { transform: translateY(-5px); }
-    70%       { transform: translateY(-2px); }
-    100%      { transform: translateY(0); }
-  }
-
-  /* Search: quick scale-pulse (magnify) */
-  [data-icon="search"]:hover svg {
-    animation: icon-magnify 0.3s ease both;
-  }
-  @keyframes icon-magnify {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.18); }
+  .flyout {
+    position: absolute;
+    left: calc(100% + 10px);
+    bottom: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 8px;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 200;
   }
 
-  /* Download: arrow drops and springs back */
-  [data-icon="download"]:hover svg {
-    animation: icon-drop 0.4s ease both;
-  }
-  @keyframes icon-drop {
-    0%   { transform: translateY(0); }
-    45%  { transform: translateY(4px); }
-    75%  { transform: translateY(1px); }
-    100% { transform: translateY(0); }
+  .flyout-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    padding: 4px 8px 8px;
   }
 
-  /* Folder: quick horizontal shake (rattle) */
-  [data-icon="folder"]:hover svg {
-    animation: icon-shake 0.35s ease both;
-  }
-  @keyframes icon-shake {
-    0%, 100% { transform: rotate(0deg); }
-    20%      { transform: rotate(-6deg); }
-    60%      { transform: rotate(6deg); }
-    80%      { transform: rotate(-3deg); }
-  }
-
-  /* Clock: spins one full tick (clockwise quarter-turn) */
-  [data-icon="clock"]:hover svg {
-    animation: icon-tick 0.45s ease both;
-  }
-  @keyframes icon-tick {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(90deg); }
+  .flyout-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
   }
 
-  /* Terminal: jolts right (like a keypress) */
-  [data-icon="terminal"]:hover svg {
-    animation: icon-jolt 0.3s ease both;
-  }
-  @keyframes icon-jolt {
-    0%   { transform: translateX(0); }
-    35%  { transform: translateX(4px); }
-    100% { transform: translateX(0); }
+  .flyout-item:hover {
+    background: var(--color-bg-void);
+    color: var(--color-text-primary);
   }
 
-  /* Settings: spins once on hover; spins slowly when active */
-  [data-icon="settings"]:hover svg {
-    animation: icon-spin 0.5s ease both;
-  }
-  [data-icon="settings"].active svg {
-    animation: icon-spin-slow 4s linear infinite;
-  }
-  @keyframes icon-spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(180deg); }
-  }
-  @keyframes icon-spin-slow {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-
-  /* Info: gentle pulse */
-  [data-icon="info"]:hover svg {
-    animation: icon-pulse 0.35s ease both;
-  }
-  @keyframes icon-pulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.15); }
-  }
-
-  /* ── Badge pop-in ────────────────────────────────────────── */
-  @keyframes badge-pop {
-    from { transform: scale(0); opacity: 0; }
-    to   { transform: scale(1); opacity: 1; }
+  .flyout-item.active {
+    color: var(--color-accent);
+    background: var(--color-accent-subtle);
   }
 </style>

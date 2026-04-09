@@ -15,7 +15,7 @@ export const audioSettings = writable<AudioSettings>({
 let audioContext: AudioContext | null = null;
 
 // Sound definitions using Web Audio API oscillator (no external files needed)
-type SoundType = 'complete' | 'error' | 'queue-done';
+type SoundType = 'complete' | 'error' | 'queue-done' | 'click' | 'success';
 
 // Initialize audio context on first user interaction
 function ensureAudioContext(): AudioContext | null {
@@ -91,6 +91,28 @@ function playErrorSound() {
   osc.stop(ctx.currentTime + 0.25);
 }
 
+// Play a click sound (very short subtle tick)
+function playClickSound() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  const settings = get(audioSettings);
+  if (!settings.enabled) return;
+
+  const volume = 0.1 * (settings.volume / 100);
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.value = 800;
+  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.001);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.001);
+}
+
 // Play a queue complete sound (triumphant chord)
 function playQueueDoneSound() {
   const ctx = ensureAudioContext();
@@ -133,6 +155,12 @@ export function playSound(type: SoundType) {
       break;
     case 'queue-done':
       playQueueDoneSound();
+      break;
+    case 'click':
+      playClickSound();
+      break;
+    case 'success':
+      playSuccessSound();
       break;
   }
 }
