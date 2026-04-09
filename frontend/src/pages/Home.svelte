@@ -345,7 +345,7 @@
 
     try {
       if (content.source === 'qobuz') {
-        await QueueQobuzDownloads(tracksToDownload, $downloadFolder, content.title);
+        await QueueQobuzDownloads(tracksToDownload as any, $downloadFolder, content.title);
       } else {
         await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
       }
