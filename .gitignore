@@ -65,3 +65,9 @@ progress.md
 flacidal-desktop/
 flacidal-core/
 flacidal-mobile/
+
+# Git worktrees
+.worktrees/
+
+# Superpowers brainstorm
+.superpowers/
