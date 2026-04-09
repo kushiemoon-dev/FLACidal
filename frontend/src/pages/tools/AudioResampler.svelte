@@ -135,7 +135,7 @@
         </div>
 
         <div class="option output-option">
-          <label>Output Folder</label>
+          <span class="option-label">Output Folder</span>
           <div class="output-row">
             <span class="output-path">{outputDir || 'Not selected'}</span>
             <button class="btn-browse" onclick={selectOutputDir}>Browse</button>
@@ -256,7 +256,8 @@
     margin-bottom: 24px;
   }
 
-  .option label {
+  .option label,
+  .option .option-label {
     display: block;
     font-size: 13px;
     font-weight: 600;
