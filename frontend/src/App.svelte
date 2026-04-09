@@ -15,6 +15,7 @@
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
+  import IssueReporterModal from './components/IssueReporterModal.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
@@ -25,6 +26,7 @@
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
   let refetchedContent: any = null;
+  let showIssueReporter = $state(false);
 
   function handleNavigate(page: string) {
     activePage = page;
@@ -124,6 +126,7 @@
     {activePage}
     onNavigate={handleNavigate}
     queueCount={$queueStats.pending + $queueStats.downloading}
+    onBugReport={() => showIssueReporter = true}
   />
 
   <div class="main-content">
@@ -158,6 +161,7 @@
     {/key}
   </div>
 </main>
+<IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/flacidal/flacidal/issues" />
 <Toast />
 
 <style>
