@@ -30,6 +30,8 @@ github.com/kushiemoon-dev/flacidal-core v0.3.0 h1:FeX8PrBqAhZDz9MZWN4h0/ncStOfdm
 github.com/kushiemoon-dev/flacidal-core v0.3.0/go.mod h1:kVOGn5MOMZFK0PCnTdGDrg2iyilOZvN7nFiSZaLfkOM=
 github.com/kushiemoon-dev/flacidal-core v0.4.2 h1:6QJFQGFprcyO/NRNteKoEp5rxvv6ny/2IiBNWMV4JE0=
 github.com/kushiemoon-dev/flacidal-core v0.4.2/go.mod h1:s3owD886IlUWUGrLGYqYmRFTdCIbADrrcRsmLj4oPMc=
+github.com/kushiemoon-dev/flacidal-core v0.4.3 h1:GkzCJM3U4cJ21Y5WDVNSIxYPRcSj6er/R5gZT+Z4PaE=
+github.com/kushiemoon-dev/flacidal-core v0.4.3/go.mod h1:s3owD886IlUWUGrLGYqYmRFTdCIbADrrcRsmLj4oPMc=
 github.com/labstack/echo/v4 v4.13.3 h1:pwhpCPrTl5qry5HRdM5FwdXnhXSLSY+WE+YQSeCaafY=
 github.com/labstack/echo/v4 v4.13.3/go.mod h1:o90YNEeQWjDozo584l7AwhJMHN0bOC4tAfg+Xox9q5g=
 github.com/labstack/gommon v0.4.2 h1:F8qTUNXgG1+6WQmqoUWnz8WiEU60mXVVw0P4ht1WRA0=
