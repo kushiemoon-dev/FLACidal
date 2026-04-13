@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/websocket/v2 v2.2.1
-	github.com/kushiemoon-dev/flacidal-core v0.3.0
+	github.com/kushiemoon-dev/flacidal-core v0.4.2
 	github.com/mattn/go-sqlite3 v1.14.40
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/net v0.52.0
@@ -14,6 +14,7 @@ require (
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/bogem/id3v2/v2 v2.1.4 // indirect
 	github.com/clipperhouse/uax29/v2 v2.6.0 // indirect
 	github.com/fasthttp/websocket v1.5.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
