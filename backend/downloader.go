@@ -27,7 +27,10 @@ const (
 // defaultTidalHifiEndpoints is the built-in list of Tidal HiFi proxy endpoints.
 // Users can extend this via TidalHifiEndpoints in config.
 var defaultTidalHifiEndpoints = []string{
+	"https://hifi-one.spotisaver.net",
+	"https://hifi-two.spotisaver.net",
 	"https://vogel.qqdl.site",
+	"https://triton.squid.wtf",
 }
 
 // defaultMetadataEndpoints are hifi-api v2.4 proxy endpoints that support
