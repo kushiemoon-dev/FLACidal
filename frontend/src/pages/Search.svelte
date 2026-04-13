@@ -21,13 +21,13 @@
     pictureUrl?: string;
   }
 
-  let searchQuery = '';
+  let searchQuery = $state('');
   let searchType: SearchType = $state('tracks');
-  let searchResults: TidalTrack[] = [];
-  let albumResults: SearchAlbum[] = [];
-  let artistResults: SearchArtist[] = [];
-  let isSearching = false;
-  let hasSearched = false;
+  let searchResults: TidalTrack[] = $state([]);
+  let albumResults: SearchAlbum[] = $state([]);
+  let artistResults: SearchArtist[] = $state([]);
+  let isSearching = $state(false);
+  let hasSearched = $state(false);
   let filterText = $state('');
   let filterTimeout: ReturnType<typeof setTimeout> | undefined;
   let debouncedFilter = $state('');
