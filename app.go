@@ -707,7 +707,7 @@ func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "4.0.0"
+	return "4.0.4"
 }
 
 // UpdateInfo represents available update information
@@ -1222,18 +1222,18 @@ func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 
 // SearchTidalAlbums searches for albums on Tidal
 func (a *App) SearchTidalAlbums(query string) ([]core.TidalAlbum, error) {
-	if a.tidalClient == nil {
-		return nil, fmt.Errorf("tidal client not initialized")
+	if a.tidalSource == nil {
+		return nil, fmt.Errorf("tidal source not initialized")
 	}
-	return a.tidalClient.SearchAlbums(query, 20)
+	return a.tidalSource.SearchAlbums(query, 20)
 }
 
 // SearchTidalArtists searches for artists on Tidal
 func (a *App) SearchTidalArtists(query string) ([]core.TidalArtist, error) {
-	if a.tidalClient == nil {
-		return nil, fmt.Errorf("tidal client not initialized")
+	if a.tidalSource == nil {
+		return nil, fmt.Errorf("tidal source not initialized")
 	}
-	return a.tidalClient.SearchArtists(query, 20)
+	return a.tidalSource.SearchArtists(query, 20)
 }
 
 // =============================================================================
