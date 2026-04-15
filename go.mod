@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/websocket/v2 v2.2.1
-	github.com/kushiemoon-dev/flacidal-core v0.4.3
+	github.com/kushiemoon-dev/flacidal-core v0.4.4
 	github.com/mattn/go-sqlite3 v1.14.40
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/net v0.52.0
