@@ -41,13 +41,7 @@ jobs:
         env:
           CGO_ENABLED: '1'
           CC: gcc
-        run: wails build -platform windows/amd64
-
-      - name: Compress with UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          files: build/bin/flacidal.exe
-          args: --best
+        run: wails build -platform windows/amd64 -trimpath -ldflags "-s -w"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -85,7 +79,7 @@ jobs:
       - name: Build
         env:
           CGO_ENABLED: '1'
-        run: wails build -platform darwin/universal
+        run: wails build -platform darwin/universal -trimpath -ldflags "-s -w"
 
       - name: Create DMG
         run: |
@@ -155,7 +149,7 @@ jobs:
       - name: Build
         env:
           CGO_ENABLED: '1'
-        run: wails build
+        run: wails build -trimpath -ldflags "-s -w"
 
       - name: Compress with UPX
         run: upx --best build/bin/flacidal
