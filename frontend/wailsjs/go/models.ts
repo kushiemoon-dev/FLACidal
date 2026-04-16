@@ -67,11 +67,19 @@ export namespace core {
 	    skipUnavailableTracks: boolean;
 	    firstArtistOnly: boolean;
 	    artistSeparator?: string;
+	    artistTagMode?: string;
 	    playlistSubfolder: boolean;
 	    skipExisting: boolean;
+	    separateSingles: boolean;
 	    countryCode?: string;
 	    fontFamily?: string;
 	    proxyUrl?: string;
+	    enableYouTubeFallback: boolean;
+	    autoSelectService: boolean;
+	    amazonEnabled: boolean;
+	    amazonProxyEndpoints?: string[];
+	    qobuzProxyEndpoints?: string[];
+	    parallelEndpointRequests: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -113,11 +121,19 @@ export namespace core {
 	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
 	        this.firstArtistOnly = source["firstArtistOnly"];
 	        this.artistSeparator = source["artistSeparator"];
+	        this.artistTagMode = source["artistTagMode"];
 	        this.playlistSubfolder = source["playlistSubfolder"];
 	        this.skipExisting = source["skipExisting"];
+	        this.separateSingles = source["separateSingles"];
 	        this.countryCode = source["countryCode"];
 	        this.fontFamily = source["fontFamily"];
 	        this.proxyUrl = source["proxyUrl"];
+	        this.enableYouTubeFallback = source["enableYouTubeFallback"];
+	        this.autoSelectService = source["autoSelectService"];
+	        this.amazonEnabled = source["amazonEnabled"];
+	        this.amazonProxyEndpoints = source["amazonProxyEndpoints"];
+	        this.qobuzProxyEndpoints = source["qobuzProxyEndpoints"];
+	        this.parallelEndpointRequests = source["parallelEndpointRequests"];
 	    }
 	}
 	export class ConversionFormat {
@@ -280,6 +296,11 @@ export namespace core {
 	    title: string;
 	    artist: string;
 	    album: string;
+	    source: string;
+	    quality: string;
+	    format: string;
+	    discNumber: number;
+	    trackNumber: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DownloadedFileInfo(source);
@@ -294,6 +315,11 @@ export namespace core {
 	        this.title = source["title"];
 	        this.artist = source["artist"];
 	        this.album = source["album"];
+	        this.source = source["source"];
+	        this.quality = source["quality"];
+	        this.format = source["format"];
+	        this.discNumber = source["discNumber"];
+	        this.trackNumber = source["trackNumber"];
 	    }
 	}
 	export class FLACMetadata {
@@ -305,6 +331,11 @@ export namespace core {
 	    date: string;
 	    genre: string;
 	    isrc: string;
+	    albumArtist?: string;
+	    discNumber?: string;
+	    copyright?: string;
+	    label?: string;
+	    composer?: string;
 	    comment: string;
 	    size: number;
 	    duration: number;
@@ -334,6 +365,11 @@ export namespace core {
 	        this.date = source["date"];
 	        this.genre = source["genre"];
 	        this.isrc = source["isrc"];
+	        this.albumArtist = source["albumArtist"];
+	        this.discNumber = source["discNumber"];
+	        this.copyright = source["copyright"];
+	        this.label = source["label"];
+	        this.composer = source["composer"];
 	        this.comment = source["comment"];
 	        this.size = source["size"];
 	        this.duration = source["duration"];
