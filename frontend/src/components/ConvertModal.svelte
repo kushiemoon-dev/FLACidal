@@ -109,6 +109,11 @@
   function getQualityLabel(quality: string): string {
     if (quality.startsWith('V')) return `VBR ${quality}`;
     if (quality.startsWith('q')) return `Quality ${quality.slice(1)}`;
+    if (quality.includes(':')) {
+      const [sr, bits] = quality.split(':');
+      const khz = (parseInt(sr) / 1000).toFixed(1).replace('.0', '');
+      return `${khz} kHz / ${bits}-bit`;
+    }
     return quality;
   }
 </script>
