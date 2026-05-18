@@ -16,6 +16,8 @@ diff.txt
 # Frontend
 frontend/dist/
 frontend/node_modules/
+frontend/test-results/
+frontend/playwright-report/
 
 # Go
 *.test
@@ -70,3 +72,7 @@ progress_phase*.md
 
 # Superpowers brainstorm
 .superpowers/
+
+# Note: flacidal-core/ is NOT gitignored — go.mod uses `replace => ./flacidal-core`
+# Clone separately: git clone github.com/kushiemoon-dev/flacidal-core
+# Long-term: consider go.work or git submodule
