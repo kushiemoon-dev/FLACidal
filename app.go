@@ -26,7 +26,7 @@ type App struct {
 	config          *core.Config
 	db              *core.Database
 	tidalClient     *core.TidalClient
-	spotifySearch   *core.SpotifyClient    // For search/matching (Client Credentials, no login)
+	spotifySearch   *core.SpotifyClient // For search/matching (Client Credentials, no login)
 	matcher         *core.Matcher
 	downloader      *core.TidalHifiService // FLAC downloader
 	downloadManager *core.DownloadManager  // Concurrent download manager
@@ -34,7 +34,7 @@ type App struct {
 	sourceManager   *core.SourceManager    // Multi-source manager
 	tidalSource     *core.TidalSource      // Tidal source
 	qobuzSource     *core.QobuzSource      // Qobuz source
-	trackContentMap sync.Map                  // maps trackID (int) → contentID (string) for history tracking
+	trackContentMap sync.Map               // maps trackID (int) → contentID (string) for history tracking
 }
 
 // NewApp creates a new App application struct
@@ -49,6 +49,10 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize log buffer
 	a.logBuffer = core.NewLogBuffer(500)
 	a.logBuffer.Info("FLACidal starting...")
+
+	// Start background fetch of dynamic Tidal endpoints (before downloader is created).
+	core.SetTidalEndpointLogger(a.logBuffer)
+	core.InitTidalEndpoints()
 
 	// Load config
 	config, err := core.LoadConfig()
@@ -95,10 +99,15 @@ func (a *App) startup(ctx context.Context) {
 			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
 		}
 	}
-	// Apply custom endpoints if configured
+	// Apply custom endpoints if configured.
+	// TidalHifiEndpoints = total override (no gist); TidalCustomEndpoint = prepend to dynamic list.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoint pool: %d endpoints configured", len(config.TidalHifiEndpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoint pool: %d endpoints configured (override)", len(config.TidalHifiEndpoints)))
+	} else if config.TidalCustomEndpoint != "" {
+		base := core.GetTidalEndpoints()
+		a.downloader.SetEndpoints(append([]string{config.TidalCustomEndpoint}, base...))
+		a.logBuffer.Info("Tidal HiFi custom endpoint prepended: " + config.TidalCustomEndpoint)
 	}
 	// Set download options from config
 	quality := config.DownloadQuality
@@ -223,7 +232,11 @@ func (a *App) startup(ctx context.Context) {
 			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
 		}
 	}
-	if len(config.QobuzEndpoints) > 0 {
+	if config.QobuzCustomEndpoint != "" {
+		base := core.DefaultQobuzEndpoints()
+		a.qobuzSource.SetEndpoints(append([]string{config.QobuzCustomEndpoint}, base...))
+		a.logBuffer.Info("Qobuz custom endpoint prepended: " + config.QobuzCustomEndpoint)
+	} else if len(config.QobuzEndpoints) > 0 {
 		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured", len(config.QobuzEndpoints)))
 	}
@@ -577,6 +590,25 @@ func (a *App) ValidateTidalURL(url string) map[string]interface{} {
 		"id":    id,
 		"type":  contentType,
 	}
+}
+
+// RefreshTidalEndpoints forces a re-fetch of the endpoint list from the gist
+// and returns the updated list.
+func (a *App) RefreshTidalEndpoints() ([]string, error) {
+	endpoints, err := core.RefreshTidalEndpoints(true)
+	if err != nil {
+		return endpoints, err
+	}
+	// Re-apply endpoints to the downloader unless the user has a full override.
+	if len(a.config.TidalHifiEndpoints) == 0 {
+		if a.config.TidalCustomEndpoint != "" {
+			a.downloader.SetEndpoints(append([]string{a.config.TidalCustomEndpoint}, endpoints...))
+		} else {
+			a.downloader.SetEndpoints(endpoints)
+		}
+		a.logBuffer.Info(fmt.Sprintf("Tidal endpoints refreshed: %d endpoints loaded", len(endpoints)))
+	}
+	return endpoints, nil
 }
 
 // =============================================================================
@@ -1871,6 +1903,26 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 	}
 
 	return result, nil
+}
+
+// ExpandDiscographyURL detects a Spotify discography URL and returns all album URLs for that artist.
+// Returns an error if the URL is not a valid Spotify discography URL.
+func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
+	info := core.ParseDiscographyURL(rawURL)
+	if info == nil {
+		return nil, fmt.Errorf("not a Spotify discography URL: %s", rawURL)
+	}
+	if a.spotifySearch == nil {
+		return nil, fmt.Errorf("Spotify client not initialized")
+	}
+	urls, err := a.spotifySearch.FetchDiscographyAlbumURLs(info.ArtistID, info.Kind)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch discography for artist %s: %w", info.ArtistID, err)
+	}
+	if a.logBuffer != nil {
+		a.logBuffer.Info(fmt.Sprintf("Discography expanded: %d albums for artist %s (kind=%s)", len(urls), info.ArtistID, info.Kind))
+	}
+	return urls, nil
 }
 
 // GetSourceTrack fetches a track from a specific source

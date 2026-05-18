@@ -61,6 +61,8 @@ export namespace core {
 	    preferredSource?: string;
 	    tidalHifiEndpoints?: string[];
 	    qobuzEndpoints?: string[];
+	    tidalCustomEndpoint?: string;
+	    qobuzCustomEndpoint?: string;
 	    sourceOrder?: string[];
 	    qualityOrder?: string[];
 	    generateM3u8: boolean;
@@ -115,6 +117,8 @@ export namespace core {
 	        this.preferredSource = source["preferredSource"];
 	        this.tidalHifiEndpoints = source["tidalHifiEndpoints"];
 	        this.qobuzEndpoints = source["qobuzEndpoints"];
+	        this.tidalCustomEndpoint = source["tidalCustomEndpoint"];
+	        this.qobuzCustomEndpoint = source["qobuzCustomEndpoint"];
 	        this.sourceOrder = source["sourceOrder"];
 	        this.qualityOrder = source["qualityOrder"];
 	        this.generateM3u8 = source["generateM3u8"];
