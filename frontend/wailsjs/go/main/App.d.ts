@@ -37,6 +37,8 @@ export function DownloadTrackFromTidal(arg1:core.TidalTrack,arg2:string):Promise
 
 export function EmbedLyricsToFile(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function ExpandDiscographyURL(arg1:string):Promise<Array<string>>;
+
 export function ExportFailedDownloads(arg1:string):Promise<string>;
 
 export function FetchAndEmbedLyrics(arg1:string):Promise<core.Lyrics>;
@@ -136,6 +138,8 @@ export function QueueSingleDownload(arg1:number,arg2:string,arg3:string,arg4:str
 export function QuickAnalyze(arg1:string):Promise<core.AnalysisResult>;
 
 export function RefetchFromHistory(arg1:string):Promise<Record<string, any>>;
+
+export function RefreshTidalEndpoints():Promise<Array<string>>;
 
 export function RenameFiles(arg1:Array<string>,arg2:string):Promise<Array<core.RenameResult>>;
 
