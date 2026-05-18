@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	core "github.com/kushiemoon-dev/flacidal-core"
 	"flacidal/internal/api"
+	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
 // frontendFS is empty by default - the server will serve from filesystem
