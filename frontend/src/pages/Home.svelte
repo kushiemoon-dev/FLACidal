@@ -16,6 +16,7 @@
     DetectSourceFromURL,
     FetchContentFromURL,
     ExpandDiscographyURL,
+    QueueDiscographyAlbums,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
@@ -231,9 +232,9 @@
     discographyConfirmLoading = true;
     error = '';
     try {
-      for (const albumUrl of discographyAlbums) {
-        // TODO: wire up per-source album queuing once Spotify source is available;
-        // for now each album URL is submitted as a regular fetch+queue via QueueArtistAlbum equivalent
+      const queued = await QueueDiscographyAlbums(discographyAlbums, $downloadFolder);
+      if (queued === 0) {
+        error = 'No albums could be matched on Tidal. Check that Tidal is available.';
       }
     } catch (e: any) {
       error = e.message || 'Failed to queue discography';
