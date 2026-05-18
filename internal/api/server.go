@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"embed"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -33,17 +34,18 @@ type ServerConfig struct {
 
 // Server represents the HTTP API server
 type Server struct {
-	app             *fiber.App
-	config          *core.Config
-	db              *core.Database
-	downloadManager *core.DownloadManager
-	sourceManager   *core.SourceManager
-	tidalSource     *core.TidalSource
-	qobuzSource     *core.QobuzSource
-	lyricsClient    *core.LyricsClient
-	wsHub           *WebSocketHub
-	ctx             context.Context
-	frontendFS      embed.FS
+	app              *fiber.App
+	config           *core.Config
+	db               *core.Database
+	downloadManager  *core.DownloadManager
+	sourceManager    *core.SourceManager
+	tidalSource      *core.TidalSource
+	qobuzSource      *core.QobuzSource
+	lyricsClient     *core.LyricsClient
+	wsHub            *WebSocketHub
+	queueBroadcaster *QueueBroadcaster
+	ctx              context.Context
+	frontendFS       embed.FS
 }
 
 // NewServer creates a new API server instance
@@ -58,18 +60,76 @@ func NewServer(cfg ServerConfig) *Server {
 	wsHub := NewWebSocketHub()
 	go wsHub.Run()
 
+	// Create queue event broadcaster
+	queueBroadcaster := NewQueueBroadcaster()
+
 	server := &Server{
-		app:             app,
-		config:          cfg.Config,
-		db:              cfg.DB,
-		downloadManager: cfg.DownloadManager,
-		sourceManager:   cfg.SourceManager,
-		tidalSource:     cfg.TidalSource,
-		qobuzSource:     cfg.QobuzSource,
-		lyricsClient:    cfg.LyricsClient,
-		wsHub:           wsHub,
-		ctx:             cfg.Context,
-		frontendFS:      cfg.FrontendFS,
+		app:              app,
+		config:           cfg.Config,
+		db:               cfg.DB,
+		downloadManager:  cfg.DownloadManager,
+		sourceManager:    cfg.SourceManager,
+		tidalSource:      cfg.TidalSource,
+		qobuzSource:      cfg.QobuzSource,
+		lyricsClient:     cfg.LyricsClient,
+		wsHub:            wsHub,
+		queueBroadcaster: queueBroadcaster,
+		ctx:              cfg.Context,
+		frontendFS:       cfg.FrontendFS,
+	}
+
+	// Hook queue events into the download manager's progress callback.
+	// This forwards queued/downloading/completed/failed states to all WS subscribers.
+	if cfg.DownloadManager != nil {
+		cfg.DownloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
+			jobID := fmt.Sprintf("%d", trackID)
+			event := QueueEvent{JobID: jobID}
+
+			title := ""
+			artist := ""
+			if result != nil {
+				if result.Title != "" {
+					title = result.Title
+				}
+				if result.Artist != "" {
+					artist = result.Artist
+				}
+			}
+			event.Title = title
+			event.Artist = artist
+
+			switch status {
+			case "queued":
+				event.Type = "queued"
+			case "downloading":
+				event.Type = "started"
+				// Compute 0-100 progress from byte counters when available.
+				if result != nil && result.BytesTotal > 0 {
+					event.Type = "progress"
+					event.Progress = int(result.BytesDownloaded * 100 / result.BytesTotal)
+				}
+			case "completed":
+				event.Type = "completed"
+			case "error", "cancelled":
+				event.Type = "failed"
+				if result != nil {
+					event.Error = result.Error
+				}
+			default:
+				return
+			}
+
+			queueBroadcaster.Broadcast(event)
+		})
+
+		// Persist completed/failed jobs to the database for per-track history.
+		cfg.DownloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
+			if cfg.DB != nil {
+				if err := cfg.DB.InsertHistoryEntry(entry); err != nil {
+					log.Printf("WARN: failed to insert history entry: %v", err)
+				}
+			}
+		})
 	}
 
 	// Middleware
@@ -150,9 +210,7 @@ func (s *Server) setupRoutes() {
 	api.Post("/convert", s.handleConvertFiles)
 
 	// Analysis routes
-	api.Post("/analyze", s.handleAnalyzeFile)
-	api.Post("/analyze/multiple", s.handleAnalyzeMultiple)
-	api.Post("/analyze/quick", s.handleQuickAnalyze)
+	RegisterAnalyzerRoutes(api, s)
 
 	// Lyrics routes
 	api.Get("/lyrics", s.handleFetchLyrics)
@@ -175,6 +233,12 @@ func (s *Server) setupRoutes() {
 	api.Post("/logs/clear", s.handleClearLogs)
 	api.Get("/connection", s.handleGetConnectionStatus)
 	api.Get("/downloader/available", s.handleIsDownloaderAvailable)
+
+	// Per-track download history endpoint
+	RegisterHistoryRoutes(api, s)
+
+	// Queue WebSocket endpoint — real-time download events
+	RegisterQueueRoutes(s.app, s)
 
 	// WebSocket endpoint
 	s.app.Use("/ws", func(c *fiber.Ctx) error {
