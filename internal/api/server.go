@@ -122,14 +122,14 @@ func NewServer(cfg ServerConfig) *Server {
 			queueBroadcaster.Broadcast(event)
 		})
 
-		// Persist completed/failed jobs to the database for per-track history.
-		cfg.DownloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
-			if cfg.DB != nil {
-				if err := cfg.DB.InsertHistoryEntry(entry); err != nil {
-					log.Printf("WARN: failed to insert history entry: %v", err)
-				}
-			}
-		})
+		// TODO: re-enable when flacidal-core exposes SetJobCompleteCallback + HistoryEntry (>= v0.4.5)
+		// cfg.DownloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
+		// 	if cfg.DB != nil {
+		// 		if err := cfg.DB.InsertHistoryEntry(entry); err != nil {
+		// 			log.Printf("WARN: failed to insert history entry: %v", err)
+		// 		}
+		// 	}
+		// })
 	}
 
 	// Middleware
