@@ -39,6 +39,8 @@ export function EmbedLyricsToFile(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function ExpandDiscographyURL(arg1:string):Promise<Array<string>>;
 
+export function QueueDiscographyAlbums(arg1:Array<string>,arg2:string):Promise<number>;
+
 export function ExportFailedDownloads(arg1:string):Promise<string>;
 
 export function FetchAndEmbedLyrics(arg1:string):Promise<core.Lyrics>;
