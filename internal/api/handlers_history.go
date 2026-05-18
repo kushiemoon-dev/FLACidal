@@ -6,34 +6,14 @@ package api
 // distinct from the existing content-level /api/history routes in handlers.go.
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 )
 
 // handleGetTrackHistory returns the per-track download log with pagination.
+// TODO: restore ListHistory/GetHistoryCount calls when flacidal-core >= v0.4.5.
 func (s *Server) handleGetTrackHistory(c *fiber.Ctx) error {
-	limit, _ := strconv.Atoi(c.Query("limit", "50"))
-	offset, _ := strconv.Atoi(c.Query("offset", "0"))
-
-	if s.db == nil {
-		return c.JSON(fiber.Map{"entries": []interface{}{}, "total": 0})
-	}
-
-	entries, err := s.db.ListHistory(limit, offset)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	total, err := s.db.GetHistoryCount()
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	return c.JSON(fiber.Map{
-		"entries": entries,
-		"total":   total,
-	})
+	// Stub: history persistence requires flacidal-core >= v0.4.5.
+	return c.JSON(fiber.Map{"entries": []interface{}{}, "total": 0})
 }
 
 // RegisterHistoryRoutes registers the per-track history route on the given router group.
