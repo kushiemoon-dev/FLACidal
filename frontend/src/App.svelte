@@ -16,6 +16,7 @@
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
   import IssueReporterModal from './components/IssueReporterModal.svelte';
+  import QueuePanel from './components/QueuePanel.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
@@ -163,6 +164,7 @@
 </main>
 <IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/flacidal/flacidal/issues" />
 <Toast />
+<QueuePanel />
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
