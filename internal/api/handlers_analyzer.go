@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"flacidal/backend"
+	core "github.com/kushiemoon-dev/flacidal-core"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -47,7 +47,7 @@ func (s *Server) handleAnalyzeFileImpl(c *fiber.Ctx) error {
 		defer cleanupTemp(tempPath)
 	}
 
-	result, err := backend.AnalyzeFLAC(filePath)
+	result, err := core.AnalyzeFLAC(filePath)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -68,7 +68,7 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "paths array is required"})
 	}
 
-	results := backend.AnalyzeMultiple(req.Paths)
+	results := core.AnalyzeMultiple(req.Paths)
 
 	responses := make([]fiber.Map, 0, len(results))
 	for _, r := range results {
@@ -89,7 +89,7 @@ func (s *Server) handleQuickAnalyzeImpl(c *fiber.Ctx) error {
 		defer cleanupTemp(tempPath)
 	}
 
-	result, err := backend.QuickAnalyze(filePath)
+	result, err := core.QuickAnalyze(filePath)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -140,8 +140,8 @@ func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 	return req.Path, "", nil
 }
 
-// buildAnalyzeResponse converts backend.AnalysisResult → AnalyzeResponse fiber.Map.
-func buildAnalyzeResponse(r *backend.AnalysisResult) fiber.Map {
+// buildAnalyzeResponse converts core.AnalysisResult → AnalyzeResponse fiber.Map.
+func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 	msg := r.Details
 	if msg == "" {
 		if r.IsTrueLossless {
