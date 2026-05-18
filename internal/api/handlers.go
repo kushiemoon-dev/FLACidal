@@ -202,8 +202,8 @@ func (s *Server) handleGetQueue(c *fiber.Ctx) error {
 func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 	var req struct {
 		Tracks      []core.TidalTrack `json:"tracks"`
-		OutputDir   string               `json:"outputDir"`
-		ContentName string               `json:"contentName"`
+		OutputDir   string            `json:"outputDir"`
+		ContentName string            `json:"contentName"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
