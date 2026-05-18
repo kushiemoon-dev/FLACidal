@@ -70,6 +70,10 @@ export function EmbedLyricsToFile(arg1, arg2, arg3) {
   return window['go']['main']['App']['EmbedLyricsToFile'](arg1, arg2, arg3);
 }
 
+export function ExpandDiscographyURL(arg1) {
+  return window['go']['main']['App']['ExpandDiscographyURL'](arg1);
+}
+
 export function ExportFailedDownloads(arg1) {
   return window['go']['main']['App']['ExportFailedDownloads'](arg1);
 }
@@ -268,6 +272,10 @@ export function QuickAnalyze(arg1) {
 
 export function RefetchFromHistory(arg1) {
   return window['go']['main']['App']['RefetchFromHistory'](arg1);
+}
+
+export function RefreshTidalEndpoints() {
+  return window['go']['main']['App']['RefreshTidalEndpoints']();
 }
 
 export function RenameFiles(arg1, arg2) {
