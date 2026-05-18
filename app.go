@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
@@ -1923,6 +1924,78 @@ func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
 		a.logBuffer.Info(fmt.Sprintf("Discography expanded: %d albums for artist %s (kind=%s)", len(urls), info.ArtistID, info.Kind))
 	}
 	return urls, nil
+}
+
+// QueueDiscographyAlbums resolves a list of Spotify album URLs to Tidal albums and queues them.
+// For each URL it fetches Spotify metadata (title + artist), searches Tidal, then queues the
+// best-matching album via the TidalHifi proxy. Returns the count of successfully queued albums.
+func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string) (int, error) {
+	if a.downloadManager == nil {
+		return 0, fmt.Errorf("download manager not initialized")
+	}
+	if outputDir == "" {
+		return 0, fmt.Errorf("no output directory specified")
+	}
+	if a.spotifySearch == nil {
+		return 0, fmt.Errorf("Spotify client not initialized")
+	}
+	if a.tidalSource == nil {
+		return 0, fmt.Errorf("Tidal source not initialized")
+	}
+
+	tidalClient := a.tidalSource.GetAPIClient()
+	spotifyIDRe := regexp.MustCompile(`open\.spotify\.com/album/([^/?#]+)`)
+
+	queued := 0
+	for _, albumURL := range spotifyAlbumURLs {
+		m := spotifyIDRe.FindStringSubmatch(albumURL)
+		if m == nil {
+			continue
+		}
+		spotifyAlbumID := m[1]
+
+		albumName, artistName, err := a.spotifySearch.GetAlbumMetadata(spotifyAlbumID)
+		if err != nil {
+			if a.logBuffer != nil {
+				a.logBuffer.Warn(fmt.Sprintf("Discography: skipping %s — Spotify metadata failed: %v", spotifyAlbumID, err))
+			}
+			continue
+		}
+
+		query := albumName + " " + artistName
+		tidalAlbums, err := tidalClient.SearchAlbums(query, 5)
+		if err != nil || len(tidalAlbums) == 0 {
+			if a.logBuffer != nil {
+				a.logBuffer.Warn(fmt.Sprintf("Discography: no Tidal match for %q by %s", albumName, artistName))
+			}
+			continue
+		}
+
+		tidalAlbum := tidalAlbums[0]
+		albumIDStr := strconv.Itoa(tidalAlbum.ID)
+
+		album, err := a.downloader.GetAlbumFromProxy(albumIDStr)
+		if err != nil {
+			if a.logBuffer != nil {
+				a.logBuffer.Warn(fmt.Sprintf("Discography: could not fetch Tidal album %s: %v", albumIDStr, err))
+			}
+			continue
+		}
+
+		artistFolder := core.SanitizeFileName(tidalAlbum.Artist)
+		if artistFolder == "" {
+			artistFolder = core.SanitizeFileName(artistName)
+		}
+		albumDir := filepath.Join(outputDir, artistFolder, core.SanitizeFileName(tidalAlbum.Title))
+		if err := os.MkdirAll(albumDir, 0755); err != nil {
+			continue
+		}
+
+		n := a.downloadManager.QueueMultiple(album.Tracks, albumDir)
+		queued += n
+	}
+
+	return queued, nil
 }
 
 // GetSourceTrack fetches a track from a specific source
