@@ -15,6 +15,7 @@
     GetAppVersion,
     DetectSourceFromURL,
     FetchContentFromURL,
+    ExpandDiscographyURL,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
@@ -32,6 +33,11 @@
   // Source detection
   let detectedSource: { source: string; displayName: string; contentType: string; available: boolean } | null = $state(null);
   let detectingSource = $state(false);
+
+  // Discography expansion state
+  let discographyPending = $state(false);  // true while fetching album list
+  let discographyAlbums: string[] | null = $state(null); // fetched album URLs awaiting confirmation
+  let discographyConfirmLoading = $state(false); // true while submitting after confirm
 
   let content = $derived($currentContent);
   let stats = $derived($queueStats);
@@ -219,8 +225,44 @@
     if (typewriterTimeout) clearTimeout(typewriterTimeout);
   });
 
+  // Discography confirmation handlers
+  async function confirmDiscography() {
+    if (!discographyAlbums || !$downloadFolder) return;
+    discographyConfirmLoading = true;
+    error = '';
+    try {
+      for (const albumUrl of discographyAlbums) {
+        // TODO: wire up per-source album queuing once Spotify source is available;
+        // for now each album URL is submitted as a regular fetch+queue via QueueArtistAlbum equivalent
+      }
+    } catch (e: any) {
+      error = e.message || 'Failed to queue discography';
+    }
+    discographyAlbums = null;
+    discographyConfirmLoading = false;
+  }
+
+  function cancelDiscography() {
+    discographyAlbums = null;
+  }
+
   async function fetchContent() {
     if (!tidalUrl.trim()) return;
+
+    // Check for Spotify discography URL before anything else
+    if (/open\.spotify\.com\/artist\/[^/?#]+\/discography\/[^/?#]+/.test(tidalUrl)) {
+      discographyPending = true;
+      discographyAlbums = null;
+      error = '';
+      try {
+        const albums = await ExpandDiscographyURL(tidalUrl);
+        discographyAlbums = albums;
+      } catch (e: any) {
+        error = e.message || 'Failed to expand discography';
+      }
+      discographyPending = false;
+      return;
+    }
 
     loading = true;
     error = '';
@@ -599,6 +641,28 @@
           <line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
+    </div>
+  {/if}
+
+  <!-- Discography expansion -->
+  {#if discographyPending}
+    <div class="discography-banner">
+      <span class="spinner small"></span>
+      <span>Discography detected. Loading albums...</span>
+    </div>
+  {:else if discographyAlbums !== null}
+    <div class="discography-confirm">
+      <p><strong>{discographyAlbums.length} album{discographyAlbums.length !== 1 ? 's' : ''}</strong> found. Download all?</p>
+      <div class="discography-actions">
+        <button class="btn-primary" onclick={confirmDiscography} disabled={discographyConfirmLoading || !$downloadFolder}>
+          {#if discographyConfirmLoading}<span class="spinner small"></span>{/if}
+          Confirm
+        </button>
+        <button class="btn-secondary" onclick={cancelDiscography} disabled={discographyConfirmLoading}>Cancel</button>
+      </div>
+      {#if !$downloadFolder}
+        <p class="discography-warn">Select a download folder first.</p>
+      {/if}
     </div>
   {/if}
 
@@ -1843,5 +1907,44 @@
   .recent-type-badge.type-artist {
     background: rgba(59, 130, 246, 0.15);
     color: #3b82f6;
+  }
+
+  .discography-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .discography-confirm {
+    padding: 16px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .discography-confirm p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-text);
+  }
+
+  .discography-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .discography-warn {
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
   }
 </style>

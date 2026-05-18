@@ -52,6 +52,8 @@
     sourceOrder: ['tidal', 'qobuz'] as string[],
     qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
     proxyUrl: '',
+    tidalCustomEndpoint: '',
+    qobuzCustomEndpoint: '',
     skipExisting: true,
     artistSeparator: '; ',
     playlistSubfolder: true,
@@ -258,6 +260,8 @@
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.proxyUrl = result.proxyUrl || '';
+        config.tidalCustomEndpoint = result.tidalCustomEndpoint || '';
+        config.qobuzCustomEndpoint = result.qobuzCustomEndpoint || '';
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
@@ -339,6 +343,8 @@
         sourceOrder: config.sourceOrder,
         qualityOrder: config.qualityOrder,
         proxyUrl: config.proxyUrl || '',
+        tidalCustomEndpoint: config.tidalCustomEndpoint || '',
+        qobuzCustomEndpoint: config.qobuzCustomEndpoint || '',
         skipExisting: config.skipExisting,
         artistSeparator: config.artistSeparator,
         playlistSubfolder: config.playlistSubfolder,
@@ -720,6 +726,36 @@
               class="setting-input"
               bind:value={config.proxyUrl}
               placeholder="e.g. socks5://127.0.0.1:1080"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Custom Tidal HiFi API URL</span>
+            <span class="setting-desc">Self-hosted hifi-api instance, tried first</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              class="setting-input"
+              bind:value={config.tidalCustomEndpoint}
+              placeholder="https://your-hifi-api-instance.com"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Custom Qobuz API URL</span>
+            <span class="setting-desc">Self-hosted Qobuz proxy, tried first</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              class="setting-input"
+              bind:value={config.qobuzCustomEndpoint}
+              placeholder="https://your-qobuz-proxy.com"
             />
           </div>
         </div>
