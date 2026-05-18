@@ -48,5 +48,4 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 )
 
-// For local dev, uncomment:
-// replace github.com/kushiemoon-dev/flacidal-core => ./flacidal-core
+// Local dev: go.work (gitignored) activates ../FLACidal-Core automatically — no replace needed
