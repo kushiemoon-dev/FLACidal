@@ -19,6 +19,9 @@ var frontendFS embed.FS
 func main() {
 	log.Println("FLACidal Server starting...")
 
+	// Refresh Tidal endpoints from gist in background before downloader init.
+	core.InitTidalEndpoints()
+
 	// Load config (env vars override file config)
 	config, err := core.LoadConfigWithEnv()
 	if err != nil {
