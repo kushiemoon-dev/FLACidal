@@ -40,10 +40,10 @@
     embedGenre: true,
     useSingleGenre: false,
     tidalEnabled: true,
-    qobuzEnabled: false,
-    qobuzAppId: '',
-    qobuzAppSecret: '',
-    qobuzAuthToken: '',
+    qobuzEnabled: true,
+    soulseekEnabled: false,
+    soulseekUsername: '',
+    soulseekPassword: '',
     preferredSource: 'tidal',
     generateM3u8: false,
     skipUnavailableTracks: false,
@@ -248,10 +248,7 @@
         config.preferSyncedLyrics = result.preferSyncedLyrics !== false;
         config.saveLyricsFile = result.saveLyricsFile || false;
         config.tidalEnabled = result.tidalEnabled !== false;
-        config.qobuzEnabled = result.qobuzEnabled || false;
-        config.qobuzAppId = result.qobuzAppId || '';
-        config.qobuzAppSecret = result.qobuzAppSecret || '';
-        config.qobuzAuthToken = result.qobuzAuthToken || '';
+        config.qobuzEnabled = true;
         config.preferredSource = result.preferredSource || 'tidal';
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
@@ -332,9 +329,9 @@
         autoAnalyze: config.autoAnalyze,
         tidalEnabled: config.tidalEnabled,
         qobuzEnabled: config.qobuzEnabled,
-        qobuzAppId: config.qobuzAppId,
-        qobuzAppSecret: config.qobuzAppSecret,
-        qobuzAuthToken: config.qobuzAuthToken,
+        soulseekEnabled: config.soulseekEnabled,
+        soulseekUsername: config.soulseekUsername || '',
+        soulseekPassword: config.soulseekPassword || '',
         preferredSource: config.preferredSource,
         generateM3u8: config.generateM3u8,
         skipUnavailableTracks: config.skipUnavailableTracks,
@@ -392,6 +389,9 @@
         config.autoAnalyze = result.autoAnalyze || false;
         config.tidalEnabled = result.tidalEnabled !== false;
         config.qobuzEnabled = result.qobuzEnabled || false;
+        config.soulseekEnabled = result.soulseekEnabled || false;
+        config.soulseekUsername = result.soulseekUsername || '';
+        config.soulseekPassword = result.soulseekPassword || '';
         config.preferredSource = result.preferredSource || 'tidal';
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
@@ -634,46 +634,6 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Qobuz</label>
-            <span class="setting-desc">Enable Qobuz source (requires credentials)</span>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" bind:checked={config.qobuzEnabled} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        {#if config.qobuzEnabled}
-          <div class="setting-item">
-            <div class="setting-info">
-              <label for="qobuz-app-id">Qobuz App ID</label>
-            </div>
-            <div class="setting-control">
-              <input type="text" id="qobuz-app-id" bind:value={config.qobuzAppId} placeholder="Enter App ID..." class="setting-input" />
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-info">
-              <label for="qobuz-app-secret">Qobuz App Secret</label>
-            </div>
-            <div class="setting-control">
-              <input type="password" id="qobuz-app-secret" bind:value={config.qobuzAppSecret} placeholder="Enter App Secret..." class="setting-input" />
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-info">
-              <label for="qobuz-auth-token">Qobuz Auth Token</label>
-            </div>
-            <div class="setting-control">
-              <input type="password" id="qobuz-auth-token" bind:value={config.qobuzAuthToken} placeholder="Enter Auth Token..." class="setting-input" />
-            </div>
-          </div>
-        {/if}
-
-        <div class="setting-item">
-          <div class="setting-info">
             <label>Skip Existing Files</label>
             <span class="setting-desc">Skip files already on disk (matched by ISRC)</span>
           </div>
@@ -759,6 +719,52 @@
             />
           </div>
         </div>
+
+        <div class="group-title" style="margin-top:1.5rem">Soulseek (Fallback P2P)</div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Enable Soulseek</span>
+            <span class="setting-desc">Last-resort FLAC source via P2P — independent of streaming proxies</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.soulseekEnabled} />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        {#if config.soulseekEnabled}
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Soulseek Username</span>
+            <span class="setting-desc">Free account at soulseek.net or via Nicotine+</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              class="setting-input"
+              bind:value={config.soulseekUsername}
+              placeholder="your-soulseek-username"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Soulseek Password</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="password"
+              class="setting-input"
+              bind:value={config.soulseekPassword}
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+        {/if}
       </div>
     </div>
 

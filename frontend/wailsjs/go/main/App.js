@@ -74,10 +74,6 @@ export function ExpandDiscographyURL(arg1) {
   return window['go']['main']['App']['ExpandDiscographyURL'](arg1);
 }
 
-export function QueueDiscographyAlbums(arg1, arg2) {
-  return window['go']['main']['App']['QueueDiscographyAlbums'](arg1, arg2);
-}
-
 export function ExportFailedDownloads(arg1) {
   return window['go']['main']['App']['ExportFailedDownloads'](arg1);
 }
@@ -256,6 +252,10 @@ export function PreviewRename(arg1, arg2) {
 
 export function QueueArtistAlbum(arg1, arg2, arg3) {
   return window['go']['main']['App']['QueueArtistAlbum'](arg1, arg2, arg3);
+}
+
+export function QueueDiscographyAlbums(arg1, arg2) {
+  return window['go']['main']['App']['QueueDiscographyAlbums'](arg1, arg2);
 }
 
 export function QueueDownloads(arg1, arg2, arg3, arg4, arg5) {
