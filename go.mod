@@ -6,11 +6,12 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/google/uuid v1.6.0
-	github.com/kushiemoon-dev/flacidal-core v0.5.1
-	github.com/wailsapp/wails/v2 v2.11.0
+	github.com/kushiemoon-dev/flacidal-core v0.5.2
+	github.com/wailsapp/wails/v2 v2.12.0
 )
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bogem/id3v2/v2 v2.1.4 // indirect
