@@ -37,6 +37,8 @@ type App struct {
 	qobuzSource     *core.QobuzSource      // Qobuz source
 	amazonSource    *core.AmazonSource     // Amazon Music fallback source
 	soulseekSource  *core.SoulseekSource   // Soulseek last-resort source
+	deezerSource    *core.DeezerSource     // Deezer metadata-only source
+	spotifySource   *core.SpotifySource    // Spotify metadata-only source
 	trackContentMap sync.Map               // maps trackID (int) → contentID (string) for history tracking
 }
 
@@ -260,11 +262,19 @@ func (a *App) startup(ctx context.Context) {
 	if config.QobuzEnabled && a.qobuzSource.IsAvailable() {
 		a.downloadManager.SetFallbackQobuzSource(a.qobuzSource)
 	}
+	// Circuit breaker: wire TidalSource so selectBestService can check endpoint health
+	a.downloadManager.SetTidalSource(a.tidalSource)
 
 	// Initialize Amazon Music fallback source (no auth required, via proxy pool)
 	a.amazonSource = core.NewAmazonSource()
 	a.sourceManager.RegisterSource(a.amazonSource)
 	a.logBuffer.Info("Amazon Music fallback source initialized")
+
+	// Initialize Deezer and Spotify metadata-only sources (URL routing, no download)
+	a.deezerSource = core.NewDeezerSource()
+	a.sourceManager.RegisterSource(a.deezerSource)
+	a.spotifySource = core.NewSpotifySource(a.spotifySearch)
+	a.sourceManager.RegisterSource(a.spotifySource)
 
 	// Initialize Soulseek fallback source (last-resort P2P, independent of streaming proxies)
 	sldlPath := config.SoulseekBinaryPath
@@ -282,6 +292,12 @@ func (a *App) startup(ctx context.Context) {
 	// Wire multi-source orchestrator: tries Amazon then Soulseek when Tidal+Qobuz fail
 	orchestratorPriority := []string{"tidal", "qobuz", "amazon", "soulseek"}
 	orchestrator := core.NewDownloadOrchestrator(a.sourceManager, orchestratorPriority, a.logBuffer)
+	if a.db != nil {
+		orchestrator.SetDatabase(a.db)
+		if a.soulseekSource != nil {
+			a.soulseekSource.SetDatabase(a.db)
+		}
+	}
 	a.downloadManager.SetOrchestrator(orchestrator)
 
 	sourceOrder := config.SourceOrder
