@@ -17,6 +17,11 @@
 
 ---
 
+## Alerte
+
+All provider at the moment for tidal proxy are down and discourage user for creating them. Im working right now on a solution and will actively update to find it. Please get in mind that as much as this text is visible the issue is not solve. XOXO Kushiemoon
+
+
 ## Overview
 
 **FLACidal** is a desktop application that downloads lossless FLAC audio directly from Tidal and Qobuz — no account credentials required. Paste a URL, choose a folder, and get Hi-Res 24-bit or Lossless 16-bit FLAC files with full metadata, embedded cover art, and customizable filename templates.
