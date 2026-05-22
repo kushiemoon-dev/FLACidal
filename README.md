@@ -17,11 +17,6 @@
 
 ---
 
-## Alerte
-
-All provider at the moment for tidal proxy are down and discourage user for creating them. Im working right now on a solution and will actively update to find it. Please get in mind that as much as this text is visible the issue is not solve. XOXO Kushiemoon
-
-
 ## Overview
 
 **FLACidal** is a desktop application that downloads lossless FLAC audio directly from Tidal and Qobuz — no account credentials required. Paste a URL, choose a folder, and get Hi-Res 24-bit or Lossless 16-bit FLAC files with full metadata, embedded cover art, and customizable filename templates.
@@ -35,6 +30,8 @@ All provider at the moment for tidal proxy are down and discourage user for crea
 ## Features
 
 - **Hi-Res & Lossless** — 24-bit up to 192 kHz (HI_RES) and 16-bit 44.1 kHz (LOSSLESS)
+- **Multi-Source Fallback** *(v4.2.0)* — Automatically tries Tidal → Qobuz → Amazon → Soulseek until one succeeds
+- **Soulseek P2P** *(v4.2.0)* — Last-resort FLAC fallback via Soulseek, independent of streaming proxy health
 - **Tidal & Qobuz** — Full support for playlists, albums, tracks, mixes, and artist pages
 - **Concurrent Downloads** — Up to 10 parallel downloads with real-time queue progress
 - **Smart Metadata** — Automatic Vorbis comment tagging with embedded cover art
@@ -84,6 +81,19 @@ All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) ·
 |---------|----------------|
 | **Tidal** | Playlist · Album · Track · Mix · Artist |
 | **Qobuz** | Album · Playlist · Track |
+
+### Download Sources (automatic fallback chain)
+
+FLACidal tries each source in order until one succeeds:
+
+| Priority | Source | Quality | Notes |
+|----------|--------|---------|-------|
+| 1 | **Tidal HiFi** | FLAC / Hi-Res | Via community proxy pool |
+| 2 | **Qobuz** | FLAC / Hi-Res | Optional, configure in Settings |
+| 3 | **Amazon Music** | FLAC / UHD | Via proxy pool |
+| 4 | **Soulseek** | FLAC | P2P fallback — requires free account + `sldl` binary |
+
+> To enable Soulseek: install [sldl](https://github.com/fiso64/slsk-batchdl/releases) to `~/.local/share/flacidal/sldl`, create a free [Soulseek](https://soulseekqt.net/) account, and enter credentials in **Settings → Sources**.
 
 ---
 
