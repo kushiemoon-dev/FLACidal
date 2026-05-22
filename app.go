@@ -35,6 +35,8 @@ type App struct {
 	sourceManager   *core.SourceManager    // Multi-source manager
 	tidalSource     *core.TidalSource      // Tidal source
 	qobuzSource     *core.QobuzSource      // Qobuz source
+	amazonSource    *core.AmazonSource     // Amazon Music fallback source
+	soulseekSource  *core.SoulseekSource   // Soulseek last-resort source
 	trackContentMap sync.Map               // maps trackID (int) → contentID (string) for history tracking
 }
 
@@ -258,6 +260,30 @@ func (a *App) startup(ctx context.Context) {
 	if config.QobuzEnabled && a.qobuzSource.IsAvailable() {
 		a.downloadManager.SetFallbackQobuzSource(a.qobuzSource)
 	}
+
+	// Initialize Amazon Music fallback source (no auth required, via proxy pool)
+	a.amazonSource = core.NewAmazonSource()
+	a.sourceManager.RegisterSource(a.amazonSource)
+	a.logBuffer.Info("Amazon Music fallback source initialized")
+
+	// Initialize Soulseek fallback source (last-resort P2P, independent of streaming proxies)
+	sldlPath := config.SoulseekBinaryPath
+	if sldlPath == "" {
+		homeDir, _ := os.UserHomeDir()
+		sldlPath = filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+	}
+	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
+	a.soulseekSource.SetLogger(a.logBuffer)
+	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
+		a.sourceManager.RegisterSource(a.soulseekSource)
+		a.logBuffer.Info("Soulseek fallback source initialized")
+	}
+
+	// Wire multi-source orchestrator: tries Amazon then Soulseek when Tidal+Qobuz fail
+	orchestratorPriority := []string{"tidal", "qobuz", "amazon", "soulseek"}
+	orchestrator := core.NewDownloadOrchestrator(a.sourceManager, orchestratorPriority, a.logBuffer)
+	a.downloadManager.SetOrchestrator(orchestrator)
+
 	sourceOrder := config.SourceOrder
 	if len(sourceOrder) == 0 {
 		// Default: prefer Tidal, fall back to Qobuz if enabled
@@ -397,7 +423,7 @@ func (a *App) CheckAPIStatus() []EndpointStatus {
 		name string
 		url  string
 	}{
-		{"Tidal HiFi Proxy", "https://vogel.qqdl.site"},
+		{"Tidal HiFi (eu-central)", "https://eu-central.monochrome.tf"},
 		{"Metadata (hifi-one)", "https://hifi-one.spotisaver.net"},
 		{"Metadata (hifi-two)", "https://hifi-two.spotisaver.net"},
 		{"Metadata (triton)", "https://triton.squid.wtf"},
@@ -740,7 +766,7 @@ func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "4.1.0"
+	return "4.2.0"
 }
 
 // UpdateInfo represents available update information
