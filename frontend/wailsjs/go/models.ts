@@ -55,6 +55,10 @@ export namespace core {
 	    autoQualityFallback: boolean;
 	    tidalEnabled: boolean;
 	    qobuzEnabled: boolean;
+	    soulseekEnabled: boolean;
+	    soulseekUsername?: string;
+	    soulseekPassword?: string;
+	    soulseekBinaryPath?: string;
 	    qobuzAppId?: string;
 	    qobuzAppSecret?: string;
 	    qobuzAuthToken?: string;
@@ -111,6 +115,10 @@ export namespace core {
 	        this.autoQualityFallback = source["autoQualityFallback"];
 	        this.tidalEnabled = source["tidalEnabled"];
 	        this.qobuzEnabled = source["qobuzEnabled"];
+	        this.soulseekEnabled = source["soulseekEnabled"];
+	        this.soulseekUsername = source["soulseekUsername"];
+	        this.soulseekPassword = source["soulseekPassword"];
+	        this.soulseekBinaryPath = source["soulseekBinaryPath"];
 	        this.qobuzAppId = source["qobuzAppId"];
 	        this.qobuzAppSecret = source["qobuzAppSecret"];
 	        this.qobuzAuthToken = source["qobuzAuthToken"];

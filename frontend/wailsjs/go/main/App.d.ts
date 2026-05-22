@@ -39,8 +39,6 @@ export function EmbedLyricsToFile(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function ExpandDiscographyURL(arg1:string):Promise<Array<string>>;
 
-export function QueueDiscographyAlbums(arg1:Array<string>,arg2:string):Promise<number>;
-
 export function ExportFailedDownloads(arg1:string):Promise<string>;
 
 export function FetchAndEmbedLyrics(arg1:string):Promise<core.Lyrics>;
@@ -130,6 +128,8 @@ export function PauseDownloads():Promise<boolean>;
 export function PreviewRename(arg1:Array<string>,arg2:string):Promise<Array<core.RenamePreview>>;
 
 export function QueueArtistAlbum(arg1:string,arg2:string,arg3:string):Promise<number>;
+
+export function QueueDiscographyAlbums(arg1:Array<string>,arg2:string):Promise<number>;
 
 export function QueueDownloads(arg1:Array<core.TidalTrack>,arg2:string,arg3:string,arg4:string,arg5:string):Promise<number>;
 
