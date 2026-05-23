@@ -138,6 +138,10 @@ export function GetDownloadHistory() {
   return window['go']['main']['App']['GetDownloadHistory']();
 }
 
+export function GetRecentAlbums(arg1) {
+  return window['go']['main']['App']['GetRecentAlbums'](arg1);
+}
+
 export function GetDownloadHistoryFiltered(arg1) {
   return window['go']['main']['App']['GetDownloadHistoryFiltered'](arg1);
 }
