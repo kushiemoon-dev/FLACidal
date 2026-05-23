@@ -105,7 +105,7 @@
       try {
         deezerResults = await SearchDeezer(searchQuery) || [];
       } catch (error) {
-        console.error('Deezer search error:', error);
+        toastStore.show('Erreur recherche Deezer', 'error');
       } finally {
         isSearchingDeezer = false;
       }
