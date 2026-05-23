@@ -612,6 +612,7 @@
                 ondragstart={(e) => onDragStart(e, i)}
                 ondragover={(e) => onDragOver(e, i)}
                 ondrop={(e) => onDrop(e, i)}
+                ondragend={() => { dragIndex = null; }}
               >
                 <span class="drag-handle">⠿</span>
                 <span class="source-priority-name">{sourceLabels[source] ?? source}</span>
