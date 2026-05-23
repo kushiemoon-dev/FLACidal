@@ -173,6 +173,8 @@ export function SetDownloadFolder(arg1:string):Promise<void>;
 
 export function SetDownloadOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean,arg6:boolean):Promise<void>;
 
+export function SetSourceOrder(arg1:Array<string>):Promise<void>;
+
 export function SetPreferredSource(arg1:string):Promise<void>;
 
 export function SetTidalCredentials(arg1:string,arg2:string):Promise<void>;

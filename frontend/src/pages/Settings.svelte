@@ -19,6 +19,7 @@
     OpenConfigFolder,
     GetFFmpegInfo,
     InstallFFmpeg,
+    SetSourceOrder,
   } from '../../wailsjs/go/main/App.js';
   import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
 
@@ -71,6 +72,37 @@
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
+  let sourceOrder = $state<string[]>([]);
+  let dragIndex = $state<number | null>(null);
+
+  const sourceLabels: Record<string, string> = {
+    tidal: 'Tidal',
+    qobuz: 'Qobuz',
+    amazon: 'Amazon Music',
+    bandcamp: 'Bandcamp',
+    soulseek: 'Soulseek',
+  };
+
+  function onDragStart(e: DragEvent, index: number) {
+    dragIndex = index;
+    (e.dataTransfer as DataTransfer).effectAllowed = 'move';
+  }
+
+  function onDragOver(e: DragEvent, index: number) {
+    e.preventDefault();
+    (e.dataTransfer as DataTransfer).dropEffect = 'move';
+  }
+
+  function onDrop(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) return;
+    const newOrder = [...sourceOrder];
+    const [moved] = newOrder.splice(dragIndex, 1);
+    newOrder.splice(index, 0, moved);
+    sourceOrder = newOrder;
+    dragIndex = null;
+    SetSourceOrder(newOrder).catch(() => {});
+  }
 
   const settingsTabs = [
     { id: 'general', label: 'General' },
@@ -255,6 +287,9 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        sourceOrder = config.sourceOrder.length > 0
+          ? config.sourceOrder
+          : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.proxyUrl = result.proxyUrl || '';
         config.tidalCustomEndpoint = result.tidalCustomEndpoint || '';
@@ -398,6 +433,9 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
+        sourceOrder = config.sourceOrder.length > 0
+          ? config.sourceOrder
+          : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
@@ -563,6 +601,25 @@
       <!-- Right Column -->
       <div class="settings-column">
         <div class="group-title">Sources &amp; Quality</div>
+
+        <div class="settings-section">
+          <p class="settings-hint">Faites glisser pour réordonner. La première source disponible est utilisée en premier.</p>
+          <div class="source-priority-list">
+            {#each sourceOrder as source, i}
+              <div
+                class="source-priority-item"
+                draggable="true"
+                ondragstart={(e) => onDragStart(e, i)}
+                ondragover={(e) => onDragOver(e, i)}
+                ondrop={(e) => onDrop(e, i)}
+              >
+                <span class="drag-handle">⠿</span>
+                <span class="source-priority-name">{sourceLabels[source] ?? source}</span>
+                <span class="priority-badge">{i + 1}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
 
         <div class="setting-item">
           <div class="setting-info">
@@ -1174,6 +1231,15 @@
     padding: 32px;
     max-width: 960px;
   }
+
+  .source-priority-list { display: flex; flex-direction: column; gap: 0.4rem; max-width: 360px; margin-bottom: 1rem; }
+  .source-priority-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.06); cursor: grab; user-select: none; transition: background 0.1s; }
+  .source-priority-item:hover { background: rgba(255,255,255,0.1); }
+  .source-priority-item:active { cursor: grabbing; }
+  .drag-handle { font-size: 1.1rem; opacity: 0.5; }
+  .source-priority-name { flex: 1; font-size: 0.9rem; }
+  .priority-badge { font-size: 0.75rem; opacity: 0.5; font-weight: 600; min-width: 1.5rem; text-align: right; }
+  .settings-hint { font-size: 0.8rem; opacity: 0.6; margin-bottom: 0.75rem; }
 
   /* Header */
   .settings-header {
