@@ -163,6 +163,8 @@ export function SearchTidalAlbums(arg1:string):Promise<Array<core.TidalAlbum>>;
 
 export function SearchTidalArtists(arg1:string):Promise<Array<core.TidalArtist>>;
 
+export function SearchDeezer(arg1:string):Promise<Array<{[key: string]: any}>>;
+
 export function SelectDownloadFolder():Promise<string>;
 
 export function SelectFolderForConversion():Promise<Array<string>>;
