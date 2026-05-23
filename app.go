@@ -697,7 +697,7 @@ func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 	}
 	records, err := a.db.GetAllDownloadRecords()
 	if err != nil {
-		return []map[string]interface{}{}, nil
+		return nil, fmt.Errorf("GetRecentAlbums: %w", err)
 	}
 
 	// Sort by most recent first
