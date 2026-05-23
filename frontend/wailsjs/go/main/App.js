@@ -322,6 +322,10 @@ export function SearchTidalArtists(arg1) {
   return window['go']['main']['App']['SearchTidalArtists'](arg1);
 }
 
+export function SearchDeezer(arg1) {
+  return window['go']['main']['App']['SearchDeezer'](arg1);
+}
+
 export function SelectDownloadFolder() {
   return window['go']['main']['App']['SelectDownloadFolder']();
 }
