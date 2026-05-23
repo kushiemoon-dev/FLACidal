@@ -44,7 +44,7 @@
   // Recent albums grid
   let recentAlbums = $state<any[]>([]);
 
-  $effect(() => {
+  onMount(() => {
     GetRecentAlbums(24).then(albums => {
       recentAlbums = albums ?? [];
     }).catch(() => {});
