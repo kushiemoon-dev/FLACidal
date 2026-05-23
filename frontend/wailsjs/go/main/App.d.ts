@@ -71,6 +71,8 @@ export function GetDownloadFolder():Promise<string>;
 
 export function GetDownloadHistory():Promise<Array<core.DownloadRecord>>;
 
+export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>;
+
 export function GetDownloadHistoryFiltered(arg1:Record<string, any>):Promise<Record<string, any>>;
 
 export function GetDownloadOptions():Promise<Record<string, any>>;

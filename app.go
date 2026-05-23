@@ -7,10 +7,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	goruntime "runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -687,6 +688,53 @@ func (a *App) GetDownloadHistory() ([]core.DownloadRecord, error) {
 		return nil, nil
 	}
 	return a.db.GetAllDownloadRecords()
+}
+
+// GetRecentAlbums returns deduplicated recent album downloads for the home page grid
+func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
+	if a.db == nil {
+		return []map[string]interface{}{}, nil
+	}
+	records, err := a.db.GetAllDownloadRecords()
+	if err != nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	// Sort by most recent first
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].LastDownloadAt.After(records[j].LastDownloadAt)
+	})
+
+	result := make([]map[string]interface{}, 0, limit)
+	seen := make(map[string]bool)
+	for _, r := range records {
+		if len(result) >= limit {
+			break
+		}
+		key := r.TidalContentID
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		// Parse "Artist — Title" if present, else use full name as title
+		title := r.TidalContentName
+		artist := ""
+		if parts := strings.SplitN(r.TidalContentName, " — ", 2); len(parts) == 2 {
+			artist = parts[0]
+			title = parts[1]
+		}
+
+		result = append(result, map[string]interface{}{
+			"title":          title,
+			"artist":         artist,
+			"cover_url":      "",
+			"track_count":    r.TracksTotal,
+			"source":         r.ContentType,
+			"downloaded_at":  r.LastDownloadAt.Format(time.RFC3339),
+		})
+	}
+	return result, nil
 }
 
 // GetDownloadHistoryFiltered returns filtered download history with pagination
