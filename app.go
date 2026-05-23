@@ -41,8 +41,9 @@ type App struct {
 	soulseekSource  *core.SoulseekSource   // Soulseek last-resort source
 	deezerSource    *core.DeezerSource     // Deezer metadata-only source
 	spotifySource   *core.SpotifySource    // Spotify metadata-only source
-	bandcampSource  *core.BandcampSource   // Bandcamp name-your-price source
-	trackContentMap sync.Map               // maps trackID (int) → contentID (string) for history tracking
+	bandcampSource  *core.BandcampSource        // Bandcamp name-your-price source
+	orchestrator    *core.DownloadOrchestrator  // Download orchestrator for live priority updates
+	trackContentMap sync.Map                    // maps trackID (int) → contentID (string) for history tracking
 }
 
 // NewApp creates a new App application struct
@@ -299,14 +300,14 @@ func (a *App) startup(ctx context.Context) {
 
 	// Wire multi-source orchestrator: tries Amazon → Bandcamp → Soulseek when Tidal+Qobuz fail
 	orchestratorPriority := []string{"tidal", "qobuz", "amazon", "bandcamp", "soulseek"}
-	orchestrator := core.NewDownloadOrchestrator(a.sourceManager, orchestratorPriority, a.logBuffer)
+	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, orchestratorPriority, a.logBuffer)
 	if a.db != nil {
-		orchestrator.SetDatabase(a.db)
+		a.orchestrator.SetDatabase(a.db)
 		if a.soulseekSource != nil {
 			a.soulseekSource.SetDatabase(a.db)
 		}
 	}
-	a.downloadManager.SetOrchestrator(orchestrator)
+	a.downloadManager.SetOrchestrator(a.orchestrator)
 
 	sourceOrder := config.SourceOrder
 	if len(sourceOrder) == 0 {
@@ -401,6 +402,24 @@ func (a *App) SaveConfig(config core.Config) error {
 		}
 	}
 	return core.SaveConfig(&config)
+}
+
+// SetSourceOrder updates the download source priority order live and persists it
+func (a *App) SetSourceOrder(order []string) error {
+	if len(order) == 0 {
+		return fmt.Errorf("source order cannot be empty")
+	}
+	if a.orchestrator != nil {
+		a.orchestrator.SetPriority(order)
+	}
+	if a.downloadManager != nil {
+		a.downloadManager.SetSourceOrder(order)
+	}
+	if a.config != nil {
+		a.config.SourceOrder = order
+		return core.SaveConfig(a.config)
+	}
+	return nil
 }
 
 // ResetToDefaults resets configuration to default values
