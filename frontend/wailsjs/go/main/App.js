@@ -342,6 +342,10 @@ export function SetDownloadOptions(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function SetSourceOrder(arg1) {
+  return window['go']['main']['App']['SetSourceOrder'](arg1);
+}
+
 export function SetPreferredSource(arg1) {
   return window['go']['main']['App']['SetPreferredSource'](arg1);
 }
