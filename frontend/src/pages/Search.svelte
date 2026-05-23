@@ -1,9 +1,10 @@
 <script lang="ts">
   import { queueStore, downloadFolder, type TidalTrack } from '../stores/queue';
-  import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, QueueSingleDownload, QueueArtistAlbum } from '../../wailsjs/go/main/App.js';
+  import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../../wailsjs/go/main/App.js';
+  import { toastStore } from '../stores/toast';
   import { formatNumber } from '../lib/format';
 
-  type SearchType = 'tracks' | 'albums' | 'artists';
+  type SearchType = 'tracks' | 'albums' | 'artists' | 'universal';
 
   interface SearchAlbum {
     id: number;
@@ -32,6 +33,8 @@
   let filterTimeout: ReturnType<typeof setTimeout> | undefined;
   let debouncedFilter = $state('');
   let downloadingAlbums = $state(new Set<number>());
+  let deezerResults = $state<any[]>([]);
+  let isSearchingDeezer = $state(false);
 
   function onFilterInput(e: Event) {
     const value = (e.target as HTMLInputElement).value;
@@ -90,13 +93,26 @@
   async function handleSearch() {
     if (!searchQuery.trim()) return;
 
-    isSearching = true;
     hasSearched = true;
     searchResults = [];
     albumResults = [];
     artistResults = [];
+    deezerResults = [];
     clearFilter();
 
+    if (searchType === 'universal') {
+      isSearchingDeezer = true;
+      try {
+        deezerResults = await SearchDeezer(searchQuery) || [];
+      } catch (error) {
+        console.error('Deezer search error:', error);
+      } finally {
+        isSearchingDeezer = false;
+      }
+      return;
+    }
+
+    isSearching = true;
     try {
       if (searchType === 'tracks') {
         const results = await SearchTidal(searchQuery);
@@ -184,13 +200,32 @@
   function currentResultCount(): number {
     if (searchType === 'tracks') return searchResults.length;
     if (searchType === 'albums') return albumResults.length;
+    if (searchType === 'universal') return deezerResults.length;
     return artistResults.length;
   }
 
   function currentFilteredCount(): number {
     if (searchType === 'tracks') return filteredResults.length;
     if (searchType === 'albums') return filteredAlbums.length;
+    if (searchType === 'universal') return deezerResults.length;
     return filteredArtists.length;
+  }
+
+  async function downloadDeezerTrack(track: any) {
+    if (!track.isrc) {
+      toastStore.show('ISRC manquant pour ce track', 'error');
+      return;
+    }
+    try {
+      const deezerUrl = `https://www.deezer.com/track/${track.id}`;
+      const content = await FetchContentFromURL(deezerUrl);
+      if (content?.tracks) {
+        await QueueDownloads(content.tracks, $downloadFolder, track.title, track.id, 'track');
+        toastStore.show(`"${track.title}" ajouté à la file`, 'success');
+      }
+    } catch (e) {
+      toastStore.show(`Erreur : ${e}`, 'error');
+    }
   }
 </script>
 
@@ -204,6 +239,7 @@
     <button class="tab" class:active={searchType === 'tracks'} onclick={() => switchTab('tracks')}>Tracks</button>
     <button class="tab" class:active={searchType === 'albums'} onclick={() => switchTab('albums')}>Albums</button>
     <button class="tab" class:active={searchType === 'artists'} onclick={() => switchTab('artists')}>Artists</button>
+    <button class="tab" class:active={searchType === 'universal'} onclick={() => switchTab('universal')}>Universel</button>
   </div>
 
   <div class="search-box">
@@ -233,10 +269,10 @@
     </div>
   </div>
 
-  {#if isSearching}
+  {#if isSearching || isSearchingDeezer}
     <div class="loading-state">
       <div class="loader"></div>
-      <p>Searching Tidal...</p>
+      <p>{searchType === 'universal' ? 'Recherche sur Deezer...' : 'Searching Tidal...'}</p>
     </div>
   {:else if hasSearched && currentResultCount() === 0}
     <div class="empty-state">
@@ -393,6 +429,37 @@
           </div>
         {/each}
       </div>
+    {:else if searchType === 'universal'}
+      <div class="results-list">
+        {#each deezerResults as track, i}
+          <div class="track-row">
+            <span class="track-num">{i + 1}</span>
+            {#if track.cover}
+              <img src={track.cover} alt={track.title} class="track-cover" />
+            {:else}
+              <div class="track-cover track-cover-placeholder"></div>
+            {/if}
+            <div class="track-info">
+              <span class="track-title">{track.title}</span>
+              <span class="track-artist">{track.artist}</span>
+            </div>
+            <span class="track-album">{track.album}</span>
+            <span class="track-duration">{formatDuration(track.duration)}</span>
+            <button
+              class="track-download-btn"
+              onclick={() => downloadDeezerTrack(track)}
+              disabled={!track.isrc}
+              title={track.isrc ? 'Download' : 'ISRC manquant'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+          </div>
+        {/each}
+      </div>
     {/if}
   {:else}
     <div class="empty-state initial">
@@ -400,8 +467,8 @@
         <circle cx="11" cy="11" r="8"/>
         <path d="m21 21-4.35-4.35"/>
       </svg>
-      <p>Search for music on Tidal</p>
-      <span class="hint">Enter a track name, artist, or album</span>
+      <p>{searchType === 'universal' ? 'Cherchez de la musique via Deezer' : 'Search for music on Tidal'}</p>
+      <span class="hint">{searchType === 'universal' ? 'Fonctionne même quand Tidal est down' : 'Enter a track name, artist, or album'}</span>
     </div>
   {/if}
 </div>
