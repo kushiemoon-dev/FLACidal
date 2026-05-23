@@ -731,6 +731,8 @@ func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 			"cover_url":      "",
 			"track_count":    r.TracksTotal,
 			"source":         r.ContentType,
+			"content_id":     r.TidalContentID,
+			"content_type":   r.ContentType,
 			"downloaded_at":  r.LastDownloadAt.Format(time.RFC3339),
 		})
 	}
