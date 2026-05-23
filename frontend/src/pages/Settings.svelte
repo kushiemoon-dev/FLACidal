@@ -20,6 +20,7 @@
     GetFFmpegInfo,
     InstallFFmpeg,
     SetSourceOrder,
+    GetAppVersion,
   } from '../../wailsjs/go/main/App.js';
   import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
 
@@ -66,6 +67,7 @@
   let activeTab = $state('general');
   let apiStatuses: any[] = $state([]);
   let checkingAPI = $state(false);
+  let appVersion = $state('');
   let updateInfo: any = $state(null);
   let checkingUpdate = $state(false);
   let ffmpegInfo: any = $state(null);
@@ -253,6 +255,7 @@
 
   onMount(() => {
     loadConfig();
+    GetAppVersion().then(v => { appVersion = v; });
     GetFFmpegInfo().then(info => { ffmpegInfo = info; });
     EventsOn('ffmpeg-install-progress', (progress: any) => {
       ffmpegProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
@@ -1175,10 +1178,10 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version 3.3.0</span>
+            <span class="version">Version {appVersion || '...'}</span>
           </div>
         </div>
-        <p class="app-desc">High-quality FLAC downloader for Tidal. Download your favorite music in lossless quality.</p>
+        <p class="app-desc">Lossless FLAC downloader — Tidal, Qobuz, Amazon, Bandcamp, Soulseek.</p>
         <div class="update-check">
           <button class="btn-secondary" onclick={checkUpdate} disabled={checkingUpdate}>
             {checkingUpdate ? 'Checking...' : 'Check for Updates'}
