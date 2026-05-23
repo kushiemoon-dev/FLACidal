@@ -50,6 +50,17 @@
     }).catch(() => {});
   });
 
+  async function redownloadAlbum(album: any) {
+    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    try {
+      if (album.content_type !== 'track') {
+        await QueueArtistAlbum(album.content_id, album.artist, $downloadFolder);
+      }
+    } catch(e: any) {
+      error = e.message || 'Failed to queue album';
+    }
+  }
+
   let content = $derived($currentContent);
   let stats = $derived($queueStats);
   let folder = $derived($downloadFolder);
@@ -714,7 +725,11 @@
     <h3>Récemment téléchargés</h3>
     <div class="albums-grid">
       {#each recentAlbums as album}
-      <div class="album-card" title="{album.artist ? album.artist + ' — ' : ''}{album.title}">
+      <div class="album-card" title="{album.artist ? album.artist + ' — ' : ''}{album.title}"
+        role="button"
+        tabindex="0"
+        onclick={() => redownloadAlbum(album)}
+        onkeydown={(e) => e.key === 'Enter' && redownloadAlbum(album)}>
         {#if album.cover_url}
           <img src="{album.cover_url}" alt="{album.title}" />
         {:else}
