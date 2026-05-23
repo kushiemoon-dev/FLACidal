@@ -17,6 +17,7 @@
     FetchContentFromURL,
     ExpandDiscographyURL,
     QueueDiscographyAlbums,
+    GetRecentAlbums,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
@@ -39,6 +40,15 @@
   let discographyPending = $state(false);  // true while fetching album list
   let discographyAlbums: string[] | null = $state(null); // fetched album URLs awaiting confirmation
   let discographyConfirmLoading = $state(false); // true while submitting after confirm
+
+  // Recent albums grid
+  let recentAlbums = $state<any[]>([]);
+
+  $effect(() => {
+    GetRecentAlbums(24).then(albums => {
+      recentAlbums = albums ?? [];
+    }).catch(() => {});
+  });
 
   let content = $derived($currentContent);
   let stats = $derived($queueStats);
@@ -696,6 +706,28 @@
         {/each}
       </div>
     </div>
+  {/if}
+
+  <!-- Recent Albums -->
+  {#if recentAlbums.length > 0 && !content && !loading}
+  <section class="recent-albums">
+    <h3>Récemment téléchargés</h3>
+    <div class="albums-grid">
+      {#each recentAlbums as album}
+      <div class="album-card" title="{album.artist ? album.artist + ' — ' : ''}{album.title}">
+        {#if album.cover_url}
+          <img src="{album.cover_url}" alt="{album.title}" />
+        {:else}
+          <div class="album-placeholder">♪</div>
+        {/if}
+        <div class="album-info">
+          <span class="album-title">{album.title}</span>
+          {#if album.artist}<span class="album-artist">{album.artist}</span>{/if}
+        </div>
+      </div>
+      {/each}
+    </div>
+  </section>
   {/if}
 
   <!-- Content Display -->
@@ -1948,4 +1980,15 @@
     color: var(--color-text-tertiary);
     margin: 0;
   }
+
+  .recent-albums { margin-top: 2rem; }
+  .recent-albums h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; margin-bottom: 1rem; }
+  .albums-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; }
+  .album-card { cursor: pointer; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.05); transition: transform 0.15s; }
+  .album-card:hover { transform: translateY(-2px); }
+  .album-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  .album-placeholder { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: 0.3; }
+  .album-info { padding: 0.5rem; }
+  .album-title { display: block; font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .album-artist { display: block; font-size: 0.7rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
