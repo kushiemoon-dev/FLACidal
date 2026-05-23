@@ -409,6 +409,17 @@ func (a *App) SetSourceOrder(order []string) error {
 	if len(order) == 0 {
 		return fmt.Errorf("source order cannot be empty")
 	}
+	validSources := map[string]bool{"tidal": true, "qobuz": true, "amazon": true, "bandcamp": true, "soulseek": true}
+	seen := map[string]bool{}
+	for _, s := range order {
+		if !validSources[s] {
+			return fmt.Errorf("unknown source: %s", s)
+		}
+		if seen[s] {
+			return fmt.Errorf("duplicate source: %s", s)
+		}
+		seen[s] = true
+	}
 	if a.orchestrator != nil {
 		a.orchestrator.SetPriority(order)
 	}
