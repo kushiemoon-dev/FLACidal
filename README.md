@@ -5,7 +5,6 @@
 ### Download lossless FLAC music from Tidal & Qobuz
 
 [![GitHub Release](https://img.shields.io/github/v/release/kushiemoon-dev/FLACidal?style=flat-square&color=e5a00d)](https://github.com/kushiemoon-dev/FLACidal/releases/latest)
-[![Codeberg](https://img.shields.io/badge/Codeberg-FLACidal-2185D0?style=flat-square&logo=codeberg&logoColor=white)](https://codeberg.org/KushieMoon-dev/FLACidal)
 [![License](https://img.shields.io/github/license/kushiemoon-dev/FLACidal?style=flat-square&color=gray)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 
@@ -64,7 +63,7 @@
 > **New!** FLACidal is now available on mobile. Same features, same quality, on your phone.
 > **[FLACidal Mobile →](https://github.com/kushiemoon-dev/flacidal-mobile)**
 
-All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal/releases)
+All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases)
 
 ---
 
@@ -129,7 +128,7 @@ Settings are stored at `~/.flacidal/config.json`.
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
-git clone https://codeberg.org/KushieMoon-dev/FLACidal.git
+git clone https://github.com/kushiemoon-dev/FLACidal.git
 cd FLACidal
 wails build
 # Binary: build/bin/flacidal
@@ -177,8 +176,8 @@ FLACidal is intended for **educational and personal use only**. It is not affili
 
 <div align="center">
 
-**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [YouFLAC](https://github.com/kushiemoon-dev/YouFLAC) · [OpenDrop-VJ](https://github.com/kushiemoon-dev/OpenDrop-VJ) · [Codeberg](https://codeberg.org/KushieMoon-dev/FLACidal)
+**MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [YouFLAC](https://github.com/kushiemoon-dev/YouFLAC) · [OpenDrop-VJ](https://github.com/kushiemoon-dev/OpenDrop-VJ)
 
-Made with ♥ by [KushieMoon](https://codeberg.org/KushieMoon-dev)
+Made with ♥ by [KushieMoon](https://github.com/kushiemoon-dev)
 
 </div>
