@@ -71,8 +71,6 @@ export function GetDownloadFolder():Promise<string>;
 
 export function GetDownloadHistory():Promise<Array<core.DownloadRecord>>;
 
-export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>;
-
 export function GetDownloadHistoryFiltered(arg1:Record<string, any>):Promise<Record<string, any>>;
 
 export function GetDownloadOptions():Promise<Record<string, any>>;
@@ -92,6 +90,8 @@ export function GetLogs():Promise<Array<core.LogEntry>>;
 export function GetMatchFailures():Promise<Array<core.MatchFailure>>;
 
 export function GetPreferredSource():Promise<string>;
+
+export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>;
 
 export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
@@ -157,13 +157,13 @@ export function RetryDownload(arg1:number):Promise<void>;
 
 export function SaveConfig(arg1:core.Config):Promise<void>;
 
+export function SearchDeezer(arg1:string):Promise<Array<Record<string, any>>>;
+
 export function SearchTidal(arg1:string):Promise<Array<core.TidalTrack>>;
 
 export function SearchTidalAlbums(arg1:string):Promise<Array<core.TidalAlbum>>;
 
 export function SearchTidalArtists(arg1:string):Promise<Array<core.TidalArtist>>;
-
-export function SearchDeezer(arg1:string):Promise<Array<{[key: string]: any}>>;
 
 export function SelectDownloadFolder():Promise<string>;
 
@@ -173,9 +173,9 @@ export function SetDownloadFolder(arg1:string):Promise<void>;
 
 export function SetDownloadOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean,arg6:boolean):Promise<void>;
 
-export function SetSourceOrder(arg1:Array<string>):Promise<void>;
-
 export function SetPreferredSource(arg1:string):Promise<void>;
+
+export function SetSourceOrder(arg1:Array<string>):Promise<void>;
 
 export function SetTidalCredentials(arg1:string,arg2:string):Promise<void>;
 
