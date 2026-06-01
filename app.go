@@ -1220,7 +1220,19 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 		return fmt.Errorf("no output directory specified")
 	}
 
-	err := a.downloadManager.QueueDownload(trackID, outputDir, title, artist)
+	// Fetch ISRC from Tidal metadata so the orchestrator can search by ISRC on fallback sources.
+	isrc := ""
+	if track, err := a.downloader.GetTrackAsTidalTrack(trackID); err == nil && track != nil {
+		isrc = track.ISRC
+		if title == "" {
+			title = track.Title
+		}
+		if artist == "" {
+			artist = track.Artist
+		}
+	}
+
+	err := a.downloadManager.QueueDownloadWithISRC(trackID, outputDir, title, artist, isrc)
 	if err == nil && a.db != nil {
 		contentID := strconv.Itoa(trackID)
 		_ = a.db.SaveDownloadRecord(&core.DownloadRecord{
@@ -1661,7 +1673,11 @@ func (a *App) RetryDownload(trackID int) error {
 		return fmt.Errorf("no download folder configured")
 	}
 
-	return a.downloadManager.QueueDownload(trackID, folder, "", "")
+	isrc, title, artist := "", "", ""
+	if track, err := a.downloader.GetTrackAsTidalTrack(trackID); err == nil && track != nil {
+		isrc, title, artist = track.ISRC, track.Title, track.Artist
+	}
+	return a.downloadManager.QueueDownloadWithISRC(trackID, folder, title, artist, isrc)
 }
 
 // RetryAllFailed retries all failed downloads

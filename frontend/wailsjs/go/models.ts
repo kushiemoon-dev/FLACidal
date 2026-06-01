@@ -85,6 +85,7 @@ export namespace core {
 	    amazonEnabled: boolean;
 	    amazonProxyEndpoints?: string[];
 	    qobuzProxyEndpoints?: string[];
+	    qobuzProvidersDisabled?: string[];
 	    parallelEndpointRequests: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -145,6 +146,7 @@ export namespace core {
 	        this.amazonEnabled = source["amazonEnabled"];
 	        this.amazonProxyEndpoints = source["amazonProxyEndpoints"];
 	        this.qobuzProxyEndpoints = source["qobuzProxyEndpoints"];
+	        this.qobuzProvidersDisabled = source["qobuzProvidersDisabled"];
 	        this.parallelEndpointRequests = source["parallelEndpointRequests"];
 	    }
 	}
