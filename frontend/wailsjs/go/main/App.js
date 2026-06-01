@@ -138,10 +138,6 @@ export function GetDownloadHistory() {
   return window['go']['main']['App']['GetDownloadHistory']();
 }
 
-export function GetRecentAlbums(arg1) {
-  return window['go']['main']['App']['GetRecentAlbums'](arg1);
-}
-
 export function GetDownloadHistoryFiltered(arg1) {
   return window['go']['main']['App']['GetDownloadHistoryFiltered'](arg1);
 }
@@ -180,6 +176,10 @@ export function GetMatchFailures() {
 
 export function GetPreferredSource() {
   return window['go']['main']['App']['GetPreferredSource']();
+}
+
+export function GetRecentAlbums(arg1) {
+  return window['go']['main']['App']['GetRecentAlbums'](arg1);
 }
 
 export function GetRenameTemplates() {
@@ -310,6 +310,10 @@ export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
 }
 
+export function SearchDeezer(arg1) {
+  return window['go']['main']['App']['SearchDeezer'](arg1);
+}
+
 export function SearchTidal(arg1) {
   return window['go']['main']['App']['SearchTidal'](arg1);
 }
@@ -320,10 +324,6 @@ export function SearchTidalAlbums(arg1) {
 
 export function SearchTidalArtists(arg1) {
   return window['go']['main']['App']['SearchTidalArtists'](arg1);
-}
-
-export function SearchDeezer(arg1) {
-  return window['go']['main']['App']['SearchDeezer'](arg1);
 }
 
 export function SelectDownloadFolder() {
@@ -342,12 +342,12 @@ export function SetDownloadOptions(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
-export function SetSourceOrder(arg1) {
-  return window['go']['main']['App']['SetSourceOrder'](arg1);
-}
-
 export function SetPreferredSource(arg1) {
   return window['go']['main']['App']['SetPreferredSource'](arg1);
+}
+
+export function SetSourceOrder(arg1) {
+  return window['go']['main']['App']['SetSourceOrder'](arg1);
 }
 
 export function SetTidalCredentials(arg1, arg2) {

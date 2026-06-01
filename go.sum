@@ -28,8 +28,6 @@ github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e h1:Q3+PugElBCf4P
 github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e/go.mod h1:alcuEEnZsY1WQsagKhZDsoPCRoOijYqhZvPwLG0kzVs=
 github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE9a2c=
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
-github.com/kushiemoon-dev/flacidal-core v0.7.0 h1:95Pn7WeGgOiZHfV9XOZHHDvMI5On4Y8VGRyK5j1qPJo=
-github.com/kushiemoon-dev/flacidal-core v0.7.0/go.mod h1:s3owD886IlUWUGrLGYqYmRFTdCIbADrrcRsmLj4oPMc=
 github.com/kushiemoon-dev/flacidal-core v0.9.0 h1:Y13HDnpF7LQcmT1CZXQ8HNVdNJIfAgKHkpNxu578+9w=
 github.com/kushiemoon-dev/flacidal-core v0.9.0/go.mod h1:s3owD886IlUWUGrLGYqYmRFTdCIbADrrcRsmLj4oPMc=
 github.com/labstack/echo/v4 v4.13.3 h1:pwhpCPrTl5qry5HRdM5FwdXnhXSLSY+WE+YQSeCaafY=
