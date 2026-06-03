@@ -492,9 +492,9 @@ func (a *App) CheckAPIStatus() []EndpointStatus {
 		url  string
 	}{
 		{"Tidal HiFi (eu-central)", "https://eu-central.monochrome.tf"},
-		{"Metadata (hifi-one)", "https://hifi-one.spotisaver.net"},
-		{"Metadata (hifi-two)", "https://hifi-two.spotisaver.net"},
-		{"Metadata (triton)", "https://triton.squid.wtf"},
+		{"Tidal HiFi (us-west)", "https://us-west.monochrome.tf"},
+		{"Tidal HiFi (api)", "https://api.monochrome.tf"},
+		{"Tidal HiFi (samidy)", "https://monochrome-api.samidy.com"},
 		{"Tidal API", "https://api.tidalhifi.com"},
 	}
 
