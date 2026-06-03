@@ -401,6 +401,20 @@ func (a *App) SaveConfig(config core.Config) error {
 			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
 		}
 	}
+	// Re-initialize Soulseek source when credentials or enabled state change
+	homeDir, _ := os.UserHomeDir()
+	sldlPath := config.SoulseekBinaryPath
+	if sldlPath == "" {
+		sldlPath = filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+	}
+	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
+	a.soulseekSource.SetLogger(a.logBuffer)
+	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
+		a.sourceManager.RegisterSource(a.soulseekSource)
+	} else {
+		a.sourceManager.UnregisterSource("soulseek")
+	}
+
 	return core.SaveConfig(&config)
 }
 
@@ -869,7 +883,7 @@ func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 
 // GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
-	return "4.7.0"
+	return "4.8.0"
 }
 
 // UpdateInfo represents available update information
@@ -1569,6 +1583,76 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 		"localInstalled":  core.IsFFmpegInstalledLocally(),
 		"localPath":       core.GetLocalFFmpegPath(),
 	}
+}
+
+// GetSldlStatus checks if the sldl binary is installed and returns its version
+func (a *App) GetSldlStatus() map[string]interface{} {
+	homeDir, _ := os.UserHomeDir()
+	sldlPath := filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+
+	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
+		return map[string]interface{}{
+			"installed": false,
+			"path":      sldlPath,
+			"version":   "",
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, sldlPath, "--version").Output()
+	version := ""
+	if err == nil {
+		version = strings.TrimSpace(string(out))
+	}
+
+	return map[string]interface{}{
+		"installed": true,
+		"path":      sldlPath,
+		"version":   version,
+	}
+}
+
+// TestSoulseekConnection verifies Soulseek credentials by running a quick search via sldl
+func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
+	homeDir, _ := os.UserHomeDir()
+	sldlPath := filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+
+	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
+		return map[string]interface{}{"success": false, "message": "sldl not found"}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, sldlPath,
+		"test",
+		"--user", username,
+		"--pass", password,
+		"--listen-port", "49996",
+		"--print", "results",
+		"--no-progress",
+	)
+	out, _ := cmd.CombinedOutput()
+	rawOutput := string(out)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return map[string]interface{}{"success": false, "message": "Connection timed out"}
+	}
+
+	// Results start at the first "[" line — only check header for auth errors
+	header := rawOutput
+	if idx := strings.Index(rawOutput, "\n["); idx != -1 {
+		header = rawOutput[:idx]
+	}
+	headerLower := strings.ToLower(header)
+	if strings.Contains(headerLower, "wrong password") || strings.Contains(headerLower, "invalid password") || strings.Contains(headerLower, "login failed") || strings.Contains(headerLower, "cannot login") {
+		return map[string]interface{}{"success": false, "message": "Invalid credentials"}
+	}
+	if strings.Contains(rawOutput, "\n[") || strings.HasPrefix(rawOutput, "[") {
+		return map[string]interface{}{"success": true, "message": "Connected successfully"}
+	}
+	return map[string]interface{}{"success": false, "message": "No results — check credentials or network"}
 }
 
 // GetConversionFormats returns available conversion formats
