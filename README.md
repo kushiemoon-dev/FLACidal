@@ -92,7 +92,10 @@ FLACidal tries each source in order until one succeeds:
 | 3 | **Amazon Music** | FLAC / UHD | Via proxy pool |
 | 4 | **Soulseek** | FLAC | P2P fallback — requires free account + `sldl` binary |
 
-> To enable Soulseek: install [sldl](https://github.com/fiso64/slsk-batchdl/releases) to `~/.local/share/flacidal/sldl`, create a free [Soulseek](https://www.slsknet.org/) account, and enter credentials in **Settings → Sources**.
+> **Setting up Soulseek:**
+> 1. Install [sldl](https://github.com/fiso64/slsk-batchdl/releases) and place the binary at `~/.local/share/flacidal/sldl`
+> 2. Create a free account at [slsknet.org](https://www.slsknet.org/) — or use your existing **Nicotine+** account (same credentials)
+> 3. Enter your username and password in **Settings → General → Soulseek**, click **Login** to verify, then **Save Changes**
 
 ---
 
