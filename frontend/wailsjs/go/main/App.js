@@ -186,6 +186,10 @@ export function GetRenameTemplates() {
   return window['go']['main']['App']['GetRenameTemplates']();
 }
 
+export function GetSldlStatus() {
+  return window['go']['main']['App']['GetSldlStatus']();
+}
+
 export function GetSourceAlbum(arg1, arg2) {
   return window['go']['main']['App']['GetSourceAlbum'](arg1, arg2);
 }
@@ -352,6 +356,10 @@ export function SetSourceOrder(arg1) {
 
 export function SetTidalCredentials(arg1, arg2) {
   return window['go']['main']['App']['SetTidalCredentials'](arg1, arg2);
+}
+
+export function TestSoulseekConnection(arg1, arg2) {
+  return window['go']['main']['App']['TestSoulseekConnection'](arg1, arg2);
 }
 
 export function UpdateQobuzCredentials(arg1, arg2, arg3) {
