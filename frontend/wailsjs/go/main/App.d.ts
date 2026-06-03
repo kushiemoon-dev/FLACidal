@@ -95,6 +95,8 @@ export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>
 
 export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
+export function GetSldlStatus():Promise<Record<string, any>>;
+
 export function GetSourceAlbum(arg1:string,arg2:string):Promise<core.SourceAlbum>;
 
 export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePlaylist>;
@@ -178,6 +180,8 @@ export function SetPreferredSource(arg1:string):Promise<void>;
 export function SetSourceOrder(arg1:Array<string>):Promise<void>;
 
 export function SetTidalCredentials(arg1:string,arg2:string):Promise<void>;
+
+export function TestSoulseekConnection(arg1:string,arg2:string):Promise<Record<string, any>>;
 
 export function UpdateQobuzCredentials(arg1:string,arg2:string,arg3:string):Promise<void>;
 

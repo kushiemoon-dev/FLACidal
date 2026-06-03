@@ -21,6 +21,8 @@
     InstallFFmpeg,
     SetSourceOrder,
     GetAppVersion,
+    GetSldlStatus,
+    TestSoulseekConnection,
   } from '../../wailsjs/go/main/App.js';
   import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
 
@@ -71,6 +73,9 @@
   let updateInfo: any = $state(null);
   let checkingUpdate = $state(false);
   let ffmpegInfo: any = $state(null);
+  let sldlStatus: any = $state(null);
+  let soulseekLoginResult: { success: boolean; message: string } | null = $state(null);
+  let testingLogin = $state(false);
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
@@ -257,6 +262,7 @@
     loadConfig();
     GetAppVersion().then(v => { appVersion = v; });
     GetFFmpegInfo().then(info => { ffmpegInfo = info; });
+    GetSldlStatus().then(s => { sldlStatus = s; });
     EventsOn('ffmpeg-install-progress', (progress: any) => {
       ffmpegProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
       if (ffmpegProgress.stage === 'complete') {
@@ -340,6 +346,19 @@
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
+    }
+  }
+
+  async function testSoulseekLogin() {
+    testingLogin = true;
+    soulseekLoginResult = null;
+    try {
+      const result = await TestSoulseekConnection(config.soulseekUsername, config.soulseekPassword);
+      soulseekLoginResult = { success: result.success, message: result.message };
+    } catch (e) {
+      soulseekLoginResult = { success: false, message: 'Error running test' };
+    } finally {
+      testingLogin = false;
     }
   }
 
@@ -599,6 +618,82 @@
             </div>
           </div>
         {/if}
+
+        <div class="group-title" style="margin-top:1.5rem">Soulseek (Fallback P2P)</div>
+
+        <div class="soulseek-info-box">
+          <p>Soulseek is a free P2P music network. FLACidal uses <code>sldl</code> in the background to find and download FLAC files when all streaming sources fail.</p>
+          <p>Already using <strong>Nicotine+</strong>? Enter the same credentials below — it's the same account.</p>
+          <p>No account yet? <a href="https://www.slsknet.org/news/node/1" target="_blank" rel="noopener">Create one free at slsknet.org</a> or through Nicotine+.</p>
+          {#if sldlStatus}
+            {#if sldlStatus.installed}
+              <p class="sldl-status sldl-ok">✓ sldl {sldlStatus.version} installed</p>
+            {:else}
+              <p class="sldl-status sldl-missing">✗ sldl not found — <a href="https://github.com/fiso64/slsk-batchdl/releases" target="_blank" rel="noopener">download sldl</a> and place it at <code>~/.local/share/flacidal/sldl</code></p>
+            {/if}
+          {/if}
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Enable Soulseek</span>
+            <span class="setting-desc">Last-resort FLAC source via P2P — independent of streaming proxies</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.soulseekEnabled} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        {#if config.soulseekEnabled}
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Soulseek Username</span>
+            <span class="setting-desc">Same account as Nicotine+</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              class="setting-input"
+              bind:value={config.soulseekUsername}
+              placeholder="your-soulseek-username"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Soulseek Password</span>
+            <span class="setting-desc">Same password as Nicotine+</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="password"
+              class="setting-input"
+              bind:value={config.soulseekPassword}
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <div class="soulseek-login-row">
+          <button
+            class="btn-soulseek-login"
+            onclick={testSoulseekLogin}
+            disabled={testingLogin || !config.soulseekUsername || !config.soulseekPassword}
+          >
+            {testingLogin ? 'Connecting...' : 'Login'}
+          </button>
+          {#if soulseekLoginResult}
+            <span class="soulseek-login-result" class:ok={soulseekLoginResult.success} class:fail={!soulseekLoginResult.success}>
+              {soulseekLoginResult.success ? '✓' : '✗'} {soulseekLoginResult.message}
+              {#if soulseekLoginResult.success}<span class="save-hint"> — Save to confirm</span>{/if}
+            </span>
+          {/if}
+        </div>
+        {/if}
       </div>
 
       <!-- Right Column -->
@@ -781,51 +876,6 @@
           </div>
         </div>
 
-        <div class="group-title" style="margin-top:1.5rem">Soulseek (Fallback P2P)</div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Enable Soulseek</span>
-            <span class="setting-desc">Last-resort FLAC source via P2P — independent of streaming proxies</span>
-          </div>
-          <div class="setting-control">
-            <label class="toggle">
-              <input type="checkbox" bind:checked={config.soulseekEnabled} />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-
-        {#if config.soulseekEnabled}
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Soulseek Username</span>
-            <span class="setting-desc">Free account at soulseek.net or via Nicotine+</span>
-          </div>
-          <div class="setting-control wide">
-            <input
-              type="text"
-              class="setting-input"
-              bind:value={config.soulseekUsername}
-              placeholder="your-soulseek-username"
-            />
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Soulseek Password</span>
-          </div>
-          <div class="setting-control wide">
-            <input
-              type="password"
-              class="setting-input"
-              bind:value={config.soulseekPassword}
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
-        {/if}
       </div>
     </div>
 
@@ -1245,6 +1295,51 @@
   .priority-badge { font-size: 0.75rem; opacity: 0.5; font-weight: 600; min-width: 1.5rem; text-align: right; }
   .settings-hint { font-size: 0.8rem; opacity: 0.6; margin-bottom: 0.75rem; }
 
+  .soulseek-info-box {
+    background: color-mix(in srgb, var(--color-accent, #6366f1) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent, #6366f1) 30%, transparent);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .soulseek-info-box p { margin: 0 0 0.35rem; opacity: 0.85; }
+  .soulseek-info-box p:last-child { margin-bottom: 0; }
+  .soulseek-info-box code { opacity: 0.9; font-size: 0.8rem; }
+  .soulseek-info-box a { color: var(--color-accent, #6366f1); text-decoration: underline; }
+  .sldl-status { font-weight: 600; margin-top: 0.4rem !important; }
+  .sldl-ok { color: #4ade80; }
+  .sldl-missing { color: var(--color-warning, #f59e0b); }
+
+  .soulseek-login-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding: 0 0 0.25rem;
+  }
+  .btn-soulseek-login {
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--color-accent, #6366f1);
+    background: transparent;
+    color: var(--color-accent, #6366f1);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-soulseek-login:hover:not(:disabled) {
+    background: var(--color-accent, #6366f1);
+    color: #fff;
+  }
+  .btn-soulseek-login:disabled { opacity: 0.4; cursor: not-allowed; }
+  .soulseek-login-result { font-size: 0.82rem; font-weight: 600; }
+  .soulseek-login-result.ok { color: #4ade80; }
+  .soulseek-login-result.fail { color: var(--color-warning, #f59e0b); }
+  .save-hint { font-weight: 400; opacity: 0.75; }
+
   /* Header */
   .settings-header {
     display: flex;
@@ -1381,6 +1476,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
 
   .setting-info label,
