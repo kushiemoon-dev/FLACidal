@@ -221,7 +221,7 @@
       const content = await FetchContentFromURL(deezerUrl);
       if (content?.tracks) {
         await QueueDownloads(content.tracks, $downloadFolder, track.title, track.id, 'track');
-        toastStore.show(`"${track.title}" ajouté à la file`, 'success');
+        toastStore.show(`"${track.title}" added to queue`, 'success');
       }
     } catch (e) {
       toastStore.show(`Erreur : ${e}`, 'error');
@@ -467,8 +467,8 @@
         <circle cx="11" cy="11" r="8"/>
         <path d="m21 21-4.35-4.35"/>
       </svg>
-      <p>{searchType === 'universal' ? 'Cherchez de la musique via Deezer' : 'Search for music on Tidal'}</p>
-      <span class="hint">{searchType === 'universal' ? 'Fonctionne même quand Tidal est down' : 'Enter a track name, artist, or album'}</span>
+      <p>{searchType === 'universal' ? 'Search for music via Deezer' : 'Search for music on Tidal'}</p>
+      <span class="hint">{searchType === 'universal' ? 'Works even when Tidal is down' : 'Enter a track name, artist, or album'}</span>
     </div>
   {/if}
 </div>

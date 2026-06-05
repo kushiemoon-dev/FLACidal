@@ -79,7 +79,7 @@
 
       result = data as AnalyzeResult;
     } catch (err) {
-      errorMsg = err instanceof Error ? err.message : 'Erreur réseau';
+      errorMsg = err instanceof Error ? err.message : 'Network error';
     } finally {
       isAnalyzing = false;
     }
@@ -118,7 +118,7 @@
       class:has-file={selectedFile !== null}
       role="button"
       tabindex="0"
-      aria-label="Zone de dépôt de fichier FLAC"
+      aria-label="FLAC file drop zone"
       ondragover={onDragOver}
       ondragleave={onDragLeave}
       ondrop={onDrop}
@@ -198,20 +198,20 @@
           <span class="detail-value">{result.format}</span>
         </div>
         <div class="card detail-card">
-          <span class="detail-label">Fréquence d'échantillonnage</span>
+          <span class="detail-label">Sample Rate</span>
           <span class="detail-value mono">{(result.sampleRate / 1000).toFixed(1)} kHz</span>
         </div>
         <div class="card detail-card">
-          <span class="detail-label">Profondeur de bits</span>
+          <span class="detail-label">Bit Depth</span>
           <span class="detail-value mono">{result.bitDepth}-bit</span>
         </div>
         <div class="card detail-card">
-          <span class="detail-label">Coupure spectrale</span>
+          <span class="detail-label">Spectral Cutoff</span>
           <span class="detail-value mono">{result.spectralCutoff.toLocaleString()} Hz</span>
         </div>
         {#if result.realBitrate > 0}
           <div class="card detail-card">
-            <span class="detail-label">Bitrate réel estimé</span>
+            <span class="detail-label">Estimated Real Bitrate</span>
             <span class="detail-value mono">{result.realBitrate} kbps</span>
           </div>
         {/if}
