@@ -23,11 +23,11 @@ test: test-unit
 
 test-unit:
 	@echo "Running unit tests..."
-	$(GO) test $(GOFLAGS) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./backend/...
+	$(GO) test $(GOFLAGS) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./internal/... ./cmd/...
 
 test-integration:
 	@echo "Running integration tests..."
-	$(GO) test $(GOFLAGS) -tags=integration -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./backend/...
+	$(GO) test $(GOFLAGS) -tags=integration -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./internal/... ./cmd/...
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -42,7 +42,7 @@ test-all: test-unit test-frontend
 
 lint:
 	@echo "Running Go linter..."
-	golangci-lint run ./backend/...
+	golangci-lint run ./internal/... ./cmd/...
 	@echo "Running frontend linter..."
 	cd $(FRONTEND_DIR) && npm run lint || true
 
@@ -53,7 +53,7 @@ coverage:
 
 bench:
 	@echo "Running benchmarks..."
-	$(GO) test -bench=. -benchmem ./backend/...
+	$(GO) test -bench=. -benchmem ./internal/... ./cmd/...
 
 clean:
 	@echo "Cleaning test artifacts..."
