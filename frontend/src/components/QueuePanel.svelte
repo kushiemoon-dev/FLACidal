@@ -103,9 +103,9 @@
 
   function statusLabel(status: string): string {
     switch (status) {
-      case 'queued': return 'En attente';
-      case 'downloading': return 'Téléchargement…';
-      case 'failed': return 'Échec';
+      case 'queued': return 'Queued';
+      case 'downloading': return 'Downloading…';
+      case 'failed': return 'Failed';
       default: return status;
     }
   }
@@ -122,7 +122,7 @@
 <div class="queue-panel" class:collapsed>
   <button class="panel-header" onclick={() => (collapsed = !collapsed)}>
     <span class="panel-title">
-      Téléchargements
+      Downloads
       {#if jobList.length > 0}
         <span class="badge">{jobList.length}</span>
       {/if}
@@ -133,7 +133,7 @@
   {#if !collapsed}
     <div class="panel-body">
       {#if jobList.length === 0}
-        <p class="empty">Aucun téléchargement en cours</p>
+        <p class="empty">No downloads in progress</p>
       {:else}
         <ul class="job-list">
           {#each jobList as job (job.id)}
