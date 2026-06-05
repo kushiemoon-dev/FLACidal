@@ -629,7 +629,7 @@
             {#if sldlStatus.installed}
               <p class="sldl-status sldl-ok">✓ sldl {sldlStatus.version} installed</p>
             {:else}
-              <p class="sldl-status sldl-missing">✗ sldl not found — <a href="https://github.com/fiso64/slsk-batchdl/releases" target="_blank" rel="noopener">download sldl</a> and place it at <code>~/.local/share/flacidal/sldl</code></p>
+              <p class="sldl-status sldl-missing">✗ sldl not found — <a href="https://github.com/fiso64/slsk-batchdl/releases" target="_blank" rel="noopener">download sldl</a> and place it at <code>{sldlStatus.path}</code></p>
             {/if}
           {/if}
         </div>
