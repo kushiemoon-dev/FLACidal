@@ -722,7 +722,7 @@
   <!-- Recent Albums -->
   {#if recentAlbums.length > 0 && !content && !loading}
   <section class="recent-albums">
-    <h3>Récemment téléchargés</h3>
+    <h3>Recently Downloaded</h3>
     <div class="albums-grid">
       {#each recentAlbums as album}
       <div class="album-card" title="{album.artist ? album.artist + ' — ' : ''}{album.title}"

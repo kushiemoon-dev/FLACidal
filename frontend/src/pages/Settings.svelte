@@ -701,7 +701,7 @@
         <div class="group-title">Sources &amp; Quality</div>
 
         <div class="settings-section">
-          <p class="settings-hint">Faites glisser pour réordonner. La première source disponible est utilisée en premier.</p>
+          <p class="settings-hint">Drag to reorder. The first available source is used first.</p>
           <div class="source-priority-list">
             {#each sourceOrder as source, i}
               <div
