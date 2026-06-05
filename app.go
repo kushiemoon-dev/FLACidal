@@ -51,6 +51,19 @@ func NewApp() *App {
 	return &App{}
 }
 
+// defaultSldlPath returns the platform-appropriate default path for the sldl binary.
+func defaultSldlPath() string {
+	if goruntime.GOOS == "windows" {
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			appData, _ = os.UserConfigDir()
+		}
+		return filepath.Join(appData, "flacidal", "sldl.exe")
+	}
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+}
+
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
@@ -288,8 +301,7 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize Soulseek fallback source (last-resort P2P, independent of streaming proxies)
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
-		homeDir, _ := os.UserHomeDir()
-		sldlPath = filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+		sldlPath = defaultSldlPath()
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
@@ -402,10 +414,9 @@ func (a *App) SaveConfig(config core.Config) error {
 		}
 	}
 	// Re-initialize Soulseek source when credentials or enabled state change
-	homeDir, _ := os.UserHomeDir()
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
-		sldlPath = filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+		sldlPath = defaultSldlPath()
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
@@ -1587,8 +1598,7 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 
 // GetSldlStatus checks if the sldl binary is installed and returns its version
 func (a *App) GetSldlStatus() map[string]interface{} {
-	homeDir, _ := os.UserHomeDir()
-	sldlPath := filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+	sldlPath := defaultSldlPath()
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
 		return map[string]interface{}{
@@ -1615,8 +1625,7 @@ func (a *App) GetSldlStatus() map[string]interface{} {
 
 // TestSoulseekConnection verifies Soulseek credentials by running a quick search via sldl
 func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
-	homeDir, _ := os.UserHomeDir()
-	sldlPath := filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
+	sldlPath := defaultSldlPath()
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
 		return map[string]interface{}{"success": false, "message": "sldl not found"}
