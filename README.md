@@ -128,7 +128,7 @@ Soulseek is FLACidal's most reliable source right now. Setup takes about 5 minut
 1. Download the latest binary for your platform from [github.com/fiso64/slsk-batchdl/releases](https://github.com/fiso64/slsk-batchdl/releases)
 2. Place it at this exact path:
    - **Linux / macOS:** `~/.local/share/flacidal/sldl` — then make it executable: `chmod +x ~/.local/share/flacidal/sldl`
-   - **Windows:** `%APPDATA%\flacidal\sldl.exe`
+   - **Windows:** `%APPDATA%\flacidal\sldl.exe` (i.e. `C:\Users\YourName\AppData\Roaming\flacidal\sldl.exe`)
 
 FLACidal detects the binary automatically. The Soulseek section in **Settings -> General** shows a green checkmark when it is found.
 
