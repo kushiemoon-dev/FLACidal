@@ -1070,7 +1070,7 @@ func (a *App) DownloadTrack(trackID int, outputDir string) (*core.DownloadResult
 	if outputDir == "" {
 		return nil, fmt.Errorf("no output directory specified")
 	}
-	return a.downloader.DownloadTrack(trackID, outputDir, "", "")
+	return a.downloader.DownloadTrack(trackID, outputDir, "", "", "", nil)
 }
 
 // DownloadTrackFromTidal downloads using TidalTrack data (for UI convenience)
@@ -1081,7 +1081,7 @@ func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*
 	if outputDir == "" {
 		return nil, fmt.Errorf("no output directory specified")
 	}
-	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label)
+	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label, "", nil)
 }
 
 // QueueDownloads queues multiple tracks for concurrent download
