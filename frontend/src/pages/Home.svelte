@@ -77,7 +77,7 @@
     'https://tidal.com/browse/playlist/abc-def-123',
     'https://tidal.com/browse/artist/12345',
     'https://tidal.com/browse/mix/abcdef123',
-    'https://www.qobuz.com/us-en/album/discovery-daft-punk/0060075335265',
+    'https://open.qobuz.com/album/0060075335265',
   ];
   let placeholderText = $state('|');
   let typewriterTimeout: ReturnType<typeof setTimeout> | undefined;
