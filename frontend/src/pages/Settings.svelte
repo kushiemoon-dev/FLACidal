@@ -311,6 +311,9 @@
         config.countryCode = result.countryCode || 'US';
         config.fontFamily = result.fontFamily || '';
         config.downloadQuality = result.downloadQuality || 'LOSSLESS';
+        config.soulseekEnabled = result.soulseekEnabled || false;
+        config.soulseekUsername = result.soulseekUsername || '';
+        config.soulseekPassword = result.soulseekPassword || '';
         downloadFolder.set(config.downloadFolder);
       }
 
