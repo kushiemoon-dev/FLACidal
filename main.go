@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"os"
 	"runtime"
 
@@ -12,6 +13,19 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed wails.json
+var wailsJSON []byte
+
+var appVersion = func() string {
+	var cfg struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(wailsJSON, &cfg); err != nil || cfg.Version == "" {
+		return "dev"
+	}
+	return cfg.Version
+}()
 
 func init() {
 	// Fix WebKit/JSC signal handler conflict on Linux that causes SIGSEGV crashes.
