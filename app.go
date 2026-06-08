@@ -308,6 +308,17 @@ func (a *App) startup(ctx context.Context) {
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 		a.sourceManager.RegisterSource(a.soulseekSource)
 		a.logBuffer.Info("Soulseek fallback source initialized")
+	} else if config.SoulseekEnabled {
+		if config.SoulseekBinaryPath != "" {
+			if _, err := os.Stat(config.SoulseekBinaryPath); os.IsNotExist(err) {
+				a.logBuffer.Warn(fmt.Sprintf("Soulseek enabled but binary not found at %s", config.SoulseekBinaryPath))
+			}
+		} else if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
+			a.logBuffer.Warn(fmt.Sprintf("Soulseek enabled but binary not found at default path %s", sldlPath))
+		}
+		if config.SoulseekUsername == "" || config.SoulseekPassword == "" {
+			a.logBuffer.Warn("Soulseek enabled but username/password not configured")
+		}
 	}
 
 	// Wire multi-source orchestrator: tries Amazon → Bandcamp → Soulseek when Tidal+Qobuz fail
@@ -1598,7 +1609,13 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 
 // GetSldlStatus checks if the sldl binary is installed and returns its version
 func (a *App) GetSldlStatus() map[string]interface{} {
-	sldlPath := defaultSldlPath()
+	sldlPath := ""
+	if a.config != nil {
+		sldlPath = a.config.SoulseekBinaryPath
+	}
+	if sldlPath == "" {
+		sldlPath = defaultSldlPath()
+	}
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
 		return map[string]interface{}{
@@ -1623,9 +1640,17 @@ func (a *App) GetSldlStatus() map[string]interface{} {
 	}
 }
 
-// TestSoulseekConnection verifies Soulseek credentials by running a quick search via sldl
+// TestSoulseekConnection verifies Soulseek credentials by running a quick search via sldl.
+// Success is determined by detecting an explicit "Logged in" message in verbose output,
+// which is emitted before any search results and is independent of firewall/inbound connectivity.
 func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
-	sldlPath := defaultSldlPath()
+	sldlPath := ""
+	if a.config != nil {
+		sldlPath = a.config.SoulseekBinaryPath
+	}
+	if sldlPath == "" {
+		sldlPath = defaultSldlPath()
+	}
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
 		return map[string]interface{}{"success": false, "message": "sldl not found"}
@@ -1634,6 +1659,10 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// -v (verbose) makes sldl print "Logged in <user>" on a dedicated line immediately
+	// after authentication succeeds — independently of whether search results arrive via
+	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
+	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
 	cmd := exec.CommandContext(ctx, sldlPath,
 		"test",
 		"--user", username,
@@ -1641,27 +1670,46 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 		"--listen-port", "49996",
 		"--print", "results",
 		"--no-progress",
+		"-v",
 	)
 	out, _ := cmd.CombinedOutput()
-	rawOutput := string(out)
+	rawOutput := strings.ToLower(string(out))
 
 	if ctx.Err() == context.DeadlineExceeded {
 		return map[string]interface{}{"success": false, "message": "Connection timed out"}
 	}
 
-	// Results start at the first "[" line — only check header for auth errors
-	header := rawOutput
-	if idx := strings.Index(rawOutput, "\n["); idx != -1 {
-		header = rawOutput[:idx]
+	// Auth failures — check before the success path so a rejected login is never
+	// misreported as a network error.
+	authErrors := []string{
+		"wrong password", "invalid password", "incorrect password",
+		"login failed", "failed to log in", "cannot login", "could not log in",
+		"login rejected", "authentication failed", "invalidpass",
 	}
-	headerLower := strings.ToLower(header)
-	if strings.Contains(headerLower, "wrong password") || strings.Contains(headerLower, "invalid password") || strings.Contains(headerLower, "login failed") || strings.Contains(headerLower, "cannot login") {
-		return map[string]interface{}{"success": false, "message": "Invalid credentials"}
+	for _, kw := range authErrors {
+		if strings.Contains(rawOutput, kw) {
+			return map[string]interface{}{"success": false, "message": "Invalid credentials"}
+		}
 	}
-	if strings.Contains(rawOutput, "\n[") || strings.HasPrefix(rawOutput, "[") {
-		return map[string]interface{}{"success": true, "message": "Connected successfully"}
+
+	// Explicit login success emitted by sldl -v: "Logged in <username>"
+	if strings.Contains(rawOutput, "logged in ") {
+		return map[string]interface{}{"success": true, "message": "Logged in"}
 	}
-	return map[string]interface{}{"success": false, "message": "No results — check credentials or network"}
+
+	// Network / connectivity failures
+	networkErrors := []string{
+		"could not connect", "connection refused", "unable to connect",
+		"no such host", "network is unreachable", "name resolution",
+		"connect: connection", "dial tcp",
+	}
+	for _, kw := range networkErrors {
+		if strings.Contains(rawOutput, kw) {
+			return map[string]interface{}{"success": false, "message": "Connection failed — check network"}
+		}
+	}
+
+	return map[string]interface{}{"success": false, "message": "Connection failed — check network or credentials"}
 }
 
 // GetConversionFormats returns available conversion formats
