@@ -631,6 +631,9 @@
             <span class="spinner small"></span>
           </div>
         {/if}
+        {#if detectedSource && !detectedSource.available}
+          <p class="unavailable-hint">{detectedSource.displayName} indisponible — utilise la recherche <strong>Universel</strong> (Deezer) pour télécharger via Soulseek.</p>
+        {/if}
       </div>
       <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">
         {#each regionCountries as country}
@@ -1190,6 +1193,12 @@
   .source-badge .unavailable-text {
     font-size: 11px;
     color: #f87171;
+  }
+
+  .unavailable-hint {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-top: 0.4rem;
   }
 
   .source-badge.detecting {
