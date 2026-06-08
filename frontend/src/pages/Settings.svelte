@@ -696,6 +696,7 @@
             </span>
           {/if}
         </div>
+        <p class="firewall-hint">Windows/macOS : autorisez <code>sldl</code> dans le pare-feu pour des téléchargements fiables.</p>
         {/if}
       </div>
 
@@ -1297,6 +1298,7 @@
   .source-priority-name { flex: 1; font-size: 0.9rem; }
   .priority-badge { font-size: 0.75rem; opacity: 0.5; font-weight: 600; min-width: 1.5rem; text-align: right; }
   .settings-hint { font-size: 0.8rem; opacity: 0.6; margin-bottom: 0.75rem; }
+  .firewall-hint { font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem; }
 
   .soulseek-info-box {
     background: color-mix(in srgb, var(--color-accent, #6366f1) 8%, transparent);
