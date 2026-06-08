@@ -212,10 +212,6 @@
   }
 
   async function downloadDeezerTrack(track: any) {
-    if (!track.isrc) {
-      toastStore.show('ISRC manquant pour ce track', 'error');
-      return;
-    }
     try {
       const deezerUrl = `https://www.deezer.com/track/${track.id}`;
       const content = await FetchContentFromURL(deezerUrl);
@@ -448,8 +444,7 @@
             <button
               class="track-download-btn"
               onclick={() => downloadDeezerTrack(track)}
-              disabled={!track.isrc}
-              title={track.isrc ? 'Download' : 'ISRC manquant'}
+              title="Download"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
