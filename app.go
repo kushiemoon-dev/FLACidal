@@ -64,6 +64,21 @@ func defaultSldlPath() string {
 	return filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
 }
 
+// ensureSldlExecutable ensures the sldl binary is executable and not quarantined.
+// On Linux/macOS it sets the executable bit (mirrors what the FFmpeg installer does).
+// On macOS it also removes the com.apple.quarantine xattr that Gatekeeper applies to
+// files downloaded via a browser — without this the process is killed on launch even
+// though os.Stat reports the file as present.
+func ensureSldlExecutable(path string) {
+	if goruntime.GOOS == "windows" {
+		return
+	}
+	os.Chmod(path, 0755) //nolint:errcheck — fails silently if file absent
+	if goruntime.GOOS == "darwin" {
+		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck — attr may not exist
+	}
+}
+
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
@@ -303,6 +318,7 @@ func (a *App) startup(ctx context.Context) {
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
+	ensureSldlExecutable(sldlPath)
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
@@ -429,6 +445,7 @@ func (a *App) SaveConfig(config core.Config) error {
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
+	ensureSldlExecutable(sldlPath)
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
@@ -1663,6 +1680,7 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	// after authentication succeeds — independently of whether search results arrive via
 	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
 	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
+	ensureSldlExecutable(sldlPath)
 	cmd := exec.CommandContext(ctx, sldlPath,
 		"test",
 		"--user", username,
@@ -1672,11 +1690,37 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 		"--no-progress",
 		"-v",
 	)
-	out, _ := cmd.CombinedOutput()
+	out, execErr := cmd.CombinedOutput()
 	rawOutput := strings.ToLower(string(out))
+
+	// Surface diagnostics in the in-app terminal (password is never logged)
+	a.logBuffer.Info(fmt.Sprintf("Soulseek: testing connection for user %q", username))
+	if execErr != nil {
+		a.logBuffer.Warn(fmt.Sprintf("Soulseek: sldl process error: %v", execErr))
+	}
+	if trimmed := strings.TrimSpace(string(out)); trimmed != "" {
+		a.logBuffer.Info("Soulseek: sldl output:\n" + trimmed)
+	}
 
 	if ctx.Err() == context.DeadlineExceeded {
 		return map[string]interface{}{"success": false, "message": "Connection timed out"}
+	}
+
+	// sldl produced no output — process failed to start (Gatekeeper/AV/permissions)
+	if strings.TrimSpace(rawOutput) == "" && execErr != nil {
+		hint := "ensure sldl is not blocked by antivirus or SmartScreen"
+		if goruntime.GOOS == "darwin" {
+			hint = "run: xattr -d com.apple.quarantine " + sldlPath
+		}
+		return map[string]interface{}{"success": false, "message": fmt.Sprintf("sldl failed to start — %s", hint)}
+	}
+	if strings.TrimSpace(rawOutput) == "" {
+		return map[string]interface{}{"success": false, "message": "sldl produced no output — verify the binary is valid"}
+	}
+
+	// .NET runtime not installed (framework-dependent build downloaded instead of self-contained)
+	if strings.Contains(rawOutput, "must install") && strings.Contains(rawOutput, ".net") {
+		return map[string]interface{}{"success": false, "message": ".NET runtime missing — download the self-contained sldl build from github.com/fiso64/slsk-batchdl/releases"}
 	}
 
 	// Auth failures — check before the success path so a rejected login is never
