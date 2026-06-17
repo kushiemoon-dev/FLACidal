@@ -207,6 +207,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             artifacts/flacidal-windows/flacidal.exe
             artifacts/flacidal-macos/flacidal.dmg
