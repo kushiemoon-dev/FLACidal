@@ -450,8 +450,12 @@ func (a *App) SaveConfig(config core.Config) error {
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 		a.sourceManager.RegisterSource(a.soulseekSource)
+		a.logBuffer.Info("Soulseek fallback source registered")
 	} else {
 		a.sourceManager.UnregisterSource("soulseek")
+		if config.SoulseekEnabled {
+			a.logBuffer.Warn("Soulseek enabled but unavailable (check binary path / credentials)")
+		}
 	}
 
 	return core.SaveConfig(&config)
