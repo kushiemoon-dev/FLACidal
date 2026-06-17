@@ -22,6 +22,8 @@
     SetSourceOrder,
     GetAppVersion,
     GetSldlStatus,
+    GetSourceHealth,
+    InstallSldl,
     TestSoulseekConnection,
   } from '../../wailsjs/go/main/App.js';
   import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
@@ -78,6 +80,10 @@
   let testingLogin = $state(false);
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
+  let sourceHealth: any[] = $state([]);
+  let checkingSourceHealth = $state(false);
+  let installingSldl = $state(false);
+  let sldlInstallProgress = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
   let sourceOrder = $state<string[]>([]);
   let dragIndex = $state<number | null>(null);
@@ -228,6 +234,29 @@
     }
   }
 
+  async function checkSourceHealth() {
+    checkingSourceHealth = true;
+    try {
+      sourceHealth = await GetSourceHealth();
+    } catch (e) {
+      console.error('Source health check failed:', e);
+    } finally {
+      checkingSourceHealth = false;
+    }
+  }
+
+  async function installSldlHandler() {
+    installingSldl = true;
+    sldlInstallProgress = { stage: 'downloading', percent: 0 };
+    try {
+      await InstallSldl();
+    } catch (e) {
+      installingSldl = false;
+      sldlInstallProgress = { stage: 'error', percent: 0 };
+      console.error('sldl install failed:', e);
+    }
+  }
+
   let isSaving = $state(false);
   let showResetConfirm = $state(false);
   let isResetting = $state(false);
@@ -270,7 +299,17 @@
         GetFFmpegInfo().then(info => { ffmpegInfo = info; });
       }
     });
-    return () => EventsOff('ffmpeg-install-progress');
+    EventsOn('sldl-install-progress', (progress: any) => {
+      sldlInstallProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
+      if (sldlInstallProgress.stage === 'complete') {
+        installingSldl = false;
+        GetSldlStatus().then(s => { sldlStatus = s; });
+      }
+    });
+    return () => {
+      EventsOff('ffmpeg-install-progress');
+      EventsOff('sldl-install-progress');
+    };
   });
 
   async function loadConfig() {
@@ -632,7 +671,22 @@
             {#if sldlStatus.installed}
               <p class="sldl-status sldl-ok">✓ sldl {sldlStatus.version} installed</p>
             {:else}
-              <p class="sldl-status sldl-missing">✗ sldl not found — <a href="https://github.com/fiso64/slsk-batchdl/releases" target="_blank" rel="noopener">download sldl</a> and place it at <code>{sldlStatus.path}</code></p>
+              <p class="sldl-status sldl-missing">✗ sldl not found at <code>{sldlStatus.path}</code></p>
+              {#if installingSldl}
+                <div class="ffmpeg-progress" style="margin-top:0.5rem">
+                  <div class="ffmpeg-progress-bar">
+                    <div class="ffmpeg-progress-fill" style="width: {sldlInstallProgress.percent}%"></div>
+                  </div>
+                  <span class="ffmpeg-progress-text">
+                    {sldlInstallProgress.stage === 'downloading' ? `Downloading... ${Math.round(sldlInstallProgress.percent)}%` : ''}
+                    {sldlInstallProgress.stage === 'extracting' ? 'Extracting...' : ''}
+                    {sldlInstallProgress.stage === 'complete' ? 'Done!' : ''}
+                    {sldlInstallProgress.stage === 'error' ? 'Failed' : ''}
+                  </span>
+                </div>
+              {:else}
+                <button class="btn-accent" style="margin-top:0.5rem" onclick={installSldlHandler}>Install sldl</button>
+              {/if}
             {/if}
           {/if}
         </div>
@@ -1145,6 +1199,35 @@
 
     <!-- ==================== STATUS TAB ==================== -->
     {:else if activeTab === 'status'}
+
+    <section class="settings-section">
+      <div class="group-title">Source Health</div>
+      <div class="api-status-header">
+        <button class="btn-secondary" onclick={checkSourceHealth} disabled={checkingSourceHealth}>
+          {checkingSourceHealth ? 'Checking...' : 'Check Sources'}
+        </button>
+      </div>
+      {#if sourceHealth.length > 0}
+        <div class="api-status-list">
+          {#each sourceHealth as src}
+            <div class="api-status-item">
+              <span class="api-name">{src.displayName}</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                <span class="status-badge"
+                  class:ok={src.status === 'online'}
+                  class:error={src.status === 'dead'}
+                  class:slow={src.status === 'degraded'}>
+                  {src.status}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
+                </span>
+                {#if src.reason}
+                  <span style="font-size:0.7rem;color:var(--text-muted);max-width:260px;text-align:right">{src.reason}</span>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
 
     <section class="settings-section">
       <div class="group-title">API Status</div>

@@ -97,6 +97,8 @@ export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
 export function GetSldlStatus():Promise<Record<string, any>>;
 
+export function GetSourceHealth():Promise<Array<{name: string, displayName: string, status: string, latencyMs: number, reason: string}>>;
+
 export function GetSourceAlbum(arg1:string,arg2:string):Promise<core.SourceAlbum>;
 
 export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePlaylist>;
@@ -104,6 +106,8 @@ export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePl
 export function GetSourceTrack(arg1:string,arg2:string):Promise<core.SourceTrack>;
 
 export function InstallFFmpeg():Promise<void>;
+
+export function InstallSldl():Promise<void>;
 
 export function IsConverterAvailable():Promise<boolean>;
 
