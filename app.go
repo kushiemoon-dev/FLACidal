@@ -1628,6 +1628,56 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 	}
 }
 
+// GetSourceHealth runs an on-demand capability probe for each registered source.
+// Returns per-source status: online, degraded, dead, or untested.
+// Called from the Settings Status tab on user request only — never polled.
+func (a *App) GetSourceHealth() []core.SourceHealth {
+	if a.sourceManager == nil {
+		return nil
+	}
+	return a.sourceManager.ProbeSources()
+}
+
+// InstallSldl downloads and installs the pinned sldl (sockseek) binary, emitting progress events.
+// After install, re-initializes the Soulseek source so IsAvailable() flips without a restart.
+func (a *App) InstallSldl() error {
+	progressCh := make(chan core.SldlInstallProgress, 10)
+
+	go func() {
+		for p := range progressCh {
+			runtime.EventsEmit(a.ctx, "sldl-install-progress", p)
+		}
+	}()
+
+	if err := core.InstallSldl(progressCh); err != nil {
+		if a.logBuffer != nil {
+			a.logBuffer.Error("sldl install failed: " + err.Error())
+		}
+		return err
+	}
+
+	// Remove quarantine attribute on macOS and ensure executable bit
+	sldlPath := core.GetSldlPath()
+	ensureSldlExecutable(sldlPath)
+
+	// Re-initialize Soulseek source so IsAvailable() flips without restart
+	if a.config != nil {
+		username := a.config.SoulseekUsername
+		password := a.config.SoulseekPassword
+		a.soulseekSource = core.NewSoulseekSource(sldlPath, username, password)
+		a.soulseekSource.SetLogger(a.logBuffer)
+		if a.config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
+			a.sourceManager.RegisterSource(a.soulseekSource)
+			a.logBuffer.Info("Soulseek source registered after sldl install")
+		}
+	}
+
+	if a.logBuffer != nil {
+		a.logBuffer.Info("sldl installed successfully to " + sldlPath)
+	}
+	return nil
+}
+
 // GetSldlStatus checks if the sldl binary is installed and returns its version
 func (a *App) GetSldlStatus() map[string]interface{} {
 	sldlPath := ""

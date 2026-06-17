@@ -190,6 +190,10 @@ export function GetSldlStatus() {
   return window['go']['main']['App']['GetSldlStatus']();
 }
 
+export function GetSourceHealth() {
+  return window['go']['main']['App']['GetSourceHealth']();
+}
+
 export function GetSourceAlbum(arg1, arg2) {
   return window['go']['main']['App']['GetSourceAlbum'](arg1, arg2);
 }
@@ -204,6 +208,10 @@ export function GetSourceTrack(arg1, arg2) {
 
 export function InstallFFmpeg() {
   return window['go']['main']['App']['InstallFFmpeg']();
+}
+
+export function InstallSldl() {
+  return window['go']['main']['App']['InstallSldl']();
 }
 
 export function IsConverterAvailable() {
