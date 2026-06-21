@@ -2,7 +2,7 @@
   import { queueStore, downloadFolder, type TidalTrack } from '../stores/queue';
   import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../../wailsjs/go/main/App.js';
   import { toastStore } from '../stores/toast';
-  import { formatNumber } from '../lib/format';
+  import { formatNumber, formatDuration } from '../lib/format';
 
   type SearchType = 'tracks' | 'albums' | 'artists' | 'universal';
 
@@ -135,12 +135,6 @@
     if (e.key === 'Enter') {
       handleSearch();
     }
-  }
-
-  function formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   function formatYear(releaseDate: string): string {

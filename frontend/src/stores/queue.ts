@@ -87,23 +87,7 @@ function createQueueStore() {
       });
     },
 
-    clearCancelled: () => {
-      update(queue => {
-        const newQueue = new Map<number, QueueItem>();
-        queue.forEach((item, key) => {
-          if (item.status !== 'cancelled') {
-            newQueue.set(key, item);
-          }
-        });
-        return newQueue;
-      });
-    },
-
     clearAll: () => {
-      set(new Map());
-    },
-
-    reset: () => {
       set(new Map());
     }
   };

@@ -74,7 +74,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       SetDownloadFolder: async (_f: string) => {},
       SelectDownloadFolder: async () => '/tmp/flacidal-selected',
       OpenDownloadFolder: async (_f: string) => {},
-      OpenInFileManager: async (_p: string) => {},
       OpenConfigFolder: async () => {},
 
       // Sources
