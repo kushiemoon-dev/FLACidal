@@ -141,10 +141,16 @@ func (a *App) startup(ctx context.Context) {
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoint pool: %d endpoints configured (override)", len(config.TidalHifiEndpoints)))
-	} else if config.TidalCustomEndpoint != "" {
+	} else {
 		base := core.GetTidalEndpoints()
-		a.downloader.SetEndpoints(append([]string{config.TidalCustomEndpoint}, base...))
-		a.logBuffer.Info("Tidal HiFi custom endpoint prepended: " + config.TidalCustomEndpoint)
+		priority := config.TidalPriorityEndpoints
+		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
+			priority = []string{config.TidalCustomEndpoint} // backward compat with legacy single-endpoint field
+		}
+		if len(priority) > 0 {
+			a.downloader.SetEndpoints(append(priority, base...))
+			a.logBuffer.Info(fmt.Sprintf("Tidal HiFi priority endpoints: %d self-host + %d public", len(priority), len(base)))
+		}
 	}
 	// Set download options from config
 	quality := config.DownloadQuality
@@ -420,6 +426,19 @@ func (a *App) SaveConfig(config core.Config) error {
 		opts.SaveLyricsFile = config.SaveLyricsFile
 		opts.SaveFolderCover = config.SaveFolderCover
 		a.downloader.SetOptions(opts)
+		// Re-apply priority endpoints live without restart
+		if len(config.TidalHifiEndpoints) == 0 {
+			base := core.GetTidalEndpoints()
+			priority := config.TidalPriorityEndpoints
+			if len(priority) == 0 && config.TidalCustomEndpoint != "" {
+				priority = []string{config.TidalCustomEndpoint}
+			}
+			if len(priority) > 0 {
+				a.downloader.SetEndpoints(append(priority, base...))
+			} else {
+				a.downloader.SetEndpoints(base)
+			}
+		}
 	}
 	if a.downloadManager != nil {
 		a.downloadManager.SetSourceOrder(config.SourceOrder)
@@ -528,60 +547,51 @@ type EndpointStatus struct {
 	LatencyMs int64  `json:"latencyMs"` // Response time in milliseconds
 }
 
-// CheckAPIStatus checks the status of all configured API endpoints
+// CheckAPIStatus returns the current pool state of all proxy endpoints without
+// making any network requests. It reads from the in-memory EndpointPool snapshots
+// maintained by the downloader and source services.
 func (a *App) CheckAPIStatus() []EndpointStatus {
-	endpoints := []struct {
-		name string
-		url  string
-	}{
-		{"Tidal HiFi (eu-central)", "https://eu-central.monochrome.tf"},
-		{"Tidal HiFi (us-west)", "https://us-west.monochrome.tf"},
-		{"Tidal HiFi (api)", "https://api.monochrome.tf"},
-		{"Tidal HiFi (samidy)", "https://monochrome-api.samidy.com"},
-		{"Tidal API", "https://api.tidalhifi.com"},
+	var results []EndpointStatus
+
+	if a.downloader != nil {
+		for _, ep := range a.downloader.PoolSnapshot() {
+			results = append(results, endpointStatToStatus("Tidal HiFi", ep))
+		}
+	}
+	if a.qobuzSource != nil {
+		for _, ep := range a.qobuzSource.ProxyPoolSnapshot() {
+			results = append(results, endpointStatToStatus("Qobuz", ep))
+		}
+	}
+	if a.amazonSource != nil {
+		for _, ep := range a.amazonSource.PoolSnapshot() {
+			results = append(results, endpointStatToStatus("Amazon", ep))
+		}
 	}
 
-	// Add Qobuz if enabled
-	if a.config != nil && a.config.QobuzEnabled {
-		endpoints = append(endpoints, struct {
-			name string
-			url  string
-		}{"Qobuz API", "https://www.qobuz.com/api.json/0.2"})
-	}
-
-	results := make([]EndpointStatus, len(endpoints))
-	var wg sync.WaitGroup
-	client := &http.Client{Timeout: 10 * time.Second}
-
-	for i, ep := range endpoints {
-		wg.Add(1)
-		go func(idx int, name, url string) {
-			defer wg.Done()
-			status := EndpointStatus{Name: name, URL: url}
-
-			start := time.Now()
-			resp, err := client.Head(url)
-			latency := time.Since(start)
-			status.LatencyMs = latency.Milliseconds()
-
-			if err != nil {
-				status.Status = "offline"
-			} else {
-				resp.Body.Close()
-				if resp.StatusCode >= 500 {
-					status.Status = "offline"
-				} else if latency > 3*time.Second {
-					status.Status = "slow"
-				} else {
-					status.Status = "online"
-				}
-			}
-			results[idx] = status
-		}(i, ep.name, ep.url)
-	}
-
-	wg.Wait()
 	return results
+}
+
+func endpointStatToStatus(sourceLabel string, ep core.EndpointStat) EndpointStatus {
+	var status string
+	switch ep.State {
+	case "dead":
+		status = "offline"
+	case "blacklisted", "probation":
+		status = "slow"
+	default:
+		status = "online"
+	}
+	host := ep.URL
+	if idx := strings.Index(ep.URL, "://"); idx >= 0 {
+		host = ep.URL[idx+3:]
+	}
+	return EndpointStatus{
+		Name:      sourceLabel + " — " + host,
+		URL:       ep.URL,
+		Status:    status,
+		LatencyMs: ep.LatencyMs,
+	}
 }
 
 // OpenConfigFolder opens the app config directory in the system file manager
@@ -1631,11 +1641,82 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 // GetSourceHealth runs an on-demand capability probe for each registered source.
 // Returns per-source status: online, degraded, dead, or untested.
 // Called from the Settings Status tab on user request only — never polled.
+// GetSourceHealth returns pool state for all sources without making any network
+// requests. States reflect real failures observed during actual downloads, not
+// synthetic probes — avoids the WebKitGTK signal-handler conflict on Linux.
 func (a *App) GetSourceHealth() []core.SourceHealth {
-	if a.sourceManager == nil {
-		return nil
+	var results []core.SourceHealth
+
+	if a.downloader != nil {
+		snaps := a.downloader.PoolSnapshot()
+		results = append(results, core.SourceHealth{
+			Name:        "tidal",
+			DisplayName: "Tidal HiFi",
+			Status:      poolSnapshotStatus(snaps),
+			Endpoints:   snaps,
+		})
 	}
-	return a.sourceManager.ProbeSources()
+
+	if a.qobuzSource != nil {
+		snaps := a.qobuzSource.ProxyPoolSnapshot()
+		results = append(results, core.SourceHealth{
+			Name:        "qobuz",
+			DisplayName: "Qobuz",
+			Status:      poolSnapshotStatus(snaps),
+			Endpoints:   snaps,
+		})
+	}
+
+	if a.amazonSource != nil {
+		snaps := a.amazonSource.PoolSnapshot()
+		results = append(results, core.SourceHealth{
+			Name:        "amazon",
+			DisplayName: "Amazon Music",
+			Status:      poolSnapshotStatus(snaps),
+			Endpoints:   snaps,
+		})
+	}
+
+	if a.soulseekSource != nil {
+		status := "dead"
+		reason := ""
+		if a.soulseekSource.IsAvailable() {
+			status = "online"
+		} else if a.config != nil && (a.config.SoulseekUsername == "" || a.config.SoulseekPassword == "") {
+			reason = "credentials not configured"
+		} else {
+			reason = "sldl not installed"
+		}
+		results = append(results, core.SourceHealth{
+			Name:        "soulseek",
+			DisplayName: "Soulseek",
+			Status:      status,
+			Reason:      reason,
+		})
+	}
+
+	return results
+}
+
+// poolSnapshotStatus maps an endpoint pool snapshot to a SourceHealth status string.
+func poolSnapshotStatus(snaps []core.EndpointStat) string {
+	if len(snaps) == 0 {
+		return "untested"
+	}
+	live := 0
+	for _, ep := range snaps {
+		if ep.State == "live" || ep.State == "probation" {
+			live++
+		}
+	}
+	switch {
+	case live == 0:
+		return "dead"
+	case live < len(snaps):
+		return "degraded"
+	default:
+		return "online"
+	}
 }
 
 // InstallSldl downloads and installs the pinned sldl (sockseek) binary, emitting progress events.

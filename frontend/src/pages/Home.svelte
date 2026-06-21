@@ -75,9 +75,9 @@
     'https://tidal.com/browse/album/123456789',
     'https://tidal.com/browse/track/987654321',
     'https://tidal.com/browse/playlist/abc-def-123',
-    'https://tidal.com/browse/artist/12345',
-    'https://tidal.com/browse/mix/abcdef123',
     'https://open.qobuz.com/album/0060075335265',
+    'https://bandcamp.com/album/some-album',
+    'https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy',
   ];
   let placeholderText = $state('|');
   let typewriterTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -582,7 +582,7 @@
         <span class="version-badge">v{version}</span>
       {/if}
     </div>
-    <p class="subtitle">Get Tidal & Qobuz tracks in true FLAC — no account required</p>
+    <p class="subtitle">Lossless music from Tidal, Qobuz & Soulseek — cascades automatically, no account required</p>
   </header>
 
   <!-- URL Input -->
@@ -1013,7 +1013,14 @@
         </svg>
       </div>
       <h3>Ready to Download</h3>
-      <p>Paste a Tidal URL above to get started</p>
+      <p>Paste a link above — FLACidal tries each source automatically until one works</p>
+      <div class="source-chips">
+        <span class="source-chip">Tidal HiFi</span>
+        <span class="source-chip">Qobuz</span>
+        <span class="source-chip">Bandcamp</span>
+        <span class="source-chip source-chip-p2p">Soulseek P2P</span>
+        <span class="source-chip source-chip-spotify">Spotify → FLAC</span>
+      </div>
     </div>
   {/if}
 </div>
@@ -1731,9 +1738,38 @@
   }
 
   .empty-state p {
-    margin: 0;
+    margin: 0 0 20px 0;
     color: var(--color-text-tertiary);
     font-size: 0.95rem;
+  }
+
+  .source-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .source-chip {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+  }
+
+  .source-chip-p2p {
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .source-chip-spotify {
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.08);
   }
 
   /* Artist discography */
