@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { GetFileMetadata, GetFileCoverArt } from '../../wailsjs/go/main/App.js';
+  import { formatBytes, formatDuration } from '../lib/format';
 
   let { filePath, onClose }: { filePath: string; onClose: () => void } = $props();
 
@@ -60,22 +61,6 @@
     }
   }
 
-  function formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  function formatSize(bytes: number): string {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-    } else if (bytes >= 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    } else if (bytes >= 1024) {
-      return `${(bytes / 1024).toFixed(2)} KB`;
-    }
-    return `${bytes} B`;
-  }
 
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
@@ -228,13 +213,13 @@
             </div>
             <div class="meta-item">
               <span class="meta-label">Size</span>
-              <span class="meta-value">{formatSize(metadata.size)}</span>
+              <span class="meta-value">{formatBytes(metadata.size)}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Cover Art</span>
               <span class="meta-value">
                 {#if metadata.hasCover}
-                  Yes ({metadata.coverMime}, {formatSize(metadata.coverSize || 0)})
+                  Yes ({metadata.coverMime}, {formatBytes(metadata.coverSize || 0)})
                 {:else}
                   No
                 {/if}

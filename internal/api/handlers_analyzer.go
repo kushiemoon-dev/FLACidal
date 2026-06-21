@@ -1,13 +1,5 @@
 package api
 
-// TODO: call RegisterAnalyzerRoutes from server.go
-// In setupRoutes(), replace the three stub analysis routes with:
-//   api.Post("/analyze", s.handleAnalyzeFileImpl)
-//   api.Post("/analyze/multiple", s.handleAnalyzeMultipleImpl)
-//   api.Post("/analyze/quick", s.handleQuickAnalyzeImpl)
-//
-// Or add RegisterAnalyzerRoutes(api) at the end of setupRoutes().
-
 import (
 	"fmt"
 	"os"
@@ -23,17 +15,6 @@ import (
 // or a multipart file upload (field name: "file", saved to /tmp).
 type analyzeRequest struct {
 	Path string `json:"path"`
-}
-
-// AnalyzeResponse is the JSON shape returned to callers.
-type AnalyzeResponse struct {
-	IsUpscaled     bool   `json:"isUpscaled"`
-	RealBitrate    int    `json:"realBitrate"`
-	SpectralCutoff int    `json:"spectralCutoff"`
-	Format         string `json:"format"`
-	Message        string `json:"message"`
-	Confidence     int    `json:"confidence"`
-	Verdict        string `json:"verdict"`
 }
 
 // handleAnalyzeFileImpl implements POST /api/analyze.
@@ -153,7 +134,6 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 
 	return fiber.Map{
 		"isUpscaled":     !r.IsTrueLossless,
-		"realBitrate":    0, // not computed by current analyzer; placeholder
 		"spectralCutoff": r.SpectrumCutoff,
 		"format":         "FLAC",
 		"message":        msg,

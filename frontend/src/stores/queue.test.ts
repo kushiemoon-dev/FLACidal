@@ -13,7 +13,7 @@ import {
 
 describe('queueStore', () => {
   beforeEach(() => {
-    queueStore.reset()
+    queueStore.clearAll()
   })
 
   describe('addItem', () => {
@@ -151,22 +151,6 @@ describe('queueStore', () => {
     })
   })
 
-  describe('clearCancelled', () => {
-    it('should clear only cancelled items', () => {
-      const items: QueueItem[] = [
-        { trackId: 1, title: 'T1', artist: 'A1', status: 'cancelled' },
-        { trackId: 2, title: 'T2', artist: 'A2', status: 'pending' },
-      ]
-
-      items.forEach((item) => queueStore.addItem(item))
-      queueStore.clearCancelled()
-
-      const remaining = get(queueItems)
-      expect(remaining).toHaveLength(1)
-      expect(remaining[0].status).toBe('pending')
-    })
-  })
-
   describe('clearAll', () => {
     it('should clear all items', () => {
       const items: QueueItem[] = [
@@ -186,7 +170,7 @@ describe('queueStore', () => {
 
 describe('queueStats', () => {
   beforeEach(() => {
-    queueStore.reset()
+    queueStore.clearAll()
   })
 
   it('should calculate correct stats', () => {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { formatNumber } from '../lib/format';
+  import { formatNumber, formatBytes } from '../lib/format';
   import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion } from '../../wailsjs/go/main/App.js';
   import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
@@ -196,14 +196,6 @@
     } finally {
       isLoading = false;
     }
-  }
-
-  function formatSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
   function formatDate(dateStr: string): string {
@@ -504,7 +496,7 @@
             </div>
             <span class="cell">{file.artist || '--'}</span>
             <span class="cell">{file.album || '--'}</span>
-            <span class="cell size">{formatSize(file.size)}</span>
+            <span class="cell size">{formatBytes(file.size)}</span>
             <span class="cell date">{formatDate(file.modTime)}</span>
             <div class="cell actions">
               <button
@@ -546,7 +538,7 @@
 
     <div class="files-footer">
       <span class="total-count">{formatNumber(files.length)} files</span>
-      <span class="total-size">{formatSize(files.reduce((acc, f) => acc + f.size, 0))} total</span>
+      <span class="total-size">{formatBytes(files.reduce((acc, f) => acc + f.size, 0))} total</span>
     </div>
   {/if}
 </div>

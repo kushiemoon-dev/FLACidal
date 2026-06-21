@@ -148,6 +148,7 @@ export function playSound(type: SoundType) {
 
   switch (type) {
     case 'complete':
+    case 'success':
       playSuccessSound();
       break;
     case 'error':
@@ -158,9 +159,6 @@ export function playSound(type: SoundType) {
       break;
     case 'click':
       playClickSound();
-      break;
-    case 'success':
-      playSuccessSound();
       break;
   }
 }
