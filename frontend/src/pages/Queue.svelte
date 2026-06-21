@@ -322,6 +322,16 @@
               {#if item.status === 'completed' && item.source}
                 <span class="source-badge">{item.source}</span>
               {/if}
+              {#if item.status === 'completed' && item.attempts && item.attempts.length > 1}
+                {@const failed = item.attempts.slice(0, -1)}
+                <span class="cascade-badge" title="{failed.join(', ')} unavailable">via {item.source} — {failed.join('/')} unavailable</span>
+              {/if}
+              {#if item.status === 'completed' && item.analysis}
+                <span
+                  class="verdict-badge verdict-{item.analysis.verdict}"
+                  title={item.analysis.details || item.analysis.verdictLabel}
+                >{item.analysis.verdictLabel}</span>
+              {/if}
             </span>
             {#if item.error}
               <span class="item-error">{item.error}</span>
@@ -667,6 +677,40 @@
     font-weight: 500;
     text-transform: uppercase;
     vertical-align: middle;
+  }
+
+  .cascade-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: rgba(100, 116, 139, 0.15);
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    vertical-align: middle;
+  }
+
+  .verdict-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    vertical-align: middle;
+    cursor: help;
+  }
+  .verdict-lossless {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+  .verdict-likely_upscaled {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+  }
+  .verdict-upscaled {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
   }
 
   .item-error {

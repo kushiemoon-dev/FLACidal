@@ -95,7 +95,9 @@
             filePath: result.filePath,
             fileSize: result.fileSize
           },
-          source: result.source || undefined
+          source: result.source || undefined,
+          attempts: result.attempts || undefined,
+          analysis: result.analysis || undefined
         });
         // Play complete sound
         playSound('complete');

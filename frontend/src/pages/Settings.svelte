@@ -60,6 +60,8 @@
     proxyUrl: '',
     tidalCustomEndpoint: '',
     qobuzCustomEndpoint: '',
+    tidalPriorityEndpoints: [] as string[],
+    qobuzPriorityEndpoints: [] as string[],
     skipExisting: true,
     artistSeparator: '; ',
     playlistSubfolder: true,
@@ -87,6 +89,8 @@
   let folderTemplatePreset = $state('{artist}/{album}');
   let sourceOrder = $state<string[]>([]);
   let dragIndex = $state<number | null>(null);
+  let tidalPriorityText = $state('');
+  let qobuzPriorityText = $state('');
 
   const sourceLabels: Record<string, string> = {
     tidal: 'Tidal',
@@ -342,6 +346,10 @@
         config.proxyUrl = result.proxyUrl || '';
         config.tidalCustomEndpoint = result.tidalCustomEndpoint || '';
         config.qobuzCustomEndpoint = result.qobuzCustomEndpoint || '';
+        config.tidalPriorityEndpoints = result.tidalPriorityEndpoints || [];
+        config.qobuzPriorityEndpoints = result.qobuzPriorityEndpoints || [];
+        tidalPriorityText = config.tidalPriorityEndpoints.join('\n');
+        qobuzPriorityText = config.qobuzPriorityEndpoints.join('\n');
         config.skipExisting = result.skipExisting !== false;
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
@@ -904,33 +912,43 @@
           </div>
         </div>
 
-        <div class="setting-item">
+        <div class="setting-item setting-item-stack">
           <div class="setting-info">
-            <span class="setting-label">Custom Tidal HiFi API URL</span>
-            <span class="setting-desc">Self-hosted hifi-api instance, tried first</span>
+            <span class="setting-label">Tidal HiFi Priority Instances</span>
+            <span class="setting-desc">Self-hosted hifi-api instances tried first (one URL per line), then public pool as fallback</span>
           </div>
           <div class="setting-control wide">
-            <input
-              type="text"
-              class="setting-input"
-              bind:value={config.tidalCustomEndpoint}
-              placeholder="https://your-hifi-api-instance.com"
-            />
+            <textarea
+              class="setting-input endpoint-list"
+              value={tidalPriorityText}
+              oninput={(e) => {
+                tidalPriorityText = (e.target as HTMLTextAreaElement).value;
+                config.tidalPriorityEndpoints = tidalPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
+              }}
+              placeholder={"https://your-hifi-api-1.com\nhttps://your-hifi-api-2.com"}
+              rows={3}
+              spellcheck={false}
+            ></textarea>
           </div>
         </div>
 
-        <div class="setting-item">
+        <div class="setting-item setting-item-stack">
           <div class="setting-info">
-            <span class="setting-label">Custom Qobuz API URL</span>
-            <span class="setting-desc">Self-hosted Qobuz proxy, tried first</span>
+            <span class="setting-label">Qobuz Priority Instances</span>
+            <span class="setting-desc">Self-hosted Qobuz proxies tried first (one URL per line), then public pool as fallback</span>
           </div>
           <div class="setting-control wide">
-            <input
-              type="text"
-              class="setting-input"
-              bind:value={config.qobuzCustomEndpoint}
-              placeholder="https://your-qobuz-proxy.com"
-            />
+            <textarea
+              class="setting-input endpoint-list"
+              value={qobuzPriorityText}
+              oninput={(e) => {
+                qobuzPriorityText = (e.target as HTMLTextAreaElement).value;
+                config.qobuzPriorityEndpoints = qobuzPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
+              }}
+              placeholder={"https://your-qobuz-proxy-1.com\nhttps://your-qobuz-proxy-2.com"}
+              rows={3}
+              spellcheck={false}
+            ></textarea>
           </div>
         </div>
 
@@ -1210,19 +1228,41 @@
       {#if sourceHealth.length > 0}
         <div class="api-status-list">
           {#each sourceHealth as src}
-            <div class="api-status-item">
-              <span class="api-name">{src.displayName}</span>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-                <span class="status-badge"
-                  class:ok={src.status === 'online'}
-                  class:error={src.status === 'dead'}
-                  class:slow={src.status === 'degraded'}>
-                  {src.status}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
-                </span>
-                {#if src.reason}
-                  <span style="font-size:0.7rem;color:var(--text-muted);max-width:260px;text-align:right">{src.reason}</span>
-                {/if}
+            <div class="api-status-item" class:api-status-item-expanded={src.endpoints?.length > 0}>
+              <div class="api-status-row">
+                <span class="api-name">{src.displayName}</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                  <span class="status-badge"
+                    class:ok={src.status === 'online'}
+                    class:error={src.status === 'dead'}
+                    class:slow={src.status === 'degraded' || src.status === 'untested'}>
+                    {src.status}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
+                  </span>
+                  {#if src.reason}
+                    <span style="font-size:0.7rem;color:var(--color-text-tertiary);max-width:260px;text-align:right">{src.reason}</span>
+                  {/if}
+                </div>
               </div>
+              {#if src.endpoints?.length > 0}
+                <div class="endpoint-health-list">
+                  {#each src.endpoints as ep}
+                    <div class="endpoint-health-row">
+                      <span class="endpoint-health-url" title={ep.url}>{ep.url.replace(/^https?:\/\//, '')}</span>
+                      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                        {#if ep.latencyMs > 0}
+                          <span class="endpoint-latency">{ep.latencyMs}ms</span>
+                        {/if}
+                        <span class="status-badge status-badge-sm"
+                          class:ok={ep.state === 'live'}
+                          class:error={ep.state === 'dead'}
+                          class:slow={ep.state === 'blacklisted' || ep.state === 'probation'}>
+                          {ep.state}{ep.state === 'probation' ? ` #${ep.revivals}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
           {/each}
         </div>
@@ -1560,6 +1600,26 @@
     padding-top: 0;
   }
 
+  .setting-item-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .setting-item-stack .setting-control.wide {
+    max-width: 100%;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .endpoint-list {
+    resize: vertical;
+    min-height: 72px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
   .setting-info {
     display: flex;
     flex-direction: column;
@@ -1889,17 +1949,59 @@
 
   .api-status-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     padding: 10px 14px;
     background: var(--color-bg-primary, #000);
     border: 1px solid var(--color-border-subtle, #222);
     border-radius: 8px;
+    gap: 0;
+  }
+
+  .api-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .api-name {
     font-size: 14px;
     font-weight: 500;
+  }
+
+  .endpoint-health-list {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border, #1a1a1a);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .endpoint-health-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .endpoint-health-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--color-text-tertiary, #666);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .endpoint-latency {
+    font-size: 11px;
+    color: var(--color-text-tertiary, #666);
+  }
+
+  .status-badge-sm {
+    font-size: 11px;
+    padding: 2px 7px;
   }
 
   /* FFmpeg */

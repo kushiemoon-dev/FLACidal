@@ -190,12 +190,12 @@ export function GetSldlStatus() {
   return window['go']['main']['App']['GetSldlStatus']();
 }
 
-export function GetSourceHealth() {
-  return window['go']['main']['App']['GetSourceHealth']();
-}
-
 export function GetSourceAlbum(arg1, arg2) {
   return window['go']['main']['App']['GetSourceAlbum'](arg1, arg2);
+}
+
+export function GetSourceHealth() {
+  return window['go']['main']['App']['GetSourceHealth']();
 }
 
 export function GetSourcePlaylist(arg1, arg2) {
