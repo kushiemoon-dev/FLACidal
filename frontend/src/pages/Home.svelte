@@ -20,6 +20,7 @@
     GetRecentAlbums,
   } from '../../wailsjs/go/main/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import { formatBytes, formatDuration } from '../lib/format';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
 
@@ -222,7 +223,7 @@
         coverUrl: initialContent.coverUrl,
         tracks: initialContent.tracks || []
       });
-      queueStore.reset();
+      queueStore.clearAll();
       onContentCleared();
     }
   });
@@ -290,7 +291,7 @@
     error = '';
     stopPreview();
     currentContent.set(null);
-    queueStore.reset();
+    queueStore.clearAll();
 
     try {
       // Use multi-source fetch if a source is detected, otherwise fall back to Tidal validation
@@ -420,18 +421,6 @@
 
   // Reactive: convert Map to object for proper Svelte reactivity
   let trackStatuses = $derived(Object.fromEntries($queueStore));
-
-  function formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
 
   function getContentTypeLabel(type: string): string {
     switch (type) {
@@ -926,7 +915,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    {formatFileSize(status.result?.fileSize || 0)}
+                    {formatBytes(status.result?.fileSize || 0)}
                   </span>
                 {:else if status?.status === 'downloading'}
                   <span class="status-badge downloading">

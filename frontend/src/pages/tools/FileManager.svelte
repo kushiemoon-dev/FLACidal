@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/main/App.js';
+  import { formatBytes } from '../../lib/format';
   import TabBar from '../../components/TabBar.svelte';
   import { FolderOpen, RefreshCw, Eye, Pencil } from 'lucide-svelte';
 
@@ -51,13 +52,6 @@
 
   function getFileName(path: string): string {
     return path.split('/').pop()?.split('\\').pop() || path;
-  }
-
-  function formatSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
   }
 
   onMount(async () => {
@@ -212,7 +206,7 @@
             <input type="checkbox" checked={file.selected} onchange={() => toggleFile(i)} />
             <span class="file-name">{file.name}</span>
             {#if file.size > 0}
-              <span class="file-size">{formatSize(file.size)}</span>
+              <span class="file-size">{formatBytes(file.size)}</span>
             {/if}
           </label>
         {/each}
