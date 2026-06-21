@@ -32,8 +32,6 @@ func (s *Server) handleQueueWebSocket(c *websocket.Conn) {
 }
 
 // RegisterQueueRoutes attaches the /ws/queue endpoint to the given Fiber app.
-//
-// TODO: call RegisterQueueRoutes from server.go's setupRoutes()
 func RegisterQueueRoutes(app *fiber.App, s *Server) {
 	app.Use("/ws/queue", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
