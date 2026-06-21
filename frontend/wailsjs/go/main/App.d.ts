@@ -97,9 +97,9 @@ export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
 export function GetSldlStatus():Promise<Record<string, any>>;
 
-export function GetSourceHealth():Promise<Array<{name: string, displayName: string, status: string, latencyMs: number, reason: string}>>;
-
 export function GetSourceAlbum(arg1:string,arg2:string):Promise<core.SourceAlbum>;
+
+export function GetSourceHealth():Promise<Array<core.SourceHealth>>;
 
 export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePlaylist>;
 

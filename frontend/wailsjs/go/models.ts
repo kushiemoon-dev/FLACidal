@@ -67,6 +67,8 @@ export namespace core {
 	    qobuzEndpoints?: string[];
 	    tidalCustomEndpoint?: string;
 	    qobuzCustomEndpoint?: string;
+	    tidalPriorityEndpoints?: string[];
+	    qobuzPriorityEndpoints?: string[];
 	    sourceOrder?: string[];
 	    qualityOrder?: string[];
 	    generateM3u8: boolean;
@@ -128,6 +130,8 @@ export namespace core {
 	        this.qobuzEndpoints = source["qobuzEndpoints"];
 	        this.tidalCustomEndpoint = source["tidalCustomEndpoint"];
 	        this.qobuzCustomEndpoint = source["qobuzCustomEndpoint"];
+	        this.tidalPriorityEndpoints = source["tidalPriorityEndpoints"];
+	        this.qobuzPriorityEndpoints = source["qobuzPriorityEndpoints"];
 	        this.sourceOrder = source["sourceOrder"];
 	        this.qualityOrder = source["qualityOrder"];
 	        this.generateM3u8 = source["generateM3u8"];
@@ -255,6 +259,7 @@ export namespace core {
 	    error?: string;
 	    analysis?: AnalysisResult;
 	    source?: string;
+	    attempts?: string[];
 	    bytesDownloaded?: number;
 	    bytesTotal?: number;
 	    speed?: number;
@@ -279,6 +284,7 @@ export namespace core {
 	        this.error = source["error"];
 	        this.analysis = this.convertValues(source["analysis"], AnalysisResult);
 	        this.source = source["source"];
+	        this.attempts = source["attempts"];
 	        this.bytesDownloaded = source["bytesDownloaded"];
 	        this.bytesTotal = source["bytesTotal"];
 	        this.speed = source["speed"];
@@ -334,6 +340,26 @@ export namespace core {
 	        this.format = source["format"];
 	        this.discNumber = source["discNumber"];
 	        this.trackNumber = source["trackNumber"];
+	    }
+	}
+	export class EndpointStat {
+	    url: string;
+	    state: string;
+	    fails: number;
+	    revivals: number;
+	    latencyMs?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointStat(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.state = source["state"];
+	        this.fails = source["fails"];
+	        this.revivals = source["revivals"];
+	        this.latencyMs = source["latencyMs"];
 	    }
 	}
 	export class FLACMetadata {
@@ -725,6 +751,46 @@ export namespace core {
 	        this.source = source["source"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.description = source["description"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SourceHealth {
+	    name: string;
+	    displayName: string;
+	    status: string;
+	    latencyMs: number;
+	    reason?: string;
+	    endpoints?: EndpointStat[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceHealth(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.displayName = source["displayName"];
+	        this.status = source["status"];
+	        this.latencyMs = source["latencyMs"];
+	        this.reason = source["reason"];
+	        this.endpoints = this.convertValues(source["endpoints"], EndpointStat);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

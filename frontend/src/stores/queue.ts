@@ -1,5 +1,13 @@
 import { writable, derived } from 'svelte/store';
 
+export interface AnalysisResult {
+  verdict: string;          // "lossless" | "likely_upscaled" | "upscaled"
+  verdictLabel: string;
+  isTrueLossless: boolean;
+  confidence: number;
+  details?: string;
+}
+
 export interface QueueItem {
   trackId: number;
   title: string;
@@ -11,6 +19,8 @@ export interface QueueItem {
     fileSize: number;
   };
   source?: string;
+  attempts?: string[];      // cascade order: all sources tried (first → last)
+  analysis?: AnalysisResult; // spectral analysis (auto for Soulseek/Bandcamp)
 }
 
 export interface QueueStats {
