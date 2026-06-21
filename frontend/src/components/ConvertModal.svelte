@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../../wailsjs/go/main/App.js';
+  import { formatBytes } from '../lib/format';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
@@ -96,14 +97,6 @@
     if (e.key === 'Escape' && !isConverting) {
       onClose();
     }
-  }
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
   function getQualityLabel(quality: string): string {

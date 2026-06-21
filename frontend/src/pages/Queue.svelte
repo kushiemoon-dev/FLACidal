@@ -27,18 +27,6 @@
     }
   }
 
-  function clearCompleted() {
-    queueStore.clearCompleted();
-  }
-
-  function clearFailed() {
-    queueStore.clearFailed();
-  }
-
-  function clearAll() {
-    queueStore.clearAll();
-  }
-
   async function retryAllFailedDownloads() {
     try {
       const count = await RetryAllFailed();
@@ -133,7 +121,7 @@
   });
 
   async function cleanAndRetry() {
-    clearCompleted();
+    queueStore.clearCompleted();
     await retryAllFailedDownloads();
   }
 </script>
@@ -220,13 +208,13 @@
         </svg>
         Export Failed
       </button>
-      <button class="action-btn" onclick={clearCompleted} disabled={$queueStats.completed === 0}>
+      <button class="action-btn" onclick={queueStore.clearCompleted} disabled={$queueStats.completed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
         Clear Completed
       </button>
-      <button class="action-btn" onclick={clearFailed} disabled={$queueStats.failed === 0}>
+      <button class="action-btn" onclick={queueStore.clearFailed} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="15" y1="9" x2="9" y2="15"/>
@@ -387,7 +375,7 @@
     message="Are you sure you want to clear all items from the queue?"
     confirmText="Clear All"
     variant="danger"
-    onConfirm={() => { clearAll(); showClearAllConfirm = false; }}
+    onConfirm={() => { queueStore.clearAll(); showClearAllConfirm = false; }}
     onCancel={() => showClearAllConfirm = false}
   />
 {/if}

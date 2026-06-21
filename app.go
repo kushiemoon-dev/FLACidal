@@ -1976,11 +1976,6 @@ func (a *App) ConvertFolder(folderPath, format, quality, outputDir string, delet
 	return a.ConvertFiles(files, format, quality, outputDir, deleteSource)
 }
 
-// OpenInFileManager opens the file's directory in the system file manager
-func (a *App) OpenInFileManager(path string) error {
-	runtime.BrowserOpenURL(a.ctx, "file://"+path)
-	return nil
-}
 
 // RetryDownload retries a failed download
 func (a *App) RetryDownload(trackID int) error {
