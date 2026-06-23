@@ -55,6 +55,7 @@
     skipUnavailableTracks: false,
     firstArtistOnly: false,
     autoQualityFallback: false,
+    autoStopOnCooldown: false,
     sourceOrder: ['tidal', 'qobuz'] as string[],
     qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
     proxyUrl: '',
@@ -337,6 +338,7 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.autoStopOnCooldown = result.autoStopOnCooldown || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         sourceOrder = config.sourceOrder.length > 0
@@ -443,6 +445,7 @@
         generateM3u8: config.generateM3u8,
         skipUnavailableTracks: config.skipUnavailableTracks,
         autoQualityFallback: config.autoQualityFallback,
+        autoStopOnCooldown: config.autoStopOnCooldown,
         firstArtistOnly: config.firstArtistOnly,
         sourceOrder: config.sourceOrder,
         qualityOrder: config.qualityOrder,
@@ -503,6 +506,7 @@
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
         config.autoQualityFallback = result.autoQualityFallback || false;
+        config.autoStopOnCooldown = result.autoStopOnCooldown || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
         config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz'];
         sourceOrder = config.sourceOrder.length > 0
@@ -875,6 +879,19 @@
           <div class="setting-control">
             <label class="toggle">
               <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Auto-Stop on Cooldown</label>
+            <span class="setting-desc">Pause queue when all Tidal endpoints are in cooldown</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.autoStopOnCooldown} />
               <span class="toggle-slider"></span>
             </label>
           </div>
