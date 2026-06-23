@@ -12,7 +12,7 @@
   let converting = $state(false);
   let results: { file: string; success: boolean; error?: string }[] = $state([]);
 
-  const formatOptions = ['MP3', 'AAC', 'OGG', 'Opus', 'Vorbis', 'ALAC', 'WAV'];
+  const formatOptions = ['MP3', 'AAC', 'OGG', 'Opus', 'Vorbis', 'ALAC', 'WAV', 'AIFF'];
 
   const qualityOptions: Record<string, string[]> = {
     MP3: ['320k', '256k', '192k', '128k', 'V0', 'V2'],
@@ -22,6 +22,7 @@
     Vorbis: ['q10', 'q8', 'q6', 'q4'],
     ALAC: [],
     WAV: [],
+    AIFF: [],
   };
 
   $effect(() => {

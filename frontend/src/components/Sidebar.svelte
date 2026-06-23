@@ -2,7 +2,7 @@
   import {
     Home, Search, Download, FolderOpen, Clock,
     Terminal, Settings, Info, LayoutGrid,
-    AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug
+    AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug, Music2
   } from 'lucide-svelte';
 
   let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0, onBugReport = () => {} }: {
@@ -26,7 +26,8 @@
     { id: 'tool-analyzer',    label: 'Audio Quality Analyzer', Icon: AudioWaveform },
     { id: 'tool-resampler',   label: 'Audio Resampler',        Icon: SlidersHorizontal },
     { id: 'tool-converter',   label: 'Audio Converter',        Icon: FileAudio },
-    { id: 'tool-filemanager', label: 'File Manager',           Icon: FolderCog },
+    { id: 'tool-filemanager',    label: 'File Manager',           Icon: FolderCog },
+    { id: 'tool-lyricsmanager', label: 'Lyrics Manager',         Icon: Music2 },
   ];
 
   const bottomItems = [
@@ -94,7 +95,7 @@
     <div class="flyout-wrapper">
       <button
         class="nav-item"
-        class:active={showToolsFlyout || ['tool-analyzer','tool-resampler','tool-converter','tool-filemanager'].includes(activePage)}
+        class:active={showToolsFlyout || ['tool-analyzer','tool-resampler','tool-converter','tool-filemanager','tool-lyricsmanager'].includes(activePage)}
         onclick={toggleToolsFlyout}
         title="Tools"
       >
