@@ -9,8 +9,15 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        shell: bash
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Extract version
         id: version
@@ -52,8 +59,14 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Extract version
         id: version
@@ -109,8 +122,14 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Extract version
         id: version
