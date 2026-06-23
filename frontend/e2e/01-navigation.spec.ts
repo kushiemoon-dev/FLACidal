@@ -53,12 +53,12 @@ test.describe('Navigation & routing', () => {
     await expect(page.locator('h1, h2').filter({ hasText: /Settings/i }).first()).toBeVisible()
   })
 
-  test('Tools flyout opens and reveals all 4 tools', async ({ page }) => {
+  test('Tools flyout opens and reveals all 5 tools', async ({ page }) => {
     await page.goto('/')
     await page.locator('.sidebar button[title="Tools"]').click()
     const flyout = page.locator('.flyout')
     await expect(flyout).toBeVisible()
-    for (const label of ['Audio Quality Analyzer', 'Audio Resampler', 'Audio Converter', 'File Manager']) {
+    for (const label of ['Audio Quality Analyzer', 'Audio Resampler', 'Audio Converter', 'File Manager', 'Lyrics Manager']) {
       await expect(flyout.locator('.flyout-item', { hasText: label })).toBeVisible()
     }
   })
@@ -69,5 +69,13 @@ test.describe('Navigation & routing', () => {
     await page.locator('.flyout-item', { hasText: 'Audio Converter' }).click()
     await page.waitForTimeout(250) // wait for fade transition
     await expect(page.locator('h1', { hasText: /Audio Converter/i }).first()).toBeVisible()
+  })
+
+  test('navigates to Lyrics Manager tool', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('.sidebar button[title="Tools"]').click()
+    await page.locator('.flyout-item', { hasText: 'Lyrics Manager' }).click()
+    await page.waitForTimeout(250)
+    await expect(page.locator('h1', { hasText: /Lyrics Manager/i }).first()).toBeVisible()
   })
 })

@@ -17,17 +17,17 @@ async function gotoSettings(page: any) {
 }
 
 test.describe('Settings page', () => {
-  test('Custom Tidal HiFi API URL field is present', async ({ page }) => {
+  test('Tidal HiFi Priority Instances field is present', async ({ page }) => {
     await gotoSettings(page)
     await expect(
-      page.locator('.setting-label', { hasText: 'Custom Tidal HiFi API URL' }).first(),
+      page.locator('.setting-label', { hasText: 'Tidal HiFi Priority Instances' }).first(),
     ).toBeVisible()
   })
 
-  test('Custom Qobuz API URL field is present', async ({ page }) => {
+  test('Qobuz Priority Instances field is present', async ({ page }) => {
     await gotoSettings(page)
     await expect(
-      page.locator('.setting-label', { hasText: 'Custom Qobuz API URL' }).first(),
+      page.locator('.setting-label', { hasText: 'Qobuz Priority Instances' }).first(),
     ).toBeVisible()
   })
 
@@ -41,23 +41,19 @@ test.describe('Settings page', () => {
     await expect(page.locator('input[type="checkbox"]').first()).toBeAttached()
   })
 
-  test('typing into custom Tidal endpoint persists in input', async ({ page }) => {
+  test('typing into Tidal priority instances textarea persists', async ({ page }) => {
     await gotoSettings(page)
-    const tidalInput = page
-      .locator('input[placeholder="https://your-hifi-api-instance.com"]')
-      .first()
-    await tidalInput.scrollIntoViewIfNeeded()
-    await tidalInput.fill('https://my-tidal-api.example.com')
-    await expect(tidalInput).toHaveValue('https://my-tidal-api.example.com')
+    const tidalTextarea = page.locator('textarea.endpoint-list').first()
+    await tidalTextarea.scrollIntoViewIfNeeded()
+    await tidalTextarea.fill('https://my-tidal-api.example.com')
+    await expect(tidalTextarea).toHaveValue('https://my-tidal-api.example.com')
   })
 
-  test('typing into custom Qobuz endpoint persists in input', async ({ page }) => {
+  test('typing into Qobuz priority instances textarea persists', async ({ page }) => {
     await gotoSettings(page)
-    const qobuzInput = page
-      .locator('input[placeholder="https://your-qobuz-proxy.com"]')
-      .first()
-    await qobuzInput.scrollIntoViewIfNeeded()
-    await qobuzInput.fill('https://my-qobuz.example.com')
-    await expect(qobuzInput).toHaveValue('https://my-qobuz.example.com')
+    const qobuzTextarea = page.locator('textarea.endpoint-list').nth(1)
+    await qobuzTextarea.scrollIntoViewIfNeeded()
+    await qobuzTextarea.fill('https://my-qobuz.example.com')
+    await expect(qobuzTextarea).toHaveValue('https://my-qobuz.example.com')
   })
 })
