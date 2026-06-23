@@ -254,10 +254,6 @@ export function OpenFLACFilesDialog() {
   return window['go']['main']['App']['OpenFLACFilesDialog']();
 }
 
-export function OpenInFileManager(arg1) {
-  return window['go']['main']['App']['OpenInFileManager'](arg1);
-}
-
 export function PauseDownloads() {
   return window['go']['main']['App']['PauseDownloads']();
 }

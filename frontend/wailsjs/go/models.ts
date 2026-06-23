@@ -390,6 +390,8 @@ export namespace core {
 	    lyrics?: string;
 	    syncedLyrics?: string;
 	    hasLyrics: boolean;
+	    upc?: string;
+	    popularity?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new FLACMetadata(source);
@@ -424,6 +426,8 @@ export namespace core {
 	        this.lyrics = source["lyrics"];
 	        this.syncedLyrics = source["syncedLyrics"];
 	        this.hasLyrics = source["hasLyrics"];
+	        this.upc = source["upc"];
+	        this.popularity = source["popularity"];
 	    }
 	}
 	export class LogEntry {
@@ -525,6 +529,8 @@ export namespace core {
 	    durationMs: number;
 	    uri: string;
 	    isrc?: string;
+	    preview_url?: string;
+	    popularity?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SpotifyTrack(source);
@@ -539,6 +545,8 @@ export namespace core {
 	        this.durationMs = source["durationMs"];
 	        this.uri = source["uri"];
 	        this.isrc = source["isrc"];
+	        this.preview_url = source["preview_url"];
+	        this.popularity = source["popularity"];
 	    }
 	}
 	export class TidalTrack {
@@ -692,6 +700,9 @@ export namespace core {
 	    sourceUrl: string;
 	    source: string;
 	    quality: string;
+	    previewUrl?: string;
+	    upc?: string;
+	    popularity?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SourceTrack(source);
@@ -717,6 +728,9 @@ export namespace core {
 	        this.sourceUrl = source["sourceUrl"];
 	        this.source = source["source"];
 	        this.quality = source["quality"];
+	        this.previewUrl = source["previewUrl"];
+	        this.upc = source["upc"];
+	        this.popularity = source["popularity"];
 	    }
 	}
 	export class SourceAlbum {
