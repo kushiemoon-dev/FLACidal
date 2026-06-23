@@ -22,6 +22,7 @@
   import AudioResampler from './pages/tools/AudioResampler.svelte';
   import AudioConverter from './pages/tools/AudioConverter.svelte';
   import FileManager from './pages/tools/FileManager.svelte';
+  import LyricsManager from './pages/tools/LyricsManager.svelte';
 
   let activePage = $state('home');
   let unsubscribeProgress: () => void;
@@ -159,6 +160,8 @@
         <AudioConverter />
       {:else if activePage === 'tool-filemanager'}
         <FileManager />
+      {:else if activePage === 'tool-lyricsmanager'}
+        <LyricsManager />
       {/if}
     </div>
     {/key}

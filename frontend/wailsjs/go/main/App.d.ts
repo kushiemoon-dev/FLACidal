@@ -129,8 +129,6 @@ export function OpenDownloadFolder(arg1:string):Promise<void>;
 
 export function OpenFLACFilesDialog():Promise<Array<string>>;
 
-export function OpenInFileManager(arg1:string):Promise<void>;
-
 export function PauseDownloads():Promise<boolean>;
 
 export function PreviewRename(arg1:Array<string>,arg2:string):Promise<Array<core.RenamePreview>>;
