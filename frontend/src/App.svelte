@@ -12,6 +12,7 @@
   import Terminal from './pages/Terminal.svelte';
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
+  import { toastStore } from './stores/toast';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import Toast from './components/Toast.svelte';
@@ -27,6 +28,7 @@
   let activePage = $state('home');
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
+  let unsubscribeCooldown: () => void;
   let refetchedContent: any = $state(null);
   let showIssueReporter = $state(false);
 
@@ -81,6 +83,13 @@
       queuePaused.set(paused);
     });
 
+    // Listen for endpoint cooldown (all Tidal endpoints dead, queue auto-paused)
+    unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: any) => {
+      queuePaused.set(true);
+      const msg = data?.result?.error || 'All Tidal endpoints in cooldown — queue paused';
+      toastStore.show(msg, 'error', 6000);
+    });
+
     // Listen for download progress events and update queue store
     unsubscribeProgress = EventsOn('download-progress', (data: any) => {
       const { trackId, status, result } = data;
@@ -121,6 +130,9 @@
     }
     if (unsubscribePaused) {
       unsubscribePaused();
+    }
+    if (unsubscribeCooldown) {
+      unsubscribeCooldown();
     }
   });
 </script>

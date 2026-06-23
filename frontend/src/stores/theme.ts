@@ -95,6 +95,19 @@ export const fontPresets = [
 export const fontFamily = writable<string>(fontPresets[0].value);
 
 export function applyFontFamily(font: string): void {
+  // Inject Google Fonts link for any font not already present in the document
+  const nameMatch = font.match(/'([^']+)'/) ?? font.match(/^([^,]+)/);
+  if (nameMatch) {
+    const fontName = nameMatch[1].trim();
+    const linkId = 'gf-' + fontName.replace(/\s+/g, '-').toLowerCase();
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@300;400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    }
+  }
   document.documentElement.style.setProperty('--font-family', font);
   fontFamily.set(font);
 }
