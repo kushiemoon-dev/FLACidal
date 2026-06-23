@@ -53,6 +53,7 @@ export namespace core {
 	    saveLyricsFile: boolean;
 	    autoAnalyze: boolean;
 	    autoQualityFallback: boolean;
+	    autoStopOnCooldown: boolean;
 	    tidalEnabled: boolean;
 	    qobuzEnabled: boolean;
 	    soulseekEnabled: boolean;
@@ -116,6 +117,7 @@ export namespace core {
 	        this.saveLyricsFile = source["saveLyricsFile"];
 	        this.autoAnalyze = source["autoAnalyze"];
 	        this.autoQualityFallback = source["autoQualityFallback"];
+	        this.autoStopOnCooldown = source["autoStopOnCooldown"];
 	        this.tidalEnabled = source["tidalEnabled"];
 	        this.qobuzEnabled = source["qobuzEnabled"];
 	        this.soulseekEnabled = source["soulseekEnabled"];
@@ -348,6 +350,7 @@ export namespace core {
 	    fails: number;
 	    revivals: number;
 	    latencyMs?: number;
+	    cooldownSecs?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new EndpointStat(source);
@@ -360,6 +363,7 @@ export namespace core {
 	        this.fails = source["fails"];
 	        this.revivals = source["revivals"];
 	        this.latencyMs = source["latencyMs"];
+	        this.cooldownSecs = source["cooldownSecs"];
 	    }
 	}
 	export class FLACMetadata {

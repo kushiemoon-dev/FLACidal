@@ -186,14 +186,19 @@ func (a *App) startup(ctx context.Context) {
 	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
 	// Events are queued and emitted one at a time from a dedicated goroutine.
 	type progressEvent struct {
-		trackID int
-		status  string
-		result  *core.DownloadResult
+		eventType string // "download-progress" if empty
+		trackID   int
+		status    string
+		result    *core.DownloadResult
 	}
 	eventCh := make(chan progressEvent, 64)
 	go func() {
 		for ev := range eventCh {
-			runtime.EventsEmit(ctx, "download-progress", map[string]interface{}{
+			evType := ev.eventType
+			if evType == "" {
+				evType = "download-progress"
+			}
+			runtime.EventsEmit(ctx, evType, map[string]interface{}{
 				"trackId": ev.trackID,
 				"status":  ev.status,
 				"result":  ev.result,
@@ -230,6 +235,22 @@ func (a *App) startup(ctx context.Context) {
 				if result != nil && result.Error != "" {
 					a.logBuffer.Error(fmt.Sprintf("Download failed: %s", result.Error))
 				}
+				// Auto-stop if all endpoints are in cooldown and the feature is enabled
+				if a.config.AutoStopOnCooldown && !a.downloader.HasHealthyEndpoints() {
+					if a.downloadManager.PauseQueue() {
+						a.logBuffer.Warn("All Tidal endpoints in cooldown — queue paused")
+						// Find the minimum cooldown across all dead endpoints
+						minCooldown := 0
+						for _, stat := range a.downloader.PoolSnapshot() {
+							if stat.CooldownSecs > 0 && (minCooldown == 0 || stat.CooldownSecs < minCooldown) {
+								minCooldown = stat.CooldownSecs
+							}
+						}
+						eventCh <- progressEvent{eventType: "endpoint-cooldown", trackID: -1, status: "cooldown", result: &core.DownloadResult{
+							Error: fmt.Sprintf("all endpoints in cooldown, resuming in %ds", minCooldown),
+						}}
+					}
+				}
 			case "cancelled":
 				a.logBuffer.Warn(fmt.Sprintf("Track %d cancelled", trackID))
 			}
@@ -253,7 +274,7 @@ func (a *App) startup(ctx context.Context) {
 
 		// Queue event for serialized emission (blocking — workers wait
 		// briefly if buffer is full, which is negligible vs download time)
-		eventCh <- progressEvent{trackID, status, result}
+		eventCh <- progressEvent{trackID: trackID, status: status, result: result}
 	})
 	a.downloadManager.Start()
 	a.logBuffer.Success("Download manager started (4 workers)")
