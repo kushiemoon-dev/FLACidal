@@ -215,6 +215,12 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       ClearLogs: async () => {},
       AddLog: async (_l: string, _m: string) => {},
 
+      // Recent albums (home page) + Soulseek status
+      GetRecentAlbums: async (_limit: number) => [],
+      GetSldlStatus: async () => ({ installed: false, version: '' }),
+      InstallSldl: async () => {},
+      GetSldlBinaryPath: async () => '',
+
       // Misc
       CheckAPIStatus: async () => [],
       CheckForUpdate: async () => ({ available: false }),
