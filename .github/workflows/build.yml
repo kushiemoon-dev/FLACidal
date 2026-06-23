@@ -204,12 +204,32 @@ jobs:
         with:
           path: artifacts
 
+      - name: Checkout (for CHANGELOG)
+        uses: actions/checkout@v4
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Extract section between this version header and the next
+          NOTES=$(awk "/^## v${VERSION}[^0-9]/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="See [CHANGELOG.md](CHANGELOG.md) for details."
+          fi
+          # GitHub Actions multiline output
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(github.ref_name, '-') }}
+          body: ${{ steps.changelog.outputs.notes }}
+          generate_release_notes: true
           files: |
             artifacts/flacidal-windows/flacidal.exe
             artifacts/flacidal-macos/flacidal.dmg
             artifacts/flacidal-linux/flacidal.AppImage
-          generate_release_notes: true
