@@ -1,13 +1,21 @@
-.PHONY: test test-unit test-integration test-frontend test-e2e test-all lint coverage clean help
+.PHONY: dev test test-unit test-integration test-frontend test-e2e test-all lint coverage clean help
 
 GO := go
 GOFLAGS := -v -race
 FRONTEND_DIR := frontend
 COVERAGE_FILE := coverage.out
 
+WAILS := $(HOME)/go/bin/wails
+WAILS_ENV := GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1
+
+dev:
+	@echo "Starting dev server..."
+	$(WAILS_ENV) $(WAILS) dev
+
 help:
 	@echo "FLACidal Test Commands"
 	@echo "======================"
+	@echo "make dev            - Run in dev mode (Wayland-safe)"
 	@echo "make test           - Run all tests (unit + integration)"
 	@echo "make test-unit      - Run unit tests only"
 	@echo "make test-integration - Run integration tests (requires -tags=integration)"
