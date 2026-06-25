@@ -1,111 +1,17 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { queueItems } from '../stores/queue';
 
-  interface QueueJob {
-    id: string;
-    title: string;
-    artist: string;
-    status: string;
-    progress: number;
-  }
-
-  interface QueueEvent {
-    type: 'queued' | 'started' | 'progress' | 'completed' | 'failed' | 'snapshot';
-    jobId?: string;
-    title?: string;
-    artist?: string;
-    progress?: number;
-    error?: string;
-    jobs?: QueueJob[];
-  }
-
-  let jobs = $state<Map<string, QueueJob>>(new Map());
   let collapsed = $state(false);
-  let ws: WebSocket | null = null;
 
-  const wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/queue`;
-
-  function connect() {
-    ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (e: MessageEvent) => {
-      let event: QueueEvent;
-      try {
-        event = JSON.parse(e.data);
-      } catch {
-        return;
-      }
-      handleEvent(event);
-    };
-
-    ws.onclose = () => {
-      // Reconnect after 3 s if closed unexpectedly
-      setTimeout(connect, 3000);
-    };
-  }
-
-  function handleEvent(event: QueueEvent) {
-    switch (event.type) {
-      case 'snapshot': {
-        const next = new Map<string, QueueJob>();
-        for (const job of event.jobs ?? []) {
-          next.set(job.id, job);
-        }
-        jobs = next;
-        break;
-      }
-      case 'queued':
-      case 'started': {
-        const id = event.jobId!;
-        const existing = jobs.get(id);
-        jobs = new Map(jobs).set(id, {
-          id,
-          title: event.title ?? existing?.title ?? '',
-          artist: event.artist ?? existing?.artist ?? '',
-          status: event.type === 'started' ? 'downloading' : 'queued',
-          progress: existing?.progress ?? 0,
-        });
-        break;
-      }
-      case 'progress': {
-        const id = event.jobId!;
-        const existing = jobs.get(id);
-        if (existing) {
-          jobs = new Map(jobs).set(id, { ...existing, status: 'downloading', progress: event.progress ?? existing.progress });
-        }
-        break;
-      }
-      case 'completed': {
-        jobs = new Map(jobs);
-        jobs.delete(event.jobId!);
-        break;
-      }
-      case 'failed': {
-        const id = event.jobId!;
-        const existing = jobs.get(id);
-        if (existing) {
-          jobs = new Map(jobs).set(id, { ...existing, status: 'failed' });
-        }
-        break;
-      }
-    }
-  }
-
-  onMount(() => {
-    connect();
-  });
-
-  onDestroy(() => {
-    ws?.close();
-  });
-
-  const jobList = $derived(Array.from(jobs.values()));
+  const jobList = $derived($queueItems.filter(item =>
+    item.status === 'queued' || item.status === 'downloading' || item.status === 'pending'
+  ));
 
   function statusLabel(status: string): string {
     switch (status) {
-      case 'queued': return 'Queued';
+      case 'queued':
+      case 'pending': return 'Queued';
       case 'downloading': return 'Downloading…';
-      case 'failed': return 'Failed';
       default: return status;
     }
   }
@@ -113,7 +19,6 @@
   function statusColor(status: string): string {
     switch (status) {
       case 'downloading': return 'var(--color-accent)';
-      case 'failed': return 'var(--color-error)';
       default: return 'var(--color-text-secondary)';
     }
   }
@@ -136,7 +41,7 @@
         <p class="empty">No downloads in progress</p>
       {:else}
         <ul class="job-list">
-          {#each jobList as job (job.id)}
+          {#each jobList as job (job.trackId)}
             <li class="job-item">
               <div class="job-meta">
                 <span class="job-title">{job.title}</span>
@@ -145,11 +50,6 @@
               <div class="job-status" style="color: {statusColor(job.status)}">
                 {statusLabel(job.status)}
               </div>
-              {#if job.status === 'downloading'}
-                <div class="progress-bar-track">
-                  <div class="progress-bar-fill" style="width: {job.progress}%"></div>
-                </div>
-              {/if}
             </li>
           {/each}
         </ul>
