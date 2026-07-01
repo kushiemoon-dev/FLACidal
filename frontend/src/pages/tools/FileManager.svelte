@@ -3,6 +3,7 @@
   import { ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/main/App.js';
   import { formatBytes } from '../../lib/format';
   import TabBar from '../../components/TabBar.svelte';
+  import { toastStore } from '../../stores/toast';
   import { FolderOpen, RefreshCw, Eye, Pencil } from 'lucide-svelte';
 
   interface FileEntry {
@@ -61,7 +62,9 @@
         currentFolder = folder;
         await loadFiles();
       }
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to load download folder', 'error');
+    }
   });
 
   async function browseFolder() {
@@ -71,7 +74,9 @@
         currentFolder = folder;
         await loadFiles();
       }
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to browse folder', 'error');
+    }
   }
 
   async function loadFiles() {
@@ -125,7 +130,9 @@
       await RenameFiles(selected, selectedTemplate);
       await loadFiles();
       previewResult = '';
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Rename failed', 'error');
+    }
     renaming = false;
   }
 </script>
