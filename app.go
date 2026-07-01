@@ -69,14 +69,17 @@ func defaultSldlPath() string {
 // On macOS it also removes the com.apple.quarantine xattr that Gatekeeper applies to
 // files downloaded via a browser — without this the process is killed on launch even
 // though os.Stat reports the file as present.
-func ensureSldlExecutable(path string) {
+func ensureSldlExecutable(path string) error {
 	if goruntime.GOOS == "windows" {
-		return
+		return nil
 	}
-	os.Chmod(path, 0755) //nolint:errcheck — fails silently if file absent
+	if err := os.Chmod(path, 0755); err != nil {
+		return fmt.Errorf("chmod +x on sldl failed: %w", err)
+	}
 	if goruntime.GOOS == "darwin" {
-		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck — attr may not exist
+		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck — attr commonly absent, not an error
 	}
+	return nil
 }
 
 // startup is called when the app starts
@@ -261,12 +264,16 @@ func (a *App) startup(ctx context.Context) {
 			switch status {
 			case "completed":
 				if cid, ok := a.trackContentMap.Load(trackID); ok {
-					_ = a.db.IncrementDownloadCounts(cid.(string), true)
+					if err := a.db.IncrementDownloadCounts(cid.(string), true); err != nil {
+						a.logBuffer.Warn(fmt.Sprintf("Failed to update download counts for %s: %v", cid.(string), err))
+					}
 					a.trackContentMap.Delete(trackID)
 				}
 			case "error":
 				if cid, ok := a.trackContentMap.Load(trackID); ok {
-					_ = a.db.IncrementDownloadCounts(cid.(string), false)
+					if err := a.db.IncrementDownloadCounts(cid.(string), false); err != nil {
+						a.logBuffer.Warn(fmt.Sprintf("Failed to update download counts for %s: %v", cid.(string), err))
+					}
 					a.trackContentMap.Delete(trackID)
 				}
 			}
@@ -345,7 +352,9 @@ func (a *App) startup(ctx context.Context) {
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
-	ensureSldlExecutable(sldlPath)
+	if err := ensureSldlExecutable(sldlPath); err != nil {
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
@@ -485,7 +494,9 @@ func (a *App) SaveConfig(config core.Config) error {
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
-	ensureSldlExecutable(sldlPath)
+	if err := ensureSldlExecutable(sldlPath); err != nil {
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
@@ -1168,12 +1179,14 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 
 	// Save initial history record
 	if a.db != nil && contentID != "" {
-		_ = a.db.SaveDownloadRecord(&core.DownloadRecord{
+		if err := a.db.SaveDownloadRecord(&core.DownloadRecord{
 			TidalContentID:   contentID,
 			TidalContentName: contentName,
 			ContentType:      contentType,
 			TracksTotal:      queued,
-		})
+		}); err != nil {
+			a.logBuffer.Warn(fmt.Sprintf("Failed to save download history for %s: %v", contentID, err))
+		}
 	}
 	// Map each trackID → contentID for progress callback
 	for _, t := range tracks {
@@ -1323,12 +1336,14 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 	err := a.downloadManager.QueueDownloadWithISRC(trackID, outputDir, title, artist, isrc)
 	if err == nil && a.db != nil {
 		contentID := strconv.Itoa(trackID)
-		_ = a.db.SaveDownloadRecord(&core.DownloadRecord{
+		if saveErr := a.db.SaveDownloadRecord(&core.DownloadRecord{
 			TidalContentID:   contentID,
 			TidalContentName: title,
 			ContentType:      "track",
 			TracksTotal:      1,
-		})
+		}); saveErr != nil {
+			a.logBuffer.Warn(fmt.Sprintf("Failed to save download history for %s: %v", contentID, saveErr))
+		}
 		a.trackContentMap.Store(trackID, contentID)
 	}
 	return err
@@ -1760,7 +1775,9 @@ func (a *App) InstallSldl() error {
 
 	// Remove quarantine attribute on macOS and ensure executable bit
 	sldlPath := core.GetSldlPath()
-	ensureSldlExecutable(sldlPath)
+	if err := ensureSldlExecutable(sldlPath); err != nil {
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+	}
 
 	// Re-initialize Soulseek source so IsAvailable() flips without restart
 	if a.config != nil {
@@ -1836,7 +1853,9 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	// after authentication succeeds — independently of whether search results arrive via
 	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
 	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
-	ensureSldlExecutable(sldlPath)
+	if err := ensureSldlExecutable(sldlPath); err != nil {
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+	}
 	cmd := exec.CommandContext(ctx, sldlPath,
 		"test",
 		"--user", username,

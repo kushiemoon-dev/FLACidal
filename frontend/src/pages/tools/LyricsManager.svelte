@@ -4,6 +4,7 @@
   import { FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../../wailsjs/go/main/App.js';
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, Music2, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
+  import { toastStore } from '../../stores/toast';
 
   let files: string[] = $state([]);
   let fetching = $state(false);
@@ -30,7 +31,9 @@
         files = [...files, ...selected];
         results = [];
       }
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to select files', 'error');
+    }
   }
 
   function removeFile(index: number) {
