@@ -4,6 +4,7 @@
   import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/main/App.js';
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, FolderOpen, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
+  import { toastStore } from '../../stores/toast';
 
   let files: string[] = $state([]);
   let outputFormat = $state('MP3');
@@ -38,7 +39,9 @@
     try {
       const folder = await GetDownloadFolder();
       if (folder) outputDir = folder;
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to load download folder', 'error');
+    }
 
     OnFileDrop((_x: number, _y: number, paths: string[]) => {
       const audioFiles = paths.filter(p =>
@@ -62,14 +65,18 @@
         files = [...files, ...selected];
         results = [];
       }
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to select files', 'error');
+    }
   }
 
   async function selectOutputFolder() {
     try {
       const folder = await SelectDownloadFolder();
       if (folder) outputDir = folder;
-    } catch {}
+    } catch (err: any) {
+      toastStore.show(err?.message || 'Failed to select output folder', 'error');
+    }
   }
 
   function removeFile(index: number) {
