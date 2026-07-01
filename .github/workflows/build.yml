@@ -218,15 +218,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout (for CHANGELOG)
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Checkout (for CHANGELOG)
-        uses: actions/checkout@v4
-        with:
-          clean: false
 
       - name: Extract release notes from CHANGELOG
         id: changelog
