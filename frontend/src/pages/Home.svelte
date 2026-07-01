@@ -48,7 +48,9 @@
   onMount(() => {
     GetRecentAlbums(24).then(albums => {
       recentAlbums = albums ?? [];
-    }).catch(() => {});
+    }).catch((e: any) => {
+      error = e?.message || 'Failed to load recent albums';
+    });
   });
 
   async function redownloadAlbum(album: any) {

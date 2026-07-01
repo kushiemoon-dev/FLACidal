@@ -119,7 +119,9 @@
     newOrder.splice(index, 0, moved);
     sourceOrder = newOrder;
     dragIndex = null;
-    SetSourceOrder(newOrder).catch(() => {});
+    SetSourceOrder(newOrder).catch(() => {
+      toastStore.show('Failed to save source order', 'error');
+    });
   }
 
   const settingsTabs = [
