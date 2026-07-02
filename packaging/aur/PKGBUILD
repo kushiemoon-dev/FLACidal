@@ -8,7 +8,9 @@ arch=('x86_64')
 url='https://github.com/kushiemoon-dev/FLACidal'
 license=('MIT')
 # Wails webview runtime deps. The AppImage bundles the app but not the webview.
-depends=('webkit2gtk' 'gtk3')
+# Confirmed by running the extracted binary and inspecting /proc/PID/maps:
+# it loads libwebkit2gtk-4.1.so + libgtk-3.so, not the (chaotic-aur-only) webkit2gtk 4.0.
+depends=('webkit2gtk-4.1' 'gtk3')
 optdepends=('ffmpeg: audio conversion (FLAC/AIFF/ALAC/WAV)'
             'slsk-batchdl: Soulseek (slsk) downloads')
 provides=('flacidal')
