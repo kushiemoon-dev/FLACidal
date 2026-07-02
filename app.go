@@ -186,6 +186,7 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize download manager with 4 concurrent workers
 	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
+	a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
 
 	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
 	// Events are queued and emitted one at a time from a dedicated goroutine.
@@ -434,6 +435,7 @@ func (a *App) SaveConfig(config core.Config) error {
 	if a.downloadManager != nil {
 		a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
 		a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
+		a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
 	}
 	if a.downloader != nil {
 		opts := a.downloader.GetOptions()

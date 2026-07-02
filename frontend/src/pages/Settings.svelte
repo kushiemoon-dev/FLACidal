@@ -50,6 +50,9 @@
     soulseekEnabled: false,
     soulseekUsername: '',
     soulseekPassword: '',
+    jellyfinEnabled: false,
+    jellyfinUrl: '',
+    jellyfinApiKey: '',
     preferredSource: 'tidal',
     generateM3u8: false,
     skipUnavailableTracks: false,
@@ -369,6 +372,9 @@
         config.soulseekEnabled = result.soulseekEnabled || false;
         config.soulseekUsername = result.soulseekUsername || '';
         config.soulseekPassword = result.soulseekPassword || '';
+        config.jellyfinEnabled = result.jellyfinEnabled || false;
+        config.jellyfinUrl = result.jellyfinUrl || '';
+        config.jellyfinApiKey = result.jellyfinApiKey || '';
         downloadFolder.set(config.downloadFolder);
       }
 
@@ -447,6 +453,9 @@
         soulseekEnabled: config.soulseekEnabled,
         soulseekUsername: config.soulseekUsername || '',
         soulseekPassword: config.soulseekPassword || '',
+        jellyfinEnabled: config.jellyfinEnabled,
+        jellyfinUrl: config.jellyfinUrl || '',
+        jellyfinApiKey: config.jellyfinApiKey || '',
         preferredSource: config.preferredSource,
         generateM3u8: config.generateM3u8,
         skipUnavailableTracks: config.skipUnavailableTracks,
@@ -509,6 +518,9 @@
         config.soulseekEnabled = result.soulseekEnabled || false;
         config.soulseekUsername = result.soulseekUsername || '';
         config.soulseekPassword = result.soulseekPassword || '';
+        config.jellyfinEnabled = result.jellyfinEnabled || false;
+        config.jellyfinUrl = result.jellyfinUrl || '';
+        config.jellyfinApiKey = result.jellyfinApiKey || '';
         config.preferredSource = result.preferredSource || 'tidal';
         config.generateM3u8 = result.generateM3u8 || false;
         config.skipUnavailableTracks = result.skipUnavailableTracks || false;
@@ -772,6 +784,51 @@
           {/if}
         </div>
         <p class="firewall-hint">Windows/macOS : autorisez <code>sldl</code> dans le pare-feu pour des téléchargements fiables.</p>
+        {/if}
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Enable Jellyfin Scan Trigger</span>
+            <span class="setting-desc">Ask Jellyfin to rescan its library a few seconds after downloads finish</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.jellyfinEnabled} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        {#if config.jellyfinEnabled}
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Jellyfin Server URL</span>
+            <span class="setting-desc">Server root, e.g. http://localhost:8096</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="text"
+              class="setting-input"
+              bind:value={config.jellyfinUrl}
+              placeholder="http://localhost:8096"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Jellyfin API Key</span>
+            <span class="setting-desc">Dashboard -> API Keys</span>
+          </div>
+          <div class="setting-control wide">
+            <input
+              type="password"
+              class="setting-input"
+              bind:value={config.jellyfinApiKey}
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
         {/if}
       </div>
 
