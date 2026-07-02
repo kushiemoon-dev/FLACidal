@@ -176,6 +176,7 @@ func (a *App) startup(ctx context.Context) {
 		QualityFallbackOrder: config.QualityOrder,
 		FirstArtistOnly:      config.FirstArtistOnly,
 		SkipExisting:         config.SkipExisting,
+		ExternalLibraryPaths: config.ExternalLibraryPaths,
 		ArtistSeparator:      config.ArtistSeparator,
 		PlaylistSubfolder:    config.PlaylistSubfolder,
 		SaveLyricsFile:       config.SaveLyricsFile,
@@ -440,6 +441,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		opts.QualityFallbackOrder = config.QualityOrder
 		opts.FirstArtistOnly = config.FirstArtistOnly
 		opts.SkipExisting = config.SkipExisting
+		opts.ExternalLibraryPaths = config.ExternalLibraryPaths
 		opts.ArtistSeparator = config.ArtistSeparator
 		opts.PlaylistSubfolder = config.PlaylistSubfolder
 		if config.DownloadQuality != "" {

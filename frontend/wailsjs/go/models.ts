@@ -79,6 +79,7 @@ export namespace core {
 	    artistTagMode?: string;
 	    playlistSubfolder: boolean;
 	    skipExisting: boolean;
+	    externalLibraryPaths?: string[];
 	    separateSingles: boolean;
 	    countryCode?: string;
 	    fontFamily?: string;
@@ -143,6 +144,7 @@ export namespace core {
 	        this.artistTagMode = source["artistTagMode"];
 	        this.playlistSubfolder = source["playlistSubfolder"];
 	        this.skipExisting = source["skipExisting"];
+	        this.externalLibraryPaths = source["externalLibraryPaths"];
 	        this.separateSingles = source["separateSingles"];
 	        this.countryCode = source["countryCode"];
 	        this.fontFamily = source["fontFamily"];
