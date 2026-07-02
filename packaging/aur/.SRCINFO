@@ -1,0 +1,21 @@
+pkgbase = flacidal-bin
+	pkgdesc = Free FLAC and hi-res music downloader (Tidal, Qobuz, Amazon, Soulseek, Bandcamp)
+	pkgver = 4.11.0
+	pkgrel = 1
+	url = https://github.com/kushiemoon-dev/FLACidal
+	arch = x86_64
+	license = MIT
+	depends = webkit2gtk
+	depends = gtk3
+	optdepends = ffmpeg: audio conversion (FLAC/AIFF/ALAC/WAV)
+	optdepends = slsk-batchdl: Soulseek (slsk) downloads
+	provides = flacidal
+	conflicts = flacidal
+	options = !strip
+	options = !debug
+	source = flacidal-4.11.0.AppImage::https://github.com/kushiemoon-dev/FLACidal/releases/download/v4.11.0/flacidal.AppImage
+	source = LICENSE-4.11.0::https://github.com/kushiemoon-dev/FLACidal/raw/v4.11.0/LICENSE
+	sha256sums = dc751abc5166fc196c9e0230320077151fbff420586216ae63fff691116d2d52
+	sha256sums = 7576c6620cb1d95a2633595c1bedf85c70541d4ae3c3b2fc31bad8be11a14e67
+
+pkgname = flacidal-bin
