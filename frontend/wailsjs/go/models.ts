@@ -60,6 +60,9 @@ export namespace core {
 	    soulseekUsername?: string;
 	    soulseekPassword?: string;
 	    soulseekBinaryPath?: string;
+	    jellyfinEnabled: boolean;
+	    jellyfinUrl?: string;
+	    jellyfinApiKey?: string;
 	    qobuzAppId?: string;
 	    qobuzAppSecret?: string;
 	    qobuzAuthToken?: string;
@@ -125,6 +128,9 @@ export namespace core {
 	        this.soulseekUsername = source["soulseekUsername"];
 	        this.soulseekPassword = source["soulseekPassword"];
 	        this.soulseekBinaryPath = source["soulseekBinaryPath"];
+	        this.jellyfinEnabled = source["jellyfinEnabled"];
+	        this.jellyfinUrl = source["jellyfinUrl"];
+	        this.jellyfinApiKey = source["jellyfinApiKey"];
 	        this.qobuzAppId = source["qobuzAppId"];
 	        this.qobuzAppSecret = source["qobuzAppSecret"];
 	        this.qobuzAuthToken = source["qobuzAuthToken"];
