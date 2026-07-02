@@ -99,19 +99,6 @@ figure{background:var(--panel);border:1px solid var(--line);border-radius:14px;o
 figure img{width:100%;display:block;border-bottom:1px solid var(--line)}
 figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);padding:11px 15px}
 
-/* Compare */
-.matrix{margin-top:34px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-table{width:100%;border-collapse:collapse;font-size:15px}
-th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line)}
-thead th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--muted);background:var(--panel-2)}
-thead th.us{color:var(--rose)}
-tbody td:first-child{color:var(--muted)}
-tbody tr:last-child td{border-bottom:none}
-td.us{color:var(--ink);font-weight:600}
-.yes{color:var(--live)}.no{color:var(--faint)}
-.mnote{font-size:13px;color:var(--faint);margin-top:12px}
-
 /* Soulseek */
 .slsk{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);
   border-radius:12px;padding:26px 28px;margin-top:30px}
@@ -147,7 +134,7 @@ footer .spacer{flex:1}
     </a>
     <div class="spacer"></div>
     <a class="link" href="#download">Download</a>
-    <a class="link" href="#compare">vs SpotiFLAC</a>
+    <a class="link" href="#why">Why FLACidal</a>
     <a class="link" href="#soulseek">Soulseek</a>
     <a class="gh" href="https://github.com/kushiemoon-dev/FLACidal">GitHub</a>
   </div>
@@ -216,25 +203,25 @@ footer .spacer{flex:1}
     </div>
   </section>
 
-  <section id="compare">
-    <span class="eyebrow">Comparison</span>
-    <h2>Coming from SpotiFLAC?</h2>
-    <p class="lead">SpotiFLAC is web-based and winding down its free access. FLACidal is a local app with more sources and a P2P fallback that doesn't depend on any single proxy staying alive.</p>
-    <div class="matrix">
-      <table>
-        <thead><tr><th>Capability</th><th class="us">FLACidal</th><th>SpotiFLAC</th></tr></thead>
-        <tbody>
-          <tr><td>Soulseek P2P backbone</td><td class="us"><span class="yes">Yes</span></td><td><span class="no">No</span></td></tr>
-          <tr><td>Sources</td><td class="us">Tidal · Qobuz · Amazon · Bandcamp · Soulseek</td><td>Tidal · Qobuz</td></tr>
-          <tr><td>Runs offline (desktop app)</td><td class="us"><span class="yes">Win · macOS · Linux</span></td><td><span class="no">Web only</span></td></tr>
-          <tr><td>Mobile app</td><td class="us"><span class="yes">Android · iOS</span></td><td><span class="no">No</span></td></tr>
-          <tr><td>Metadata (UPC · ISRC · lyrics · popularity)</td><td class="us"><span class="yes">Yes</span></td><td>Limited</td></tr>
-          <tr><td>Format conversion (AIFF · ALAC · WAV)</td><td class="us"><span class="yes">Yes</span></td><td><span class="no">No</span></td></tr>
-          <tr><td>License</td><td class="us"><span class="yes">Open source · MIT</span></td><td>Closed</td></tr>
-        </tbody>
-      </table>
+  <section id="why">
+    <span class="eyebrow">Why FLACidal</span>
+    <h2>No account, no single point of failure</h2>
+    <p class="lead">Five independent sources, a P2P backbone that needs no API key, and full metadata — all in a native app that runs on your machine.</p>
+    <div class="os">
+      <div class="card" style="cursor:default">
+        <div class="plat">🔀 Five sources, one queue</div>
+        <div class="file">Tidal · Qobuz · Amazon · Bandcamp · Soulseek</div>
+        <div class="file" style="margin:0">Automatic fallback until one succeeds.</div>
+      </div>
+      <div class="card" style="cursor:default">
+        <div class="plat">📡 P2P backbone</div>
+        <div class="file">Soulseek needs no proxy, no API key, no third-party service to stay up.</div>
+      </div>
+      <div class="card" style="cursor:default">
+        <div class="plat">🏷️ Full metadata</div>
+        <div class="file">UPC, ISRC, lyrics, popularity, embedded cover art — plus AIFF / ALAC / WAV conversion.</div>
+      </div>
     </div>
-    <p class="mnote">Comparison reflects publicly available information and may change — verify current SpotiFLAC capabilities before relying on it.</p>
   </section>
 
   <section id="soulseek">
