@@ -64,6 +64,7 @@
     tidalPriorityEndpoints: [] as string[],
     qobuzPriorityEndpoints: [] as string[],
     skipExisting: true,
+    externalLibraryPaths: [] as string[],
     artistSeparator: '; ',
     playlistSubfolder: true,
     folderTemplate: '',
@@ -92,6 +93,7 @@
   let dragIndex = $state<number | null>(null);
   let tidalPriorityText = $state('');
   let qobuzPriorityText = $state('');
+  let externalLibraryPathsText = $state('');
 
   const sourceLabels: Record<string, string> = {
     tidal: 'Tidal',
@@ -355,6 +357,8 @@
         tidalPriorityText = config.tidalPriorityEndpoints.join('\n');
         qobuzPriorityText = config.qobuzPriorityEndpoints.join('\n');
         config.skipExisting = result.skipExisting !== false;
+        config.externalLibraryPaths = result.externalLibraryPaths || [];
+        externalLibraryPathsText = config.externalLibraryPaths.join('\n');
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
         config.folderTemplate = result.folderTemplate || '';
@@ -455,6 +459,7 @@
         tidalCustomEndpoint: config.tidalCustomEndpoint || '',
         qobuzCustomEndpoint: config.qobuzCustomEndpoint || '',
         skipExisting: config.skipExisting,
+        externalLibraryPaths: config.externalLibraryPaths,
         artistSeparator: config.artistSeparator,
         playlistSubfolder: config.playlistSubfolder,
         folderTemplate: config.folderTemplate,
@@ -516,6 +521,8 @@
           : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.skipExisting = result.skipExisting !== false;
+        config.externalLibraryPaths = result.externalLibraryPaths || [];
+        externalLibraryPathsText = config.externalLibraryPaths.join('\n');
         config.artistSeparator = result.artistSeparator || '; ';
         config.playlistSubfolder = result.playlistSubfolder !== false;
         config.folderTemplate = result.folderTemplate || '';
@@ -870,6 +877,26 @@
               <input type="checkbox" bind:checked={config.skipExisting} />
               <span class="toggle-slider"></span>
             </label>
+          </div>
+        </div>
+
+        <div class="setting-item setting-item-stack">
+          <div class="setting-info">
+            <span class="setting-label">External Library Paths</span>
+            <span class="setting-desc">Also check these folders for ISRC matches (e.g. a Navidrome/Jellyfin library), one path per line</span>
+          </div>
+          <div class="setting-control wide">
+            <textarea
+              class="setting-input endpoint-list"
+              value={externalLibraryPathsText}
+              oninput={(e) => {
+                externalLibraryPathsText = (e.target as HTMLTextAreaElement).value;
+                config.externalLibraryPaths = externalLibraryPathsText.split('\n').map(s => s.trim()).filter(Boolean);
+              }}
+              placeholder={"/mnt/music/navidrome\n/srv/jellyfin/library"}
+              rows={3}
+              spellcheck={false}
+            ></textarea>
           </div>
         </div>
 
