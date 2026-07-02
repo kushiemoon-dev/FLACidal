@@ -18,9 +18,9 @@
 
 ## Overview
 
-**FLACidal** is a desktop application that downloads lossless FLAC files with full metadata and embedded cover art. It tries multiple sources in sequence — Tidal, Qobuz, Amazon Music, Bandcamp, and Soulseek P2P — and falls back automatically until one succeeds.
+**FLACidal** is a desktop application that downloads lossless FLAC files with full metadata and embedded cover art. It tries multiple sources — Soulseek P2P, Tidal, Qobuz, Amazon Music, and Bandcamp — and falls back automatically until one succeeds.
 
-> **Note:** Tidal, Qobuz, and Amazon have significantly hardened their APIs against third-party access. The community proxy pools FLACidal uses to reach them go offline regularly, sometimes for days at a time. **Soulseek is currently the most reliable source for most downloads.** We strongly recommend setting it up before anything else — it takes 5 minutes and works independently of all proxy pool health.
+> **Note:** Tidal, Qobuz, and Amazon have significantly hardened their APIs against third-party access. The community proxy pools FLACidal uses to reach them go offline regularly, sometimes for days at a time. **Soulseek is the most reliable source right now, and once configured it's tried automatically before any proxy-dependent source** — no manual reordering needed. Setup takes about 5 minutes and works independently of all proxy pool health.
 
 ---
 
@@ -77,8 +77,10 @@ Check real-time endpoint health at any time in **Settings -> Status**.
 
 ## Features
 
-- **Multi-Source Fallback** — Tidal, Qobuz, Amazon, Bandcamp, Soulseek — automatic cascade
-- **Soulseek P2P** — P2P backbone independent of streaming proxy availability
+- **Multi-Source Fallback** — Soulseek, Tidal, Qobuz, Amazon, Bandcamp — automatic cascade
+- **Soulseek P2P** — tried first automatically, independent of streaming proxy availability
+- **Smart Dedup** — skips tracks already on disk (ISRC match), across every source and an optional external library path (e.g. a Navidrome/Jellyfin library)
+- **Jellyfin Integration** — triggers a library scan automatically once a download batch finishes
 - **Hi-Res and Lossless** — 24-bit / up to 192 kHz (Hi-Res) and 16-bit / 44.1 kHz (Lossless) from streaming sources
 - **Tidal and Qobuz** — Full support for playlists, albums, tracks, mixes, and artist pages
 - **Built-in Search** — Search Tidal (Tracks / Albums / Artists) or Deezer via the Universel tab (works even when Tidal is down)
