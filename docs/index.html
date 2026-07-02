@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLACidal — lossless FLAC, downloaded honestly</title>
+<meta name="description" content="Free desktop app that downloads lossless FLAC from Tidal, Qobuz, Amazon, Bandcamp and Soulseek P2P — with automatic fallback and a Soulseek backbone that keeps working when proxies don't.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --panel:#141414; --panel-2:#1a1a1a; --line:#262626;
+  --ink:#fafafa; --muted:#a1a1a1; --faint:#6b6b6b;
+  --rose:#f472b6; --gold:#e5a00d;
+  --live:#22c55e; --warn:#f59e0b; --dead:#ef4444;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--sans);
+  line-height:1.5;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(60rem 40rem at 75% -10%,rgba(244,114,182,.10),transparent),
+                   radial-gradient(50rem 40rem at 0% 10%,rgba(229,160,13,.06),transparent);
+}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+a{color:inherit;text-decoration:none}
+section{padding:88px 0;border-top:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--rose)}
+h2{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.02em;margin:14px 0 10px}
+.lead{color:var(--muted);max-width:60ch;font-size:17px}
+
+/* Header */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+  background:rgba(10,10,10,.72);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:22px;height:60px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.02em}
+.brand svg{display:block}
+.nav .spacer{flex:1}
+.nav a.link{color:var(--muted);font-size:14px;font-weight:500}
+.nav a.link:hover{color:var(--ink)}
+.nav .gh{font-family:var(--mono);font-size:13px;border:1px solid var(--line);
+  padding:7px 12px;border-radius:8px;color:var(--ink)}
+.nav .gh:hover{border-color:var(--rose)}
+@media(max-width:640px){.nav a.link{display:none}}
+
+/* Hero */
+.hero{padding:96px 0 80px;border-top:none}
+.hero h1{font-size:clamp(38px,7vw,68px);font-weight:800;letter-spacing:-.035em;line-height:1.02}
+.hero h1 .g{background:linear-gradient(100deg,var(--gold),var(--rose));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p.sub{margin:22px 0 0;font-size:19px;color:var(--muted);max-width:56ch}
+.hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+.btn{font-weight:700;font-size:15px;padding:13px 20px;border-radius:11px;
+  display:inline-flex;align-items:center;gap:9px;border:1px solid transparent;transition:.15s}
+.btn-primary{background:var(--gold);color:#1a1200}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-ghost{border-color:var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--rose)}
+
+/* Signal board — the signature */
+.board{margin-top:52px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;font-family:var(--mono)}
+.board .bar{display:flex;align-items:center;gap:8px;padding:11px 15px;
+  border-bottom:1px solid var(--line);background:var(--panel-2);font-size:12px;color:var(--faint)}
+.board .bar b{color:var(--muted);font-weight:500;letter-spacing:.04em}
+.board .dot3{display:flex;gap:6px;margin-right:6px}
+.board .dot3 i{width:10px;height:10px;border-radius:50%;background:#333}
+.rows{padding:6px 0}
+.row{display:grid;grid-template-columns:14px 1fr auto;align-items:center;
+  gap:12px;padding:10px 16px;font-size:14px}
+.row .st{width:9px;height:9px;border-radius:50%}
+.st.live{background:var(--live);box-shadow:0 0 0 4px rgba(34,197,94,.14)}
+.st.warn{background:var(--warn);box-shadow:0 0 0 4px rgba(245,158,11,.14)}
+.st.dead{background:var(--dead)}
+.row .src{color:var(--ink)}
+.row .tag{font-size:12px;color:var(--faint)}
+.row.pin{background:linear-gradient(90deg,rgba(34,197,94,.08),transparent)}
+.row.pin .tag{color:var(--live)}
+
+/* Download */
+.os{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+@media(max-width:720px){.os{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;transition:.15s}
+.card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.card .plat{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.card .file{font-family:var(--mono);font-size:12px;color:var(--faint);margin:8px 0 18px}
+.card .dl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)}
+.card .dl::after{content:" →";color:var(--muted)}
+.alt{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:22px;text-align:center}
+.alt code{background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;color:var(--rose)}
+
+/* Screenshots */
+.shots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:34px}
+@media(max-width:720px){.shots{grid-template-columns:1fr}}
+figure{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+figure img{width:100%;display:block;border-bottom:1px solid var(--line)}
+figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);padding:11px 15px}
+
+/* Compare */
+.matrix{margin-top:34px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line)}
+thead th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);background:var(--panel-2)}
+thead th.us{color:var(--rose)}
+tbody td:first-child{color:var(--muted)}
+tbody tr:last-child td{border-bottom:none}
+td.us{color:var(--ink);font-weight:600}
+.yes{color:var(--live)}.no{color:var(--faint)}
+.mnote{font-size:13px;color:var(--faint);margin-top:12px}
+
+/* Soulseek */
+.slsk{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);
+  border-radius:12px;padding:26px 28px;margin-top:30px}
+.slsk h3{font-size:19px;font-weight:700;margin-bottom:6px}
+.slsk ol{margin:16px 0 0 18px;color:var(--muted)}
+.slsk li{margin:8px 0}
+.slsk code{font-family:var(--mono);font-size:13px;color:var(--rose)}
+
+footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);font-size:14px}
+footer .fl{display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+footer a{color:var(--muted)}footer a:hover{color:var(--ink)}
+footer .spacer{flex:1}
+:focus-visible{outline:2px solid var(--rose);outline-offset:2px;border-radius:4px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="FLACidal home">
+      <svg width="26" height="26" viewBox="0 0 26 26" role="img" aria-hidden="true">
+        <g fill="none" stroke="url(#lg)" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="13" x2="3" y2="13"/><line x1="7" y1="8" x2="7" y2="18"/>
+          <line x1="11" y1="4" x2="11" y2="22"/><line x1="15" y1="9" x2="15" y2="17"/>
+          <line x1="19" y1="6" x2="19" y2="20"/><line x1="23" y1="11" x2="23" y2="15"/>
+        </g>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="26" y2="26">
+          <stop offset="0" stop-color="#e5a00d"/><stop offset="1" stop-color="#f472b6"/>
+        </linearGradient></defs>
+      </svg>
+      FLACidal
+    </a>
+    <div class="spacer"></div>
+    <a class="link" href="#download">Download</a>
+    <a class="link" href="#compare">vs SpotiFLAC</a>
+    <a class="link" href="#soulseek">Soulseek</a>
+    <a class="gh" href="https://github.com/kushiemoon-dev/FLACidal">GitHub</a>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+
+  <section class="hero" id="hero">
+    <span class="eyebrow">Lossless · multi-source · open source</span>
+    <h1>Lossless FLAC,<br><span class="g">downloaded honestly.</span></h1>
+    <p class="sub">A desktop app that pulls full-quality FLAC with real metadata and cover art — trying Tidal, Qobuz, Amazon and Bandcamp in turn, and falling back to a Soulseek P2P backbone that keeps working when the proxies don't.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#download">Download FLACidal</a>
+      <a class="btn btn-ghost" href="#soulseek">Set up Soulseek first</a>
+    </div>
+
+    <!-- Signature: the source signal board, mirroring the app's Source Health panel -->
+    <div class="board" role="img" aria-label="Live source status: Soulseek is the most reliable source; Tidal and Qobuz proxies are frequently degraded.">
+      <div class="bar">
+        <span class="dot3"><i></i><i></i><i></i></span>
+        <b>source&nbsp;health</b><span>— what the app shows you, in real time</span>
+      </div>
+      <div class="rows">
+        <div class="row pin"><span class="st live"></span><span class="src">Soulseek&nbsp;P2P</span><span class="tag">most reliable right now</span></div>
+        <div class="row"><span class="st live"></span><span class="src">Bandcamp</span><span class="tag">live</span></div>
+        <div class="row"><span class="st warn"></span><span class="src">Tidal</span><span class="tag">proxy pool degraded</span></div>
+        <div class="row"><span class="st warn"></span><span class="src">Qobuz</span><span class="tag">proxy pool degraded</span></div>
+        <div class="row"><span class="st dead"></span><span class="src">Amazon&nbsp;Music</span><span class="tag">endpoints down</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <span class="eyebrow">Download</span>
+    <h2>Get the app</h2>
+    <p class="lead">Native builds for all three desktop platforms. No account, no telemetry.</p>
+    <div class="os">
+      <a class="card" href="https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.exe">
+        <div class="plat">🪟 Windows</div>
+        <div class="file">flacidal.exe · Windows 10+</div>
+        <div class="dl">Download .exe</div>
+      </a>
+      <a class="card" href="https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.dmg">
+        <div class="plat">🍎 macOS</div>
+        <div class="file">flacidal.dmg · macOS 10.13+</div>
+        <div class="dl">Download .dmg</div>
+      </a>
+      <a class="card" href="https://github.com/kushiemoon-dev/FLACidal/releases/latest/download/flacidal.AppImage">
+        <div class="plat">🐧 Linux</div>
+        <div class="file">flacidal.AppImage · any distro</div>
+        <div class="dl">Download AppImage</div>
+      </a>
+    </div>
+    <p class="alt">On Arch: <code>yay -S flacidal-bin</code> &nbsp;·&nbsp; Mobile: <a href="https://github.com/kushiemoon-dev/FLACidal#mobile" style="color:var(--rose)">Android &amp; iOS builds</a></p>
+  </section>
+
+  <section id="screens">
+    <span class="eyebrow">Interface</span>
+    <h2>Built for hoarders, not dashboards</h2>
+    <p class="lead">Paste a link or search, watch the queue, and check exactly which source served each track.</p>
+    <div class="shots">
+      <figure><img src="screenshots/home.png" alt="FLACidal home tab with URL input" loading="lazy"><figcaption>Home — paste a URL, fetch, download all</figcaption></figure>
+      <figure><img src="screenshots/search.png" alt="FLACidal search results" loading="lazy"><figcaption>Search — by track, album or artist</figcaption></figure>
+      <figure><img src="screenshots/queue.png" alt="FLACidal download queue" loading="lazy"><figcaption>Queue — per-track source and quality verdict</figcaption></figure>
+      <figure><img src="screenshots/settings-status.png" alt="FLACidal source status panel" loading="lazy"><figcaption>Status — live health of every endpoint</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="compare">
+    <span class="eyebrow">Comparison</span>
+    <h2>Coming from SpotiFLAC?</h2>
+    <p class="lead">SpotiFLAC is web-based and winding down its free access. FLACidal is a local app with more sources and a P2P fallback that doesn't depend on any single proxy staying alive.</p>
+    <div class="matrix">
+      <table>
+        <thead><tr><th>Capability</th><th class="us">FLACidal</th><th>SpotiFLAC</th></tr></thead>
+        <tbody>
+          <tr><td>Soulseek P2P backbone</td><td class="us"><span class="yes">Yes</span></td><td><span class="no">No</span></td></tr>
+          <tr><td>Sources</td><td class="us">Tidal · Qobuz · Amazon · Bandcamp · Soulseek</td><td>Tidal · Qobuz</td></tr>
+          <tr><td>Runs offline (desktop app)</td><td class="us"><span class="yes">Win · macOS · Linux</span></td><td><span class="no">Web only</span></td></tr>
+          <tr><td>Mobile app</td><td class="us"><span class="yes">Android · iOS</span></td><td><span class="no">No</span></td></tr>
+          <tr><td>Metadata (UPC · ISRC · lyrics · popularity)</td><td class="us"><span class="yes">Yes</span></td><td>Limited</td></tr>
+          <tr><td>Format conversion (AIFF · ALAC · WAV)</td><td class="us"><span class="yes">Yes</span></td><td><span class="no">No</span></td></tr>
+          <tr><td>License</td><td class="us"><span class="yes">Open source · MIT</span></td><td>Closed</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mnote">Comparison reflects publicly available information and may change — verify current SpotiFLAC capabilities before relying on it.</p>
+  </section>
+
+  <section id="soulseek">
+    <span class="eyebrow">Read this first</span>
+    <h2>Set up Soulseek before anything else</h2>
+    <p class="lead">Tidal, Qobuz and Amazon have hardened their APIs; the community proxies FLACidal uses to reach them go offline regularly. Soulseek works independently of all of that — it's five minutes and it's the source that keeps downloading.</p>
+    <div class="slsk">
+      <h3>Five-minute setup</h3>
+      <ol>
+        <li>Make a free Soulseek account in the <a href="https://www.slsknet.org/" style="color:var(--rose)">Nicotine+</a> or Soulseek client.</li>
+        <li>Open FLACidal → <code>Settings → Soulseek</code> and enter your username and password.</li>
+        <li>FLACidal installs the <code>sldl</code> helper automatically — no manual binary wrangling.</li>
+        <li>Move Soulseek to the top of your source order, then download as usual.</li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap fl">
+    <a class="brand" href="#top" style="color:var(--muted)">
+      <svg width="20" height="20" viewBox="0 0 26 26" aria-hidden="true">
+        <g fill="none" stroke="#6b6b6b" stroke-width="2" stroke-linecap="round">
+          <line x1="7" y1="8" x2="7" y2="18"/><line x1="11" y1="4" x2="11" y2="22"/>
+          <line x1="15" y1="9" x2="15" y2="17"/><line x1="19" y1="6" x2="19" y2="20"/>
+        </g>
+      </svg>FLACidal
+    </a>
+    <div class="spacer"></div>
+    <a href="https://github.com/kushiemoon-dev/FLACidal">GitHub</a>
+    <a href="https://github.com/kushiemoon-dev/FLACidal/releases">Releases</a>
+    <a href="https://github.com/kushiemoon-dev/FLACidal/blob/main/LICENSE">MIT License</a>
+  </div>
+</footer>
+
+</body>
+</html>
