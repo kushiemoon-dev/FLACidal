@@ -467,6 +467,8 @@
         proxyUrl: config.proxyUrl || '',
         tidalCustomEndpoint: config.tidalCustomEndpoint || '',
         qobuzCustomEndpoint: config.qobuzCustomEndpoint || '',
+        tidalPriorityEndpoints: config.tidalPriorityEndpoints,
+        qobuzPriorityEndpoints: config.qobuzPriorityEndpoints,
         skipExisting: config.skipExisting,
         externalLibraryPaths: config.externalLibraryPaths,
         artistSeparator: config.artistSeparator,
