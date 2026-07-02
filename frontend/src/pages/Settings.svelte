@@ -157,16 +157,16 @@
     }
   }
 
+  // Filename-only templates — use the "Folder Structure" control below to organize
+  // into subfolders. A template here must never contain '/': it names one file,
+  // and the download engine strips slashes from it (SanitizeFileName).
   const namingPresets = [
     { name: 'Simple', template: '{artist} - {title}' },
     { name: 'Title - Artist', template: '{title} - {artist}' },
     { name: 'Numbered', template: '{track}. {title}' },
     { name: 'Numbered with Artist', template: '{track}. {artist} - {title}' },
     { name: 'Album Organized', template: '{track} - {title}' },
-    { name: 'Full (Artist/Album/Track)', template: '{artist}/{album}/{track} - {title}' },
-    { name: 'Full with Year', template: '{albumartist}/{album} ({year})/{track} - {title}' },
-    { name: 'Multi-disc', template: '{albumartist}/{album}/{discnumber}-{track} - {title}' },
-    { name: 'Date Organized', template: '{albumartist}/{album} [{date}]/{track}. {title}' },
+    { name: 'Multi-disc', template: '{discnumber}-{track} - {title}' },
     { name: 'ISRC', template: '{isrc} - {title}' },
   ];
 
@@ -1003,7 +1003,7 @@
         <div class="setting-item">
           <div class="setting-info">
             <label for="file-naming">Template</label>
-            <span class="setting-desc">Variables: {'{artist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{year}'}, {'{isrc}'}</span>
+            <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{discnumber}'}, {'{year}'}, {'{isrc}'}</span>
           </div>
           <div class="setting-control wide">
             <input
