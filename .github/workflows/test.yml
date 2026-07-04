@@ -61,8 +61,14 @@ jobs:
     name: Build Check
     runs-on: ubuntu-latest
     needs: [frontend-tests]
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ secrets.CORE_ACCESS_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Setup Go
         uses: actions/setup-go@v5
