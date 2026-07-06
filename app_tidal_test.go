@@ -20,13 +20,6 @@ import (
 // (`unsupported content type`) is unreachable — core.ParseTidalURL only ever
 // returns "playlist", "track", "album", "artist", "mix", or a non-nil error,
 // so contentType can never reach the switch's default arm.
-//
-// Bug note (not fixed): SetTidalCredentials dereferences a.config directly
-// (`a.config.TidalClientID = clientID`) without the nil-guard used by sibling
-// setters like SetDownloadFolder — calling it before a.config is initialized
-// panics. Not reachable in production (startup() always sets a.config first),
-// but inconsistent with the defensive pattern used elsewhere.
-
 func TestSetTidalCredentials(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 	a := &App{config: &core.Config{}}
@@ -42,14 +35,23 @@ func TestSetTidalCredentials(t *testing.T) {
 	}
 }
 
-func TestSetTidalCredentials_NilConfigPanics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("SetTidalCredentials() with nil a.config: want panic (current behavior), got none")
-		}
-	}()
+func TestSetTidalCredentials_NilConfigSelfInitializes(t *testing.T) {
+	core.SetDataDir(t.TempDir())
 	a := &App{}
-	_ = a.SetTidalCredentials("id", "secret")
+	if err := a.SetTidalCredentials("id", "secret"); err != nil {
+		t.Fatalf("SetTidalCredentials() with nil a.config: unexpected error %v", err)
+	}
+	if a.config == nil || a.config.TidalClientID != "id" {
+		t.Error("SetTidalCredentials() did not self-initialize a.config")
+	}
+}
+
+func TestFetchTidalContent_NilDownloader_TrackURL(t *testing.T) {
+	a := &App{}
+	_, err := a.FetchTidalContent("https://tidal.com/track/12345678")
+	if err == nil {
+		t.Error("FetchTidalContent() track URL with nil a.downloader: want error, got nil")
+	}
 }
 
 func TestFetchTidalContent_InvalidURL(t *testing.T) {

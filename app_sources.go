@@ -569,8 +569,14 @@ func (a *App) GetSourcePlaylist(sourceName, playlistID string) (*core.SourcePlay
 
 // UpdateQobuzCredentials updates Qobuz credentials
 func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
+	if a.qobuzSource == nil {
+		a.qobuzSource = core.NewQobuzSource(appID, appSecret)
+	}
 	a.qobuzSource.SetCredentials(appID, appSecret, authToken)
 
+	if a.config == nil {
+		a.config = &core.Config{}
+	}
 	// Update config
 	a.config.QobuzAppID = appID
 	a.config.QobuzAppSecret = appSecret
@@ -594,5 +600,5 @@ func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 
 // IsQobuzConfigured checks if Qobuz is properly configured
 func (a *App) IsQobuzConfigured() bool {
-	return a.qobuzSource.IsAvailable()
+	return a.qobuzSource != nil && a.qobuzSource.IsAvailable()
 }
