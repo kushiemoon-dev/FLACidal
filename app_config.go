@@ -88,18 +88,22 @@ func (a *App) SaveConfig(config core.Config) error {
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
-	if err := ensureSldlExecutable(sldlPath); err != nil {
+	if err := ensureSldlExecutable(sldlPath); err != nil && a.logBuffer != nil {
 		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
-	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
-		a.sourceManager.RegisterSource(a.soulseekSource)
-		a.logBuffer.Info("Soulseek fallback source registered")
-	} else {
-		a.sourceManager.UnregisterSource("soulseek")
-		if config.SoulseekEnabled {
-			a.logBuffer.Warn("Soulseek enabled but unavailable (check binary path / credentials)")
+	if a.sourceManager != nil {
+		if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
+			a.sourceManager.RegisterSource(a.soulseekSource)
+			if a.logBuffer != nil {
+				a.logBuffer.Info("Soulseek fallback source registered")
+			}
+		} else {
+			a.sourceManager.UnregisterSource("soulseek")
+			if config.SoulseekEnabled && a.logBuffer != nil {
+				a.logBuffer.Warn("Soulseek enabled but unavailable (check binary path / credentials)")
+			}
 		}
 	}
 

@@ -13,6 +13,9 @@ import (
 
 // SetTidalCredentials saves Tidal client credentials
 func (a *App) SetTidalCredentials(clientID, clientSecret string) error {
+	if a.config == nil {
+		a.config = &core.Config{}
+	}
 	a.config.TidalClientID = clientID
 	a.config.TidalClientSecret = clientSecret
 
@@ -74,6 +77,9 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["albumType"] = album.AlbumType
 
 	case "track":
+		if a.downloader == nil {
+			return nil, fmt.Errorf("downloader not initialized")
+		}
 		trackIDInt, convErr := strconv.Atoi(id)
 		if convErr != nil {
 			return nil, fmt.Errorf("invalid track ID: %s", id)

@@ -27,9 +27,7 @@ func TestGetConfig(t *testing.T) {
 func TestSaveConfig(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 
-	// A real, but not "available", sldl path so ensureSldlExecutable succeeds
-	// without needing a.logBuffer (SaveConfig calls a.logBuffer.Warn without a
-	// nil-check on the failure path — see report notes).
+	// A real, but not "available", sldl path so ensureSldlExecutable succeeds.
 	sldlPath := filepath.Join(t.TempDir(), "sldl")
 	if err := os.WriteFile(sldlPath, []byte("fake"), 0644); err != nil {
 		t.Fatalf("setup: %v", err)

@@ -214,14 +214,18 @@ func TestUpdateQobuzCredentials(t *testing.T) {
 	}
 }
 
-func TestUpdateQobuzCredentials_NilQobuzSourcePanics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("UpdateQobuzCredentials() with nil a.qobuzSource: want panic (current behavior), got none")
-		}
-	}()
-	a := &App{config: &core.Config{}}
-	_ = a.UpdateQobuzCredentials("id", "secret", "token")
+func TestUpdateQobuzCredentials_NilQobuzSourceSelfInitializes(t *testing.T) {
+	core.SetDataDir(t.TempDir())
+	a := &App{}
+	if err := a.UpdateQobuzCredentials("id", "secret", "token"); err != nil {
+		t.Fatalf("UpdateQobuzCredentials() with nil a.qobuzSource: unexpected error %v", err)
+	}
+	if a.qobuzSource == nil {
+		t.Error("UpdateQobuzCredentials() did not self-initialize a.qobuzSource")
+	}
+	if a.config == nil || a.config.QobuzAppID != "id" {
+		t.Error("UpdateQobuzCredentials() did not self-initialize a.config")
+	}
 }
 
 func TestIsQobuzConfigured(t *testing.T) {
@@ -239,13 +243,10 @@ func TestIsQobuzConfigured(t *testing.T) {
 			t.Error("IsQobuzConfigured() with appID+secret+authToken set = false, want true")
 		}
 	})
-	t.Run("nil qobuzSource panics", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("IsQobuzConfigured() with nil a.qobuzSource: want panic (current behavior), got none")
-			}
-		}()
+	t.Run("nil qobuzSource returns false", func(t *testing.T) {
 		a := &App{}
-		_ = a.IsQobuzConfigured()
+		if a.IsQobuzConfigured() {
+			t.Error("IsQobuzConfigured() with nil a.qobuzSource = true, want false")
+		}
 	})
 }
