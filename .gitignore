@@ -19,6 +19,13 @@ frontend/node_modules/
 frontend/test-results/
 frontend/playwright-report/
 
+# Root-level test/dev clutter
+node_modules/
+test-results/
+playwright-report/
+.playwright-mcp/
+*.incomplete
+
 # Go
 *.test
 *.out
