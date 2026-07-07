@@ -5,6 +5,7 @@
 ### Download lossless FLAC music — multi-source, Soulseek P2P backbone
 
 [![GitHub Release](https://img.shields.io/github/v/release/kushiemoon-dev/FLACidal?style=flat-square&color=e5a00d)](https://github.com/kushiemoon-dev/FLACidal/releases/latest)
+[![Stars](https://img.shields.io/github/stars/kushiemoon-dev/FLACidal?style=flat-square&color=a855f7)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
 [![License](https://img.shields.io/github/license/kushiemoon-dev/FLACidal?style=flat-square&color=gray)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 
@@ -304,7 +305,7 @@ No. Use the `.AppImage` from the releases page, or build from source with `wails
 
 <div align="center">
 
-[![RepoStars](https://repostars.dev/api/embed?repo=kushiemoon-dev%2FFLACidal&theme=synthwave)](https://www.repostars.dev/?repos=kushiemoon-dev/FLACidal&theme=synthwave)
+[![Star History](docs/star-history.svg)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
 
 </div>
 
