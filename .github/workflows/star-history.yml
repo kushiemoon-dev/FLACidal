@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # main is protected (required "Test Suite" check); the default
+          # GITHUB_TOKEN isn't exempt like an admin push is, so use a PAT
+          # (repo secret STAR_HISTORY_PAT) to push. Falls back to the
+          # default token if the secret isn't set yet (push will then fail
+          # the same way it did before, no worse off).
+          token: ${{ secrets.STAR_HISTORY_PAT || github.token }}
       - run: python3 .github/scripts/star_history.py "${{ github.repository }}" docs/star-history.svg
         env:
           GH_TOKEN: ${{ github.token }}
