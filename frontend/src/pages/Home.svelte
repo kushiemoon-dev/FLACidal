@@ -623,7 +623,7 @@
           </div>
         {/if}
         {#if detectedSource && !detectedSource.available}
-          <p class="unavailable-hint">{detectedSource.displayName} indisponible — utilise la recherche <strong>Universel</strong> (Deezer) pour télécharger via Soulseek.</p>
+          <p class="unavailable-hint">{detectedSource.displayName} unavailable — use <strong>Universal</strong> search (Deezer) to download via Soulseek.</p>
         {/if}
       </div>
       <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">

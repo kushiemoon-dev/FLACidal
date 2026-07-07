@@ -105,7 +105,7 @@
       try {
         deezerResults = await SearchDeezer(searchQuery) || [];
       } catch (error) {
-        toastStore.show('Erreur recherche Deezer', 'error');
+        toastStore.show('Deezer search error', 'error');
       } finally {
         isSearchingDeezer = false;
       }
@@ -214,7 +214,7 @@
         toastStore.show(`"${track.title}" added to queue`, 'success');
       }
     } catch (e) {
-      toastStore.show(`Erreur : ${e}`, 'error');
+      toastStore.show(`Error: ${e}`, 'error');
     }
   }
 </script>
@@ -229,7 +229,7 @@
     <button class="tab" class:active={searchType === 'tracks'} onclick={() => switchTab('tracks')}>Tracks</button>
     <button class="tab" class:active={searchType === 'albums'} onclick={() => switchTab('albums')}>Albums</button>
     <button class="tab" class:active={searchType === 'artists'} onclick={() => switchTab('artists')}>Artists</button>
-    <button class="tab" class:active={searchType === 'universal'} onclick={() => switchTab('universal')}>Universel</button>
+    <button class="tab" class:active={searchType === 'universal'} onclick={() => switchTab('universal')}>Universal</button>
   </div>
 
   <div class="search-box">
@@ -262,7 +262,7 @@
   {#if isSearching || isSearchingDeezer}
     <div class="loading-state">
       <div class="loader"></div>
-      <p>{searchType === 'universal' ? 'Recherche sur Deezer...' : 'Searching Tidal...'}</p>
+      <p>{searchType === 'universal' ? 'Searching Deezer...' : 'Searching Tidal...'}</p>
     </div>
   {:else if hasSearched && currentResultCount() === 0}
     <div class="empty-state">
