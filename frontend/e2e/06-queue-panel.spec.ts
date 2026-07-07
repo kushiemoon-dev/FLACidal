@@ -14,15 +14,15 @@ test.describe('QueuePanel (global, mounted in App.svelte)', () => {
     // Expand if collapsed (panel-header click toggles)
     const panel = page.locator('.queue-panel')
     await expect(panel).toBeVisible()
-    // The empty message uses literal French text from QueuePanel.svelte
-    // "Aucun téléchargement en cours" — only visible when expanded.
+    // The empty message uses literal text from QueuePanel.svelte:
+    // "No downloads in progress" — only visible when expanded.
     // First make sure the body is open by clicking the header if needed:
     const collapsed = await panel.evaluate((el) => el.classList.contains('collapsed'))
     if (collapsed) {
       await panel.locator('.panel-header').click()
     }
     await expect(panel.locator('.empty')).toBeVisible()
-    await expect(panel.locator('.empty')).toContainText(/Aucun téléchargement|No download/i)
+    await expect(panel.locator('.empty')).toContainText(/No download/i)
   })
 
   test('does not crash when websocket unavailable', async ({ page }) => {

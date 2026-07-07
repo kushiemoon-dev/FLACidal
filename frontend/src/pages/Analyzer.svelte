@@ -73,7 +73,7 @@
       const data = await res.json();
 
       if (!res.ok) {
-        errorMsg = data.error ?? 'Erreur inconnue';
+        errorMsg = data.error ?? 'Unknown error';
         return;
       }
 
@@ -106,7 +106,7 @@
       <h1>Analyzer FLAC</h1>
     </div>
     {#if result || selectedFile}
-      <button class="btn-secondary" onclick={reset}>Nouveau fichier</button>
+      <button class="btn-secondary" onclick={reset}>New file</button>
     {/if}
   </div>
 
@@ -129,12 +129,12 @@
         <p class="drop-filename">{selectedFile.name}</p>
         <p class="drop-hint">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</p>
       {:else}
-        <p class="drop-label">Glissez un fichier FLAC ici</p>
-        <p class="drop-hint">ou</p>
+        <p class="drop-label">Drop a FLAC file here</p>
+        <p class="drop-hint">or</p>
       {/if}
 
       <label class="btn-pick" for="file-input">
-        {selectedFile ? 'Changer de fichier' : 'Parcourir…'}
+        {selectedFile ? 'Change file' : 'Browse…'}
       </label>
       <input
         id="file-input"
@@ -150,9 +150,9 @@
         <button class="btn-primary" onclick={analyze} disabled={isAnalyzing}>
           {#if isAnalyzing}
             <span class="spinner"></span>
-            Analyse en cours…
+            Analyzing…
           {:else}
-            Analyser
+            Analyze
           {/if}
         </button>
       </div>
@@ -183,14 +183,14 @@
         <div class="verdict-text">
           <h2 style="color:{statusColor(result)}">{result.verdictLabel ?? result.verdict}</h2>
           <p class="verdict-msg">{result.message}</p>
-          <span class="confidence-badge">Confiance : {result.confidence}%</span>
+          <span class="confidence-badge">Confidence: {result.confidence}%</span>
         </div>
       </div>
 
       <!-- Detail cards -->
       <div class="detail-grid">
         <div class="card detail-card">
-          <span class="detail-label">Fichier</span>
+          <span class="detail-label">File</span>
           <span class="detail-value mono">{result.fileName}</span>
         </div>
         <div class="card detail-card">
@@ -217,7 +217,7 @@
         {/if}
       </div>
 
-      <button class="btn-secondary" onclick={reset}>Analyser un autre fichier</button>
+      <button class="btn-secondary" onclick={reset}>Analyze another file</button>
     </div>
   {/if}
 </div>

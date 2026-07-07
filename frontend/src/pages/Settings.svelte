@@ -785,7 +785,7 @@
             </span>
           {/if}
         </div>
-        <p class="firewall-hint">Windows/macOS : autorisez <code>sldl</code> dans le pare-feu pour des téléchargements fiables.</p>
+        <p class="firewall-hint">Windows/macOS: allow <code>sldl</code> through the firewall for reliable downloads.</p>
         {/if}
 
         <div class="setting-item">

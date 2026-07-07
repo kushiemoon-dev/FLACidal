@@ -126,9 +126,9 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 	msg := r.Details
 	if msg == "" {
 		if r.IsTrueLossless {
-			msg = "Authentique lossless"
+			msg = "Authentic lossless"
 		} else {
-			msg = fmt.Sprintf("Upscaled lossy détecté — coupure spectrale: %d Hz", r.SpectrumCutoff)
+			msg = fmt.Sprintf("Upscaled lossy detected — spectral cutoff: %d Hz", r.SpectrumCutoff)
 		}
 	}
 
