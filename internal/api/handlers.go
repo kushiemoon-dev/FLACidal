@@ -505,22 +505,6 @@ func (s *Server) handleConvertFiles(c *fiber.Ctx) error {
 	return c.Status(501).JSON(fiber.Map{"error": "File conversion not implemented in server mode"})
 }
 
-// Analysis handlers
-func (s *Server) handleAnalyzeFile(c *fiber.Ctx) error {
-	// File analysis not yet implemented for HTTP API
-	return c.Status(501).JSON(fiber.Map{"error": "File analysis not implemented in server mode"})
-}
-
-func (s *Server) handleAnalyzeMultiple(c *fiber.Ctx) error {
-	// File analysis not yet implemented for HTTP API
-	return c.Status(501).JSON(fiber.Map{"error": "File analysis not implemented in server mode"})
-}
-
-func (s *Server) handleQuickAnalyze(c *fiber.Ctx) error {
-	// File analysis not yet implemented for HTTP API
-	return c.Status(501).JSON(fiber.Map{"error": "File analysis not implemented in server mode"})
-}
-
 // Lyrics handlers
 func (s *Server) handleFetchLyrics(c *fiber.Ctx) error {
 	title := c.Query("title")
