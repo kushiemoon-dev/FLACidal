@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 
-export interface AnalysisResult {
+interface AnalysisResult {
   verdict: string;          // "lossless" | "likely_upscaled" | "upscaled"
   verdictLabel: string;
   isTrueLossless: boolean;

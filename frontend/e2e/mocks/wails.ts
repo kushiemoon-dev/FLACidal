@@ -307,17 +307,3 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
     ;(window as any).WailsInvoke = noop
   }, overrides as any)
 }
-
-/**
- * Mock the HTTP /api/analyze endpoint via fetch interception.
- * Used by the (currently unrouted) Analyzer.svelte page if it ever gets wired up.
- */
-export async function mockApiAnalyze(page: Page, body: any, status = 200) {
-  await page.route('**/api/analyze', (route) =>
-    route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify(body),
-    }),
-  )
-}

@@ -1,12 +1,12 @@
 import { writable, get } from 'svelte/store';
 
-export interface AudioSettings {
+interface AudioSettings {
   enabled: boolean;
   volume: number;
 }
 
 // Store for audio settings
-export const audioSettings = writable<AudioSettings>({
+const audioSettings = writable<AudioSettings>({
   enabled: false,
   volume: 70
 });

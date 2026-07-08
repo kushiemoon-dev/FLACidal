@@ -92,7 +92,7 @@ export const fontPresets = [
   { name: 'Bricolage Grotesque', value: "'Bricolage Grotesque', sans-serif" },
 ] as const;
 
-export const fontFamily = writable<string>(fontPresets[0].value);
+const fontFamily = writable<string>(fontPresets[0].value);
 
 export function applyFontFamily(font: string): void {
   // Inject Google Fonts link for any font not already present in the document
