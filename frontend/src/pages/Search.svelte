@@ -144,7 +144,7 @@
 
   async function downloadTrack(track: TidalTrack) {
     if (!$downloadFolder) {
-      console.error('No download folder set');
+      toastStore.show('Set a download folder in Settings first', 'error');
       return;
     }
 
@@ -174,7 +174,7 @@
 
   async function downloadAlbum(album: SearchAlbum) {
     if (!$downloadFolder) {
-      console.error('No download folder set');
+      toastStore.show('Set a download folder in Settings first', 'error');
       return;
     }
 
