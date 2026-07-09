@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { EventsOn } from '../../wailsjs/runtime/runtime.js';
-  import { GetLogs, ClearLogs } from '../../wailsjs/go/main/App.js';
+  import { GetLogs, ClearLogs } from '../../wailsjs/go/app/App.js';
 
   interface LogEntry {
     timestamp: string;

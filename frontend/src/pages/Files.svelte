@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
   import { formatNumber, formatBytes } from '../lib/format';
-  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion } from '../../wailsjs/go/main/App.js';
+  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion } from '../../wailsjs/go/app/App.js';
   import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import MetadataModal from '../components/MetadataModal.svelte';

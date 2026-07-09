@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetFileMetadata, GetFileCoverArt } from '../../wailsjs/go/main/App.js';
+  import { GetFileMetadata, GetFileCoverArt } from '../../wailsjs/go/app/App.js';
   import { formatBytes, formatDuration } from '../lib/format';
 
   let { filePath, onClose }: { filePath: string; onClose: () => void } = $props();

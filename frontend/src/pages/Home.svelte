@@ -18,7 +18,7 @@
     ExpandDiscographyURL,
     QueueDiscographyAlbums,
     GetRecentAlbums,
-  } from '../../wailsjs/go/main/App.js';
+  } from '../../wailsjs/go/app/App.js';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { formatBytes, formatDuration } from '../lib/format';
   import { Search, Download, Clock, Music } from 'lucide-svelte';

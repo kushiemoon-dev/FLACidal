@@ -25,6 +25,8 @@ test-results/
 playwright-report/
 .playwright-mcp/
 *.incomplete
+*.mp3
+*.flac
 
 # Go
 *.test

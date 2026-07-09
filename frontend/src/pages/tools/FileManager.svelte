@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/main/App.js';
+  import { ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/app/App.js';
   import { formatBytes } from '../../lib/format';
   import TabBar from '../../components/TabBar.svelte';
   import { toastStore } from '../../stores/toast';
