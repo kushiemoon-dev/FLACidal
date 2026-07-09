@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/kushiemoon-dev/FLACidal?style=flat-square&color=e5a00d)](https://github.com/kushiemoon-dev/FLACidal/releases/latest)
 [![Stars](https://img.shields.io/github/stars/kushiemoon-dev/FLACidal?style=flat-square&color=a855f7)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
 [![License](https://img.shields.io/github/license/kushiemoon-dev/FLACidal?style=flat-square&color=gray)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 
 ![Windows](https://img.shields.io/badge/Windows-10+-0078D6?style=flat-square&logo=windows&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-10.13+-000000?style=flat-square&logo=apple&logoColor=white)
@@ -261,7 +261,7 @@ The config file lives in `~/.flacidal/config.json`. The `sldl` binary lives sepa
 
 ## Build from Source
 
-**Requirements:** [Go](https://go.dev) 1.22+ and [Wails v2](https://wails.io)
+**Requirements:** [Go](https://go.dev) 1.26+ and [Wails v2](https://wails.io)
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
