@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetDownloadHistoryFiltered, DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory } from '../../wailsjs/go/main/App.js';
+  import { GetDownloadHistoryFiltered, DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory } from '../../wailsjs/go/app/App.js';
   import TabBar from '../components/TabBar.svelte';
   import { Clock, Search, Trash2, RefreshCw, ExternalLink, ArrowUpDown, X } from 'lucide-svelte';
 

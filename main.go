@@ -6,6 +6,8 @@ import (
 	"os"
 	"runtime"
 
+	"flacidal/internal/app"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -38,7 +40,7 @@ func init() {
 
 func main() {
 	// Create an instance of the app structure
-	app := NewApp()
+	flacidalApp := app.NewApp(appVersion)
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -50,10 +52,10 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 10, G: 10, B: 10, A: 1},
 		DragAndDrop:      &options.DragAndDrop{EnableFileDrop: true},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		OnStartup:        flacidalApp.Startup,
+		OnShutdown:       flacidalApp.Shutdown,
 		Bind: []interface{}{
-			app,
+			flacidalApp,
 		},
 	})
 

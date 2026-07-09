@@ -25,7 +25,7 @@
     GetSourceHealth,
     InstallSldl,
     TestSoulseekConnection,
-  } from '../../wailsjs/go/main/App.js';
+  } from '../../wailsjs/go/app/App.js';
   import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
 
   let config = $state({

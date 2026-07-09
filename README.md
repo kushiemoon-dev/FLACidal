@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="banner.png" alt="FLACidal" width="600">
+<img src="docs/banner.png" alt="FLACidal" width="600">
 
 ### Download lossless FLAC music — multi-source, Soulseek P2P backbone
 

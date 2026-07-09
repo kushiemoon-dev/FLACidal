@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime.js';
-  import { FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../../wailsjs/go/main/App.js';
+  import { FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../../wailsjs/go/app/App.js';
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, Music2, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';

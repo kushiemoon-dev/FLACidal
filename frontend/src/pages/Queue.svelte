@@ -1,6 +1,6 @@
 <script lang="ts">
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
-  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/main/App.js';
+  import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../../wailsjs/go/app/App.js';
   import { formatNumber } from '../lib/format';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 

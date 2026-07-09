@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetAppVersion } from '../../wailsjs/go/main/App.js';
+  import { GetAppVersion } from '../../wailsjs/go/app/App.js';
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
   import { Heart, ExternalLink, LayoutGrid, Star, GitFork } from 'lucide-svelte';
   import kofiLogo from '../assets/logos/kofi-logo.png';

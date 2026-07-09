@@ -18,7 +18,7 @@
   import Toast from './components/Toast.svelte';
   import IssueReporterModal from './components/IssueReporterModal.svelte';
   import QueuePanel from './components/QueuePanel.svelte';
-  import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/main/App.js';
+  import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/app/App.js';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
   import AudioConverter from './pages/tools/AudioConverter.svelte';

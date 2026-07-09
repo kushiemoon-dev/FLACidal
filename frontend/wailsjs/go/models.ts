@@ -1,3 +1,44 @@
+export namespace app {
+	
+	export class EndpointStatus {
+	    name: string;
+	    url: string;
+	    status: string;
+	    latencyMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.status = source["status"];
+	        this.latencyMs = source["latencyMs"];
+	    }
+	}
+	export class UpdateInfo {
+	    hasUpdate: boolean;
+	    version: string;
+	    url: string;
+	    releaseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasUpdate = source["hasUpdate"];
+	        this.version = source["version"];
+	        this.url = source["url"];
+	        this.releaseUrl = source["releaseUrl"];
+	    }
+	}
+
+}
+
 export namespace core {
 	
 	export class AnalysisResult {
@@ -60,9 +101,6 @@ export namespace core {
 	    soulseekUsername?: string;
 	    soulseekPassword?: string;
 	    soulseekBinaryPath?: string;
-	    jellyfinEnabled: boolean;
-	    jellyfinUrl?: string;
-	    jellyfinApiKey?: string;
 	    qobuzAppId?: string;
 	    qobuzAppSecret?: string;
 	    qobuzAuthToken?: string;
@@ -83,6 +121,9 @@ export namespace core {
 	    playlistSubfolder: boolean;
 	    skipExisting: boolean;
 	    externalLibraryPaths?: string[];
+	    jellyfinEnabled: boolean;
+	    jellyfinUrl?: string;
+	    jellyfinApiKey?: string;
 	    separateSingles: boolean;
 	    countryCode?: string;
 	    fontFamily?: string;
@@ -128,9 +169,6 @@ export namespace core {
 	        this.soulseekUsername = source["soulseekUsername"];
 	        this.soulseekPassword = source["soulseekPassword"];
 	        this.soulseekBinaryPath = source["soulseekBinaryPath"];
-	        this.jellyfinEnabled = source["jellyfinEnabled"];
-	        this.jellyfinUrl = source["jellyfinUrl"];
-	        this.jellyfinApiKey = source["jellyfinApiKey"];
 	        this.qobuzAppId = source["qobuzAppId"];
 	        this.qobuzAppSecret = source["qobuzAppSecret"];
 	        this.qobuzAuthToken = source["qobuzAuthToken"];
@@ -151,6 +189,9 @@ export namespace core {
 	        this.playlistSubfolder = source["playlistSubfolder"];
 	        this.skipExisting = source["skipExisting"];
 	        this.externalLibraryPaths = source["externalLibraryPaths"];
+	        this.jellyfinEnabled = source["jellyfinEnabled"];
+	        this.jellyfinUrl = source["jellyfinUrl"];
+	        this.jellyfinApiKey = source["jellyfinApiKey"];
 	        this.separateSingles = source["separateSingles"];
 	        this.countryCode = source["countryCode"];
 	        this.fontFamily = source["fontFamily"];
@@ -1028,47 +1069,6 @@ export namespace core {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace main {
-	
-	export class EndpointStatus {
-	    name: string;
-	    url: string;
-	    status: string;
-	    latencyMs: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new EndpointStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.url = source["url"];
-	        this.status = source["status"];
-	        this.latencyMs = source["latencyMs"];
-	    }
-	}
-	export class UpdateInfo {
-	    hasUpdate: boolean;
-	    version: string;
-	    url: string;
-	    releaseUrl: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.hasUpdate = source["hasUpdate"];
-	        this.version = source["version"];
-	        this.url = source["url"];
-	        this.releaseUrl = source["releaseUrl"];
-	    }
 	}
 
 }

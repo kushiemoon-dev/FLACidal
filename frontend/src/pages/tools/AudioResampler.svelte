@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime.js';
-  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../../wailsjs/go/main/App.js';
+  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../../wailsjs/go/app/App.js';
   import DropZone from '../../components/DropZone.svelte';
   import { SlidersHorizontal, CheckCircle, XCircle } from 'lucide-svelte';
 
