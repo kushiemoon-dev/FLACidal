@@ -1,5 +1,24 @@
 # Changelog
 
+## v4.13.0 — 2026-07-11
+
+### Fixes
+- A toast now shows when starting a download without a folder configured, instead of failing silently
+- Nil-guards added around config/Qobuz source/downloader/source manager, preventing crashes on missing state
+- `gofiber/fiber` and `golang.org/x/net` bumped, resolving 3 Dependabot advisories
+- Corrected a stale `flacidal-core@v0.13.0` checksum in `go.sum`
+- Platform emoji icons replaced with inline SVG (gold → violet accent)
+
+### Internal
+- Core dependency bumped to `v0.14.0` — native Soulseek client for mobile parity, several Soulseek reliability fixes (nil-context panic, login-scoped context starving search, truncated files reported as success), endpoint cooldown ETA surfaced, internal Spotify/Tidal credentials and the Tidal HiFi mirror base URL now configurable via env instead of hardcoded (see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md))
+- `app.go` (2,600+ lines) split into per-domain files under `internal/app/`, each with new characterization tests
+- Removed the dead Analyzer page and its now-unused handler stubs
+- Reliable, self-hosted star-history badge (replaces the flaky third-party service), with a dedicated PAT for branch-protected pushes
+- French UI strings and comments translated to English
+- Go version badge bumped to 1.26+
+
+---
+
 ## v4.12.0 — 2026-07-02
 
 ### New features
