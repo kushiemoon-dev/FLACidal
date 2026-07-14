@@ -1,5 +1,21 @@
 # Changelog
 
+## v4.14.0 — 2026-07-14
+
+### New features
+- **Headless server is now fully usable in a browser** — the server previously returned `501 not implemented` for 9 endpoints (search, file listing, metadata, cover art, ffmpeg info, conversion, lyrics) and served an empty embedded frontend, and every frontend component called Wails-only bindings with no browser fallback. The server now has full API coverage (reusing existing `internal/app` logic rather than duplicating it) and serves the built SPA; the frontend itself now runs correctly in a plain browser via a runtime-detecting client layer (`lib/api.ts`/`lib/websocket.ts`/`lib/runtime.ts`) that picks Wails bindings or `fetch()`/WebSocket calls depending on where it's running. Native-OS-only actions (file/folder dialogs, native drag-drop) degrade gracefully in browser mode instead of throwing. See the new README section on running headless in a browser.
+- `go test`/`go vet`/`golangci-lint` now run in CI (previously only a build check ran — the existing test suite under `internal/` was never executed).
+
+### Fixes
+- `GetConversionFormats`'s HTTP handler returned a hardcoded stub missing the `qualities` field the frontend reads unconditionally — would have crashed the converter in browser mode. Now returns real data.
+- History filters (`contentType`/`search`) were silently dropped by the HTTP handler; config reset was wiping the download folder instead of preserving it.
+- Two `nolint:errcheck` suppressions were silently non-functional (a stray em dash broke golangci-lint's directive parser).
+
+### Internal
+- Core dependency bumped to `v0.15.0` — real spectral fake-lossless detection, YouTube/Cobalt fallback dispatch fix, dehardcoded endpoints (see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md)).
+
+---
+
 ## v4.13.0 — 2026-07-11
 
 ### Fixes
