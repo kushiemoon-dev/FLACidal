@@ -726,7 +726,7 @@ func (s *Server) fetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 	}
 
 	if s.config != nil && s.config.SaveLyricsFile {
-		core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain) //nolint:errcheck — best-effort sidecar file, embedding already succeeded
+		core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain) //nolint:errcheck // best-effort sidecar file, embedding already succeeded
 	}
 
 	return lyrics, nil

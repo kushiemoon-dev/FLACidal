@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src --ext .ts,.svelte || true",
+    "lint": "eslint src --ext .ts,.svelte",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

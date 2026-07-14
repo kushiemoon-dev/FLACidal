@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"flacidal/internal/api"
+
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
@@ -112,7 +113,7 @@ func main() {
 		if db != nil {
 			db.Close()
 		}
-		server.Shutdown()
+		_ = server.Shutdown()
 	}()
 
 	// Get port from env or default
@@ -123,6 +124,6 @@ func main() {
 
 	log.Printf("Server listening on :%s", port)
 	if err := server.Listen(":" + port); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Fatalf("Server error: %v", err) //nolint:gocritic // process is exiting; deferred cancel() has nothing left to clean up
 	}
 }

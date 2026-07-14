@@ -1,5 +1,10 @@
 name: Build & Release
 
+# NOTE: this workflow only produces the Wails desktop binaries (Windows/macOS/
+# Linux). The headless server (cmd/server) is verified on every push/PR by the
+# `go-test` job in test.yml (go build ./cmd/server), but it has no release
+# artifact (e.g. a Docker image) here yet — that's separate follow-up work.
+
 on:
   push:
     tags: ['v*']
