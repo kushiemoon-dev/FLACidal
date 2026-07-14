@@ -1,4 +1,4 @@
-.PHONY: dev test test-unit test-integration test-frontend test-e2e test-all lint coverage clean help
+.PHONY: dev serve test test-unit test-integration test-frontend test-e2e test-all lint coverage clean help
 
 GO := go
 GOFLAGS := -v -race
@@ -12,10 +12,17 @@ dev:
 	@echo "Starting dev server..."
 	$(WAILS_ENV) $(WAILS) dev
 
+serve:
+	@echo "Building frontend..."
+	cd $(FRONTEND_DIR) && npm install && npm run build
+	@echo "Starting headless server..."
+	$(GO) run ./cmd/server
+
 help:
 	@echo "FLACidal Test Commands"
 	@echo "======================"
 	@echo "make dev            - Run in dev mode (Wayland-safe)"
+	@echo "make serve          - Build frontend and run the headless HTTP server"
 	@echo "make test           - Run all tests (unit + integration)"
 	@echo "make test-unit      - Run unit tests only"
 	@echo "make test-integration - Run integration tests (requires -tags=integration)"

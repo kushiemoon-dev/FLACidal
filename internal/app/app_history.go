@@ -43,7 +43,14 @@ func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 	if a.db == nil {
 		return []map[string]interface{}{}, nil
 	}
-	records, err := a.db.GetAllDownloadRecords()
+	return RecentAlbums(a.db, limit)
+}
+
+// RecentAlbums is the shared implementation of GetRecentAlbums, used by both
+// the desktop (Wails) and HTTP server APIs (same sharing pattern as
+// ConvertTidalSearchResults / SearchDeezerTracks in app_search.go).
+func RecentAlbums(db *core.Database, limit int) ([]map[string]interface{}, error) {
+	records, err := db.GetAllDownloadRecords()
 	if err != nil {
 		return nil, fmt.Errorf("GetRecentAlbums: %w", err)
 	}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetRenameTemplates, PreviewRename, RenameFiles } from '../../wailsjs/go/app/App.js';
+  import { GetRenameTemplates, PreviewRename, RenameFiles } from '../lib/api';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 

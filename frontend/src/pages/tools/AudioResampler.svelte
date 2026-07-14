@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime.js';
-  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../../wailsjs/go/app/App.js';
+  import { onNativeFileDrop } from '../../lib/runtime';
+  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { SlidersHorizontal, CheckCircle, XCircle } from 'lucide-svelte';
 
@@ -58,8 +58,11 @@
     return path.split('/').pop() || path.split('\\').pop() || path;
   }
 
+  let unsubscribeFileDrop: () => void;
+
   onMount(() => {
-    OnFileDrop((_x: number, _y: number, paths: string[]) => {
+    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    unsubscribeFileDrop = onNativeFileDrop((_x: number, _y: number, paths: string[]) => {
       const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
       if (flacPaths.length > 0) {
         files = flacPaths;
@@ -69,7 +72,7 @@
   });
 
   onDestroy(() => {
-    OnFileDropOff();
+    unsubscribeFileDrop?.();
   });
 </script>
 

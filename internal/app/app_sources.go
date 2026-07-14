@@ -149,6 +149,15 @@ func (a *App) GetSldlStatus() map[string]interface{} {
 	if a.config != nil {
 		sldlPath = a.config.SoulseekBinaryPath
 	}
+	return SldlStatus(sldlPath)
+}
+
+// SldlStatus checks if the sldl binary is installed and returns its version.
+// Shared by the desktop (Wails) and HTTP server APIs (same sharing pattern as
+// ConvertTidalSearchResults / SearchDeezerTracks in app_search.go). binaryPath
+// may be empty, in which case the platform default path is used.
+func SldlStatus(binaryPath string) map[string]interface{} {
+	sldlPath := binaryPath
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
 	}
@@ -184,8 +193,35 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	if a.config != nil {
 		sldlPath = a.config.SoulseekBinaryPath
 	}
+	logf := func(level, msg string) {
+		if a.logBuffer == nil {
+			return
+		}
+		if level == "warn" {
+			a.logBuffer.Warn(msg)
+		} else {
+			a.logBuffer.Info(msg)
+		}
+	}
+	return TestSoulseekLogin(sldlPath, username, password, logf)
+}
+
+// TestSoulseekLogin is the shared implementation of TestSoulseekConnection,
+// used by both the desktop (Wails) and HTTP server APIs (same sharing
+// pattern as ConvertTidalSearchResults / SearchDeezerTracks in
+// app_search.go). binaryPath may be empty, in which case the platform
+// default path is used. logf receives best-effort diagnostic lines ("info"
+// or "warn" level) — pass nil to skip logging (the password is never
+// logged either way).
+func TestSoulseekLogin(binaryPath, username, password string, logf func(level, msg string)) map[string]interface{} {
+	sldlPath := binaryPath
 	if sldlPath == "" {
 		sldlPath = defaultSldlPath()
+	}
+	log := func(level, msg string) {
+		if logf != nil {
+			logf(level, msg)
+		}
 	}
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
@@ -200,7 +236,7 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
 	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
 	if err := ensureSldlExecutable(sldlPath); err != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+		log("warn", fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 	cmd := exec.CommandContext(ctx, sldlPath,
 		"test",
@@ -215,12 +251,12 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	rawOutput := strings.ToLower(string(out))
 
 	// Surface diagnostics in the in-app terminal (password is never logged)
-	a.logBuffer.Info(fmt.Sprintf("Soulseek: testing connection for user %q", username))
+	log("info", fmt.Sprintf("Soulseek: testing connection for user %q", username))
 	if execErr != nil {
-		a.logBuffer.Warn(fmt.Sprintf("Soulseek: sldl process error: %v", execErr))
+		log("warn", fmt.Sprintf("Soulseek: sldl process error: %v", execErr))
 	}
 	if trimmed := strings.TrimSpace(string(out)); trimmed != "" {
-		a.logBuffer.Info("Soulseek: sldl output:\n" + trimmed)
+		log("info", "Soulseek: sldl output:\n"+trimmed)
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {

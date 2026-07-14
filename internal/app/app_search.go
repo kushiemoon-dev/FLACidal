@@ -26,7 +26,14 @@ func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 		return nil, err
 	}
 
-	// Convert to TidalTrack format for frontend
+	return ConvertTidalSearchResults(results), nil
+}
+
+// ConvertTidalSearchResults converts raw Tidal HiFi search results into the
+// TidalTrack shape used by both the desktop (Wails) and HTTP server APIs.
+// Shared so the two frontends stay in sync on artist-joining and cover-URL
+// formatting instead of drifting apart.
+func ConvertTidalSearchResults(results []core.TidalHifiTrackResponse) []core.TidalTrack {
 	tracks := make([]core.TidalTrack, len(results))
 	for i, r := range results {
 		// Build artist string
@@ -66,7 +73,7 @@ func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 		}
 	}
 
-	return tracks, nil
+	return tracks
 }
 
 // SearchTidalAlbums searches for albums on Tidal
@@ -88,6 +95,13 @@ func (a *App) SearchTidalArtists(query string) ([]core.TidalArtist, error) {
 // SearchDeezer searches tracks on the public Deezer API (no auth required).
 // Returns up to 30 tracks with ISRC so the orchestrator can find the FLAC.
 func (a *App) SearchDeezer(query string) ([]map[string]interface{}, error) {
+	return SearchDeezerTracks(query)
+}
+
+// SearchDeezerTracks is the shared Deezer search implementation used by both
+// the desktop (Wails) and HTTP server APIs — kept in sync the same way
+// ConvertTidalSearchResults is shared above.
+func SearchDeezerTracks(query string) ([]map[string]interface{}, error) {
 	if query == "" {
 		return []map[string]interface{}{}, nil
 	}

@@ -1,24 +1,25 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import {
-    FetchTidalContent,
-    ValidateTidalURL,
     SelectDownloadFolder,
     GetDownloadFolder,
-    SetDownloadFolder,
     OpenDownloadFolder,
     QueueDownloads,
-    QueueQobuzDownloads,
     QueueSingleDownload,
     QueueArtistAlbum,
-    DownloadArtistAssets,
     GetAppVersion,
-    DetectSourceFromURL,
     FetchContentFromURL,
+    FetchTidalContent,
+    ValidateTidalURL,
+    SetDownloadFolder,
+    QueueQobuzDownloads,
+    DownloadArtistAssets,
+    DetectSourceFromURL,
     ExpandDiscographyURL,
     QueueDiscographyAlbums,
     GetRecentAlbums,
-  } from '../../wailsjs/go/app/App.js';
+  } from '../lib/api';
+  import { OpenExternalURL } from '../lib/runtime';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { formatBytes, formatDuration } from '../lib/format';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
@@ -135,13 +136,7 @@
       { label: 'Copy Track URL', icon: '\uD83D\uDD17', action: () => navigator.clipboard.writeText(track.tidalUrl) },
       { label: 'Copy ISRC', icon: '\uD83C\uDFAB', action: () => navigator.clipboard.writeText(track.isrc), disabled: !track.isrc },
       { label: '', action: () => {}, divider: true },
-      { label: 'Open on Tidal', icon: '\uD83C\uDF10', action: () => {
-        if ((window as any).__wails?.BrowserOpenURL) {
-          (window as any).__wails.BrowserOpenURL(track.tidalUrl);
-        } else {
-          window.open(track.tidalUrl, '_blank');
-        }
-      }},
+      { label: 'Open on Tidal', icon: '\uD83C\uDF10', action: () => OpenExternalURL(track.tidalUrl) },
     ];
   }
 

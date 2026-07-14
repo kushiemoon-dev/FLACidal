@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetAppVersion } from '../../wailsjs/go/app/App.js';
-  import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
+  import { GetAppVersion } from '../lib/api';
+  import { OpenExternalURL } from '../lib/runtime';
   import { Heart, ExternalLink, LayoutGrid, Star, GitFork } from 'lucide-svelte';
   import kofiLogo from '../assets/logos/kofi-logo.png';
   import flacidalLogo from '../assets/logos/flacidal.png';
@@ -97,7 +97,7 @@
   });
 
   function openURL(url: string) {
-    BrowserOpenURL(url);
+    OpenExternalURL(url);
   }
 </script>
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js';
+  import { OpenExternalURL } from '../lib/runtime';
 
   let { isOpen = $bindable(false), repoUrl }: { isOpen: boolean; repoUrl: string } = $props();
 
@@ -11,7 +11,7 @@
   }
 
   function openIssues() {
-    BrowserOpenURL(repoUrl);
+    OpenExternalURL(repoUrl);
     close();
   }
 

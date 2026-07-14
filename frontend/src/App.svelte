@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { EventsOn } from '../wailsjs/runtime/runtime.js';
+  import { EventsOn } from './lib/websocket';
   import Sidebar from './components/Sidebar.svelte';
   import Home from './pages/Home.svelte';
   import Search from './pages/Search.svelte';
@@ -18,7 +18,7 @@
   import Toast from './components/Toast.svelte';
   import IssueReporterModal from './components/IssueReporterModal.svelte';
   import QueuePanel from './components/QueuePanel.svelte';
-  import { GetDownloadFolder, GetConfig, IsQueuePaused } from '../wailsjs/go/app/App.js';
+  import { GetDownloadFolder, GetConfig, IsQueuePaused } from './lib/api';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
   import AudioConverter from './pages/tools/AudioConverter.svelte';
