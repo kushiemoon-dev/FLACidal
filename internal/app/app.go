@@ -70,7 +70,7 @@ func ensureSldlExecutable(path string) error {
 		return fmt.Errorf("chmod +x on sldl failed: %w", err)
 	}
 	if goruntime.GOOS == "darwin" {
-		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck — attr commonly absent, not an error
+		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck // attr commonly absent, not an error
 	}
 	return nil
 }

@@ -55,6 +55,82 @@ jobs:
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
+        # continue-on-error is intentional, not a placeholder. ESLint isn't a
+        # devDependency in package.json and there's no eslint.config.js, so
+        # `npm run lint` currently fails with "eslint: command not found"
+        # (exit 127) — confirmed by running it locally. That's not a backlog
+        # of style violations to spot-fix; it's an unfinished tool setup
+        # (add the eslint/svelte-eslint-parser deps + a flat config), out of
+        # scope for this CI-hardening pass. Remove this flag once ESLint is
+        # actually wired up.
+        continue-on-error: true
+
+  go-test:
+    name: Go Test, Vet & Build
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ secrets.CORE_ACCESS_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # Scoped to ./internal/... and ./cmd/... — same scope as `make test-unit`/
+      # `make lint`. The root package (main.go, the Wails desktop entrypoint)
+      # embeds frontend/dist via go:embed and needs cgo bindings to GTK/webkit,
+      # both of which only the `build` job below sets up.
+      - name: go vet
+        run: go vet ./internal/... ./cmd/...
+
+      - name: go build
+        run: go build ./internal/... ./cmd/...
+
+      - name: Build headless server (cmd/server)
+        run: go build -o /dev/null ./cmd/server
+
+      - name: go test
+        run: go test -race ./internal/... ./cmd/...
+
+  go-lint:
+    name: Go Lint
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ secrets.CORE_ACCESS_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # golangci-lint v2 (the default `@latest`) rejects .golangci.yml outright
+      # with "unsupported version of the configuration" — the file predates v2's
+      # config schema and hasn't been migrated. Pinned to v1.64.8 (the last v1
+      # release) instead, which builds and runs fine against Go 1.26 and the
+      # existing v1-format config. Re-evaluate the pin once .golangci.yml is
+      # migrated to the v2 schema (`golangci-lint migrate`).
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m ./internal/... ./cmd/...
+        # Non-blocking: 3 pre-existing findings predate this change
+        # (internal/app/app.go:407, internal/app/app_converter.go:124,
+        # internal/api/handlers_export.go:46 — unchecked errors / gocritic
+        # %q suggestion). Left as-is to keep this diff surgical; remove
+        # continue-on-error once they're cleaned up.
         continue-on-error: true
 
   build:
