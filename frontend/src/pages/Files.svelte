@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
   import { formatNumber, formatBytes } from '../lib/format';
-  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion } from '../../wailsjs/go/app/App.js';
-  import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime.js';
+  import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion, isWailsRuntime } from '../lib/api';
+  import { onNativeFileDrop } from '../lib/runtime';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import MetadataModal from '../components/MetadataModal.svelte';
   import RenameModal from '../components/RenameModal.svelte';
@@ -39,6 +39,7 @@
 
   // External convert files (from folder picker)
   let externalConvertFiles: string[] = $state([]);
+  let unsubscribeFileDrop: () => void;
 
   // Drag-and-drop state
   let isDragOver = $state(false);
@@ -120,7 +121,11 @@
     }
   }
 
+  // Browser mode: suppress the drop overlay entirely rather than show a
+  // "drop here" affordance that leads nowhere — dropped files never reach
+  // onNativeFileDrop in browser mode (see lib/runtime.ts).
   function handleDragEnter(e: DragEvent) {
+    if (!isWailsRuntime()) return;
     if (e.dataTransfer?.types.includes('Files')) {
       dragCounter++;
       isDragOver = true;
@@ -128,6 +133,7 @@
   }
 
   function handleDragLeave(e: DragEvent) {
+    if (!isWailsRuntime()) return;
     if (e.dataTransfer?.types.includes('Files')) {
       dragCounter--;
       if (dragCounter === 0) isDragOver = false;
@@ -135,6 +141,7 @@
   }
 
   function handleDragOver(e: DragEvent) {
+    if (!isWailsRuntime()) return;
     if (e.dataTransfer?.types.includes('Files')) {
       e.preventDefault();
     }
@@ -169,8 +176,9 @@
     await loadFiles();
     converterAvailable = await IsConverterAvailable();
 
-    // Register Wails OS-level file drop handler
-    OnFileDrop((x, y, paths) => {
+    // Register Wails OS-level file drop handler.
+    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    unsubscribeFileDrop = onNativeFileDrop((x, y, paths) => {
       dragCounter = 0;
       isDragOver = false;
       const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
@@ -182,7 +190,7 @@
   });
 
   onDestroy(() => {
-    OnFileDropOff();
+    unsubscribeFileDrop?.();
   });
 
   async function loadFiles() {

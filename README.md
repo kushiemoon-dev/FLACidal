@@ -279,6 +279,31 @@ wails dev
 
 ---
 
+## Headless / Run in browser
+
+FLACidal can also run as a plain HTTP server — no Wails, no desktop shell — and be driven from any browser on the machine (or LAN). Useful for a NAS, a home server, or anywhere a desktop UI isn't practical.
+
+```bash
+git clone https://github.com/kushiemoon-dev/FLACidal.git
+cd FLACidal
+cd frontend && npm install && npm run build && cd ..
+go run ./cmd/server
+# or: make serve
+```
+
+Open `http://localhost:8080`.
+
+The server reads the same `~/.flacidal/config.json` as the desktop app. Two environment variables control it, both optional:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `8080` | HTTP port the server listens on |
+| `FRONTEND_DIST_DIR` | `frontend/dist` | Where to find the built SPA on disk |
+
+If you run `go run ./cmd/server` before building the frontend, the server still starts (the API is fully usable on its own) but requests to `/` return a 503 with a reminder to run `npm run build` first.
+
+---
+
 ## FAQ
 
 **Do I need a Tidal or Qobuz account?**

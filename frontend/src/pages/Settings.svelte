@@ -8,8 +8,10 @@
   import { FolderOpen } from 'lucide-svelte';
   import {
     GetConfig,
-    SaveConfig,
     SelectDownloadFolder,
+    GetFFmpegInfo,
+    GetAppVersion,
+    SaveConfig,
     SetDownloadFolder,
     GetDownloadOptions,
     SetDownloadOptions,
@@ -17,16 +19,14 @@
     CheckAPIStatus,
     CheckForUpdate,
     OpenConfigFolder,
-    GetFFmpegInfo,
     InstallFFmpeg,
     SetSourceOrder,
-    GetAppVersion,
     GetSldlStatus,
     GetSourceHealth,
     InstallSldl,
     TestSoulseekConnection,
-  } from '../../wailsjs/go/app/App.js';
-  import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime.js';
+  } from '../lib/api';
+  import { EventsOn, EventsOff } from '../lib/websocket';
 
   let config = $state({
     downloadFolder: '',

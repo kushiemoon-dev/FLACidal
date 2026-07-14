@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,6 +21,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
+// defaultFrontendDir is where the built Svelte SPA is expected to live on
+// disk when frontendFS is not populated (i.e. no embedded build).
+const defaultFrontendDir = "frontend/dist"
+
 // ServerConfig holds all dependencies for the server
 type ServerConfig struct {
 	Config          *core.Config
@@ -30,6 +36,7 @@ type ServerConfig struct {
 	LyricsClient    *core.LyricsClient
 	Context         context.Context
 	FrontendFS      embed.FS // Embedded frontend assets
+	FrontendDir     string   // Filesystem path to the built SPA when FrontendFS is empty (default: "frontend/dist")
 }
 
 // Server represents the HTTP API server
@@ -46,6 +53,7 @@ type Server struct {
 	queueBroadcaster *QueueBroadcaster
 	ctx              context.Context
 	frontendFS       embed.FS
+	frontendDir      string
 }
 
 // NewServer creates a new API server instance
@@ -63,6 +71,11 @@ func NewServer(cfg ServerConfig) *Server {
 	// Create queue event broadcaster
 	queueBroadcaster := NewQueueBroadcaster()
 
+	frontendDir := cfg.FrontendDir
+	if frontendDir == "" {
+		frontendDir = defaultFrontendDir
+	}
+
 	server := &Server{
 		app:              app,
 		config:           cfg.Config,
@@ -76,6 +89,7 @@ func NewServer(cfg ServerConfig) *Server {
 		queueBroadcaster: queueBroadcaster,
 		ctx:              cfg.Context,
 		frontendFS:       cfg.FrontendFS,
+		frontendDir:      frontendDir,
 	}
 
 	// Hook queue events into the download manager's progress callback.
@@ -166,15 +180,23 @@ func (s *Server) setupRoutes() {
 	api.Get("/sources/preferred", s.handleGetPreferredSource)
 	api.Post("/sources/preferred", s.handleSetPreferredSource)
 	api.Post("/sources/detect", s.handleDetectSource)
+	api.Post("/sources/order", s.handleSetSourceOrder)
+	api.Get("/sources/soulseek/status", s.handleGetSldlStatus)
+	api.Post("/sources/soulseek/test", s.handleTestSoulseekConnection)
 
 	// Content routes (Tidal/Qobuz)
 	api.Post("/content/fetch", s.handleFetchContent)
 	api.Post("/content/validate", s.handleValidateURL)
 	api.Get("/content/search", s.handleSearch)
+	api.Get("/content/search/albums", s.handleSearchTidalAlbums)
+	api.Get("/content/search/artists", s.handleSearchTidalArtists)
+	api.Get("/content/search/deezer", s.handleSearchDeezer)
 
 	// Download routes
 	api.Get("/downloads/queue", s.handleGetQueue)
 	api.Post("/downloads/queue", s.handleQueueDownloads)
+	api.Post("/downloads/queue/album", s.handleQueueArtistAlbum)
+	api.Post("/downloads/queue/qobuz", s.handleQueueQobuzDownloads)
 	api.Post("/downloads/single", s.handleQueueSingle)
 	api.Get("/downloads/status", s.handleGetQueueStatus)
 	api.Get("/downloads/options", s.handleGetDownloadOptions)
@@ -185,6 +207,7 @@ func (s *Server) setupRoutes() {
 	api.Post("/downloads/pause", s.handlePauseDownloads)
 	api.Post("/downloads/resume", s.handleResumeDownloads)
 	api.Get("/downloads/paused", s.handleIsPaused)
+	api.Get("/downloads/export", s.handleExportFailedDownloads)
 
 	// History routes
 	api.Get("/history", s.handleGetHistory)
@@ -192,6 +215,7 @@ func (s *Server) setupRoutes() {
 	api.Delete("/history/:id", s.handleDeleteHistory)
 	api.Post("/history/clear", s.handleClearHistory)
 	api.Post("/history/refetch/:id", s.handleRefetchFromHistory)
+	api.Get("/history/recent", s.handleGetRecentAlbums)
 
 	// Files routes
 	api.Get("/files", s.handleListFiles)
@@ -248,22 +272,40 @@ func (s *Server) setupRoutes() {
 	})
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 
-	// Static files (Svelte build) - serve embedded frontend
-	frontendDist, err := fs.Sub(s.frontendFS, "frontend/dist")
-	if err == nil {
+	// Static files (Svelte build) - prefer an embedded frontend (Docker/production
+	// builds). fs.Sub never errors for a syntactically valid path — even against
+	// an empty embed.FS — so existence must be checked explicitly with fs.Stat.
+	_, embedErr := fs.Stat(s.frontendFS, "frontend/dist/index.html")
+	if embedErr == nil {
+		frontendDist, _ := fs.Sub(s.frontendFS, "frontend/dist")
 		s.app.Use("/", filesystem.New(filesystem.Config{
 			Root:         http.FS(frontendDist),
 			Browse:       false,
 			Index:        "index.html",
 			NotFoundFile: "index.html", // SPA fallback
 		}))
-	} else {
-		// Fallback to file system for development
-		s.app.Static("/", "./frontend/dist")
+	} else if indexPath := filepath.Join(s.frontendDir, "index.html"); fileExists(indexPath) {
+		// No embedded build (e.g. `go run ./cmd/server`) - serve the SPA straight
+		// from disk once it has been built with `cd frontend && npm run build`.
+		s.app.Static("/", s.frontendDir)
 		s.app.Get("/*", func(c *fiber.Ctx) error {
-			return c.SendFile("./frontend/dist/index.html")
+			return c.SendFile(indexPath)
+		})
+	} else {
+		msg := fmt.Sprintf(
+			"Frontend not built. Run `cd frontend && npm install && npm run build` "+
+				"(or `make serve`), then restart the server. Looked for: %s", indexPath)
+		log.Printf("WARN: %s", msg)
+		s.app.Get("/*", func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusServiceUnavailable).SendString(msg)
 		})
 	}
+}
+
+// fileExists reports whether path exists and is a regular file.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // Listen starts the HTTP server

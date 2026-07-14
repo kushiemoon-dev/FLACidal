@@ -1,6 +1,6 @@
 <script lang="ts">
   import { queueStore, downloadFolder, type TidalTrack } from '../stores/queue';
-  import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../../wailsjs/go/app/App.js';
+  import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../lib/api';
   import { toastStore } from '../stores/toast';
   import { formatNumber, formatDuration } from '../lib/format';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime.js';
-  import { FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../../wailsjs/go/app/App.js';
+  import { onNativeFileDrop } from '../../lib/runtime';
+  import { FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, Music2, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
@@ -10,8 +10,11 @@
   let fetching = $state(false);
   let results: { filePath: string; success: boolean; hasPlain?: boolean; hasSynced?: boolean; error?: string }[] = $state([]);
 
+  let unsubscribeFileDrop: () => void;
+
   onMount(() => {
-    OnFileDrop((_x: number, _y: number, paths: string[]) => {
+    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    unsubscribeFileDrop = onNativeFileDrop((_x: number, _y: number, paths: string[]) => {
       const flacFiles = paths.filter(p => /\.flac$/i.test(p));
       if (flacFiles.length > 0) {
         files = [...files, ...flacFiles];
@@ -21,7 +24,7 @@
   });
 
   onDestroy(() => {
-    OnFileDropOff();
+    unsubscribeFileDrop?.();
   });
 
   async function selectFiles() {

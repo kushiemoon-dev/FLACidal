@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Upload } from 'lucide-svelte';
+  import { Upload, AlertTriangle } from 'lucide-svelte';
+  import { isWailsRuntime } from '../lib/api';
 
   let {
     supportedFormats = 'FLAC',
@@ -11,10 +12,18 @@
     onFolderSelected?: () => void;
   } = $props();
 
+  // Neither drag-and-drop nor the native file/folder picker can produce a
+  // real result in a plain browser (see lib/runtime.ts's onNativeFileDrop
+  // and lib/api.ts's OpenFLACFilesDialog/SelectDownloadFolder/
+  // SelectFolderForConversion docs) — show that honestly instead of
+  // rendering controls that silently do nothing when clicked.
+  const nativeFileAccessAvailable = isWailsRuntime();
+
   let isDragOver = $state(false);
   let dragCounter = $state(0);
 
   function handleDragEnter(e: DragEvent) {
+    if (!nativeFileAccessAvailable) return;
     if (e.dataTransfer?.types.includes('Files')) {
       dragCounter++;
       isDragOver = true;
@@ -22,6 +31,7 @@
   }
 
   function handleDragLeave(e: DragEvent) {
+    if (!nativeFileAccessAvailable) return;
     if (e.dataTransfer?.types.includes('Files')) {
       dragCounter--;
       if (dragCounter === 0) isDragOver = false;
@@ -29,6 +39,7 @@
   }
 
   function handleDragOver(e: DragEvent) {
+    if (!nativeFileAccessAvailable) return;
     if (e.dataTransfer?.types.includes('Files')) {
       e.preventDefault();
     }
@@ -44,6 +55,7 @@
 <div
   class="drop-zone"
   class:drag-over={isDragOver}
+  class:unavailable={!nativeFileAccessAvailable}
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
@@ -51,17 +63,23 @@
   role="region"
   aria-label="File drop zone"
 >
-  <Upload size={48} strokeWidth={1.5} color="var(--color-text-tertiary)" />
-  <p class="drop-text">Drag and drop audio files here, or click the button below to select</p>
-  <div class="drop-actions">
-    {#if onFilesSelected}
-      <button class="btn btn-primary" onclick={onFilesSelected}>Select Files</button>
-    {/if}
-    {#if onFolderSelected}
-      <button class="btn btn-outline" onclick={onFolderSelected}>Select Folder</button>
-    {/if}
-  </div>
-  <p class="supported-formats">Supported formats: {supportedFormats}</p>
+  {#if nativeFileAccessAvailable}
+    <Upload size={48} strokeWidth={1.5} color="var(--color-text-tertiary)" />
+    <p class="drop-text">Drag and drop audio files here, or click the button below to select</p>
+    <div class="drop-actions">
+      {#if onFilesSelected}
+        <button class="btn btn-primary" onclick={onFilesSelected}>Select Files</button>
+      {/if}
+      {#if onFolderSelected}
+        <button class="btn btn-outline" onclick={onFolderSelected}>Select Folder</button>
+      {/if}
+    </div>
+    <p class="supported-formats">Supported formats: {supportedFormats}</p>
+  {:else}
+    <AlertTriangle size={40} strokeWidth={1.5} color="var(--color-warning, #f59e0b)" />
+    <p class="drop-text">File selection isn't available in browser mode</p>
+    <p class="supported-formats">Drag-and-drop and the file picker need the FLACidal desktop app — a browser page can't hand this server real filesystem paths.</p>
+  {/if}
 </div>
 
 <style>
@@ -82,6 +100,11 @@
   .drop-zone.drag-over {
     border-color: var(--color-accent);
     background: rgba(244, 114, 182, 0.05);
+  }
+
+  .drop-zone.unavailable {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 
   .drop-text {

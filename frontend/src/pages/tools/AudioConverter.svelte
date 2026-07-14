@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime.js';
-  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder, GetDownloadFolder } from '../../../wailsjs/go/app/App.js';
+  import { onNativeFileDrop } from '../../lib/runtime';
+  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder, GetDownloadFolder } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, FolderOpen, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
@@ -12,6 +12,7 @@
   let outputDir = $state('');
   let converting = $state(false);
   let results: { file: string; success: boolean; error?: string }[] = $state([]);
+  let unsubscribeFileDrop: () => void;
 
   const formatOptions = ['MP3', 'AAC', 'OGG', 'Opus', 'Vorbis', 'ALAC', 'WAV', 'AIFF'];
 
@@ -43,7 +44,8 @@
       toastStore.show(err?.message || 'Failed to load download folder', 'error');
     }
 
-    OnFileDrop((_x: number, _y: number, paths: string[]) => {
+    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    unsubscribeFileDrop = onNativeFileDrop((_x: number, _y: number, paths: string[]) => {
       const audioFiles = paths.filter(p =>
         /\.(flac|mp3|wav|ogg|opus|aac|m4a|alac|wma|aiff)$/i.test(p)
       );
@@ -55,7 +57,7 @@
   });
 
   onDestroy(() => {
-    OnFileDropOff();
+    unsubscribeFileDrop?.();
   });
 
   async function selectFiles() {

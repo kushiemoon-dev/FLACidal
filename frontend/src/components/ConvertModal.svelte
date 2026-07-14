@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../../wailsjs/go/app/App.js';
+  import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../lib/api';
   import { formatBytes } from '../lib/format';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();

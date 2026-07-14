@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { AnalyzeMultiple } from '../../wailsjs/go/app/App.js';
+  import { AnalyzeMultiple } from '../lib/api';
 
   let { files, onClose }: { files: string[]; onClose: () => void } = $props();
 

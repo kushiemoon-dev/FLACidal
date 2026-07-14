@@ -85,6 +85,7 @@ func main() {
 		LyricsClient:    lyricsClient,
 		Context:         ctx,
 		FrontendFS:      frontendFS,
+		FrontendDir:     os.Getenv("FRONTEND_DIST_DIR"),
 	})
 
 	// Set download progress callback to broadcast via WebSocket
