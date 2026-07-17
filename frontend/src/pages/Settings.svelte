@@ -66,6 +66,7 @@
     qobuzCustomEndpoint: '',
     tidalPriorityEndpoints: [] as string[],
     qobuzPriorityEndpoints: [] as string[],
+    amazonPriorityEndpoints: [] as string[],
     skipExisting: true,
     externalLibraryPaths: [] as string[],
     artistSeparator: '; ',
@@ -96,6 +97,7 @@
   let dragIndex = $state<number | null>(null);
   let tidalPriorityText = $state('');
   let qobuzPriorityText = $state('');
+  let amazonPriorityText = $state('');
   let externalLibraryPathsText = $state('');
 
   const sourceLabels: Record<string, string> = {
@@ -357,8 +359,10 @@
         config.qobuzCustomEndpoint = result.qobuzCustomEndpoint || '';
         config.tidalPriorityEndpoints = result.tidalPriorityEndpoints || [];
         config.qobuzPriorityEndpoints = result.qobuzPriorityEndpoints || [];
+        config.amazonPriorityEndpoints = result.amazonPriorityEndpoints || [];
         tidalPriorityText = config.tidalPriorityEndpoints.join('\n');
         qobuzPriorityText = config.qobuzPriorityEndpoints.join('\n');
+        amazonPriorityText = config.amazonPriorityEndpoints.join('\n');
         config.skipExisting = result.skipExisting !== false;
         config.externalLibraryPaths = result.externalLibraryPaths || [];
         externalLibraryPathsText = config.externalLibraryPaths.join('\n');
@@ -469,6 +473,7 @@
         qobuzCustomEndpoint: config.qobuzCustomEndpoint || '',
         tidalPriorityEndpoints: config.tidalPriorityEndpoints,
         qobuzPriorityEndpoints: config.qobuzPriorityEndpoints,
+        amazonPriorityEndpoints: config.amazonPriorityEndpoints,
         skipExisting: config.skipExisting,
         externalLibraryPaths: config.externalLibraryPaths,
         artistSeparator: config.artistSeparator,
@@ -1019,43 +1024,91 @@
 
         <div class="setting-item setting-item-stack">
           <div class="setting-info">
-            <span class="setting-label">Tidal HiFi Priority Instances</span>
-            <span class="setting-desc">Self-hosted hifi-api instances tried first (one URL per line), then public pool as fallback</span>
-          </div>
-          <div class="setting-control wide">
-            <textarea
-              class="setting-input endpoint-list"
-              value={tidalPriorityText}
-              oninput={(e) => {
-                tidalPriorityText = (e.target as HTMLTextAreaElement).value;
-                config.tidalPriorityEndpoints = tidalPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
-              }}
-              placeholder={"https://your-hifi-api-1.com\nhttps://your-hifi-api-2.com"}
-              rows={3}
-              spellcheck={false}
-            ></textarea>
+            <span class="setting-label">Self-hosted instances</span>
+            <span class="setting-desc">
+              The community pool is shared by every user, so rate limits and cooldowns hit everyone at
+              once. Point FLACidal at your own Tidal/Qobuz/Amazon proxy and it's tried first, before the
+              shared pool.
+              <a href="https://github.com/kushiemoon-dev/FLACidal#self-hosted--private-endpoints" target="_blank" rel="noopener">How to set one up →</a>
+            </span>
           </div>
         </div>
 
-        <div class="setting-item setting-item-stack">
-          <div class="setting-info">
-            <span class="setting-label">Qobuz Priority Instances</span>
-            <span class="setting-desc">Self-hosted Qobuz proxies tried first (one URL per line), then public pool as fallback</span>
+        <details class="advanced-instances">
+          <summary>Advanced: self-hosted instance URLs</summary>
+
+          <div class="setting-item setting-item-stack">
+            <div class="setting-info">
+              <span class="setting-label">
+                Tidal HiFi
+                {#if config.tidalPriorityEndpoints.length > 0}
+                  <span class="status-badge ok status-badge-sm">{config.tidalPriorityEndpoints.length} configured</span>
+                {/if}
+              </span>
+            </div>
+            <div class="setting-control wide">
+              <textarea
+                class="setting-input endpoint-list"
+                value={tidalPriorityText}
+                oninput={(e) => {
+                  tidalPriorityText = (e.target as HTMLTextAreaElement).value;
+                  config.tidalPriorityEndpoints = tidalPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
+                }}
+                placeholder={"https://your-hifi-api-1.com\nhttps://your-hifi-api-2.com"}
+                rows={3}
+                spellcheck={false}
+              ></textarea>
+            </div>
           </div>
-          <div class="setting-control wide">
-            <textarea
-              class="setting-input endpoint-list"
-              value={qobuzPriorityText}
-              oninput={(e) => {
-                qobuzPriorityText = (e.target as HTMLTextAreaElement).value;
-                config.qobuzPriorityEndpoints = qobuzPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
-              }}
-              placeholder={"https://your-qobuz-proxy-1.com\nhttps://your-qobuz-proxy-2.com"}
-              rows={3}
-              spellcheck={false}
-            ></textarea>
+
+          <div class="setting-item setting-item-stack">
+            <div class="setting-info">
+              <span class="setting-label">
+                Qobuz
+                {#if config.qobuzPriorityEndpoints.length > 0}
+                  <span class="status-badge ok status-badge-sm">{config.qobuzPriorityEndpoints.length} configured</span>
+                {/if}
+              </span>
+            </div>
+            <div class="setting-control wide">
+              <textarea
+                class="setting-input endpoint-list"
+                value={qobuzPriorityText}
+                oninput={(e) => {
+                  qobuzPriorityText = (e.target as HTMLTextAreaElement).value;
+                  config.qobuzPriorityEndpoints = qobuzPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
+                }}
+                placeholder={"https://your-qobuz-proxy-1.com\nhttps://your-qobuz-proxy-2.com"}
+                rows={3}
+                spellcheck={false}
+              ></textarea>
+            </div>
           </div>
-        </div>
+
+          <div class="setting-item setting-item-stack">
+            <div class="setting-info">
+              <span class="setting-label">
+                Amazon
+                {#if config.amazonPriorityEndpoints.length > 0}
+                  <span class="status-badge ok status-badge-sm">{config.amazonPriorityEndpoints.length} configured</span>
+                {/if}
+              </span>
+            </div>
+            <div class="setting-control wide">
+              <textarea
+                class="setting-input endpoint-list"
+                value={amazonPriorityText}
+                oninput={(e) => {
+                  amazonPriorityText = (e.target as HTMLTextAreaElement).value;
+                  config.amazonPriorityEndpoints = amazonPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
+                }}
+                placeholder={"https://your-amazon-proxy-1.com\nhttps://your-amazon-proxy-2.com"}
+                rows={3}
+                spellcheck={false}
+              ></textarea>
+            </div>
+          </div>
+        </details>
 
       </div>
     </div>
@@ -2107,6 +2160,35 @@
   .status-badge-sm {
     font-size: 11px;
     padding: 2px 7px;
+  }
+
+  /* Advanced: self-hosted instances (collapsible) */
+  .advanced-instances {
+    margin-top: 8px;
+  }
+
+  .advanced-instances > summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-tertiary, #525252);
+    padding: 8px 0;
+    list-style: none;
+  }
+
+  .advanced-instances > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .advanced-instances > summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 0.15s;
+  }
+
+  .advanced-instances[open] > summary::before {
+    transform: rotate(90deg);
   }
 
   /* FFmpeg */

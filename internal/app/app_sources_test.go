@@ -24,6 +24,10 @@ import (
 //     success paths, ExpandDiscographyURL / QueueDiscographyAlbums success
 //     paths: all require live network access to a registered source. Only
 //     nil-guard and "not found"/"not detected" branches are exercised.
+//   - ResolveViaOdesli's success path (a real Odesli/song.link HTTP call):
+//     same live-network exclusion. PickOdesliCandidate covers its pure
+//     selection logic instead, and ResolveViaOdesli's no-sources-registered
+//     short-circuit is covered directly.
 
 func TestGetSourceHealth(t *testing.T) {
 	t.Run("all nil", func(t *testing.T) {
@@ -142,6 +146,57 @@ func TestFetchContentFromURL_NoSourcesRegistered(t *testing.T) {
 	if _, err := a.FetchContentFromURL("https://tidal.com/browse/track/12345"); err == nil {
 		t.Error("FetchContentFromURL() with no registered sources: want error, got nil")
 	}
+}
+
+func TestResolveViaOdesli_NoSourcesRegistered(t *testing.T) {
+	// Must short-circuit before any network call — no registered source
+	// could consume the result anyway.
+	a := &App{sourceManager: core.NewSourceManager()}
+	if _, err := ResolveViaOdesli(a.sourceManager, "https://music.apple.com/us/album/x/123"); err == nil {
+		t.Error("ResolveViaOdesli() with no registered sources: want error, got nil")
+	}
+}
+
+func TestPickOdesliCandidate(t *testing.T) {
+	sm := core.NewSourceManager()
+	sm.RegisterSource(core.NewTidalSource())
+	sm.RegisterSource(core.NewDeezerSource())
+	a := &App{sourceManager: sm}
+
+	t.Run("prefers tidal over deezer", func(t *testing.T) {
+		got, ok := PickOdesliCandidate(a.sourceManager, &core.OdesliLinks{
+			Tidal:  "https://tidal.com/browse/track/161017",
+			Deezer: "https://www.deezer.com/track/3135556",
+		})
+		if !ok || got != "https://tidal.com/browse/track/161017" {
+			t.Errorf("PickOdesliCandidate() = (%q, %v), want tidal URL", got, ok)
+		}
+	})
+
+	t.Run("falls back to deezer when tidal link is empty", func(t *testing.T) {
+		got, ok := PickOdesliCandidate(a.sourceManager, &core.OdesliLinks{
+			Deezer: "https://www.deezer.com/track/3135556",
+		})
+		if !ok || got != "https://www.deezer.com/track/3135556" {
+			t.Errorf("PickOdesliCandidate() = (%q, %v), want deezer URL", got, ok)
+		}
+	})
+
+	t.Run("amazon-only link never matches (not URL-routable)", func(t *testing.T) {
+		_, ok := PickOdesliCandidate(a.sourceManager, &core.OdesliLinks{
+			Amazon: "https://music.amazon.com/tracks/B000SNWG5Q",
+		})
+		if ok {
+			t.Error("PickOdesliCandidate() matched an Amazon-only link, want false")
+		}
+	})
+
+	t.Run("no links at all", func(t *testing.T) {
+		_, ok := PickOdesliCandidate(a.sourceManager, &core.OdesliLinks{})
+		if ok {
+			t.Error("PickOdesliCandidate() with empty links: want false")
+		}
+	})
 }
 
 func TestExpandDiscographyURL(t *testing.T) {

@@ -111,6 +111,7 @@ export namespace core {
 	    qobuzCustomEndpoint?: string;
 	    tidalPriorityEndpoints?: string[];
 	    qobuzPriorityEndpoints?: string[];
+	    amazonPriorityEndpoints?: string[];
 	    sourceOrder?: string[];
 	    qualityOrder?: string[];
 	    generateM3u8: boolean;
@@ -179,6 +180,7 @@ export namespace core {
 	        this.qobuzCustomEndpoint = source["qobuzCustomEndpoint"];
 	        this.tidalPriorityEndpoints = source["tidalPriorityEndpoints"];
 	        this.qobuzPriorityEndpoints = source["qobuzPriorityEndpoints"];
+	        this.amazonPriorityEndpoints = source["amazonPriorityEndpoints"];
 	        this.sourceOrder = source["sourceOrder"];
 	        this.qualityOrder = source["qualityOrder"];
 	        this.generateM3u8 = source["generateM3u8"];

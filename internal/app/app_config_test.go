@@ -58,6 +58,43 @@ func TestSaveConfig(t *testing.T) {
 	}
 }
 
+func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
+	core.SetDataDir(t.TempDir())
+	sldlPath := filepath.Join(t.TempDir(), "sldl")
+	if err := os.WriteFile(sldlPath, []byte("fake"), 0644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	a := &App{
+		sourceManager: core.NewSourceManager(),
+		amazonSource:  core.NewAmazonSource(),
+	}
+	baseCfg := core.Config{SoulseekBinaryPath: sldlPath}
+
+	// Priority endpoint set, no override -> self-host prepended before the public pool.
+	cfg := baseCfg
+	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
+	if err := a.SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+	snap := a.amazonSource.PoolSnapshot()
+	if len(snap) == 0 || snap[0].URL != "https://my-amazon-proxy.example" {
+		t.Fatalf("priority endpoint not prepended, got %+v", snap)
+	}
+
+	// Override set -> total override, priority field ignored.
+	cfg = baseCfg
+	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
+	cfg.AmazonProxyEndpoints = []string{"https://override.example"}
+	if err := a.SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+	snap = a.amazonSource.PoolSnapshot()
+	if len(snap) != 1 || snap[0].URL != "https://override.example" {
+		t.Fatalf("override endpoints not applied exclusively, got %+v", snap)
+	}
+}
+
 func TestSetSourceOrder(t *testing.T) {
 	tests := []struct {
 		name    string

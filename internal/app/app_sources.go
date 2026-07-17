@@ -371,10 +371,61 @@ func (a *App) DetectSourceFromURL(rawURL string) map[string]interface{} {
 }
 
 // FetchContentFromURL fetches content info from any supported source URL
+// PickOdesliCandidate returns the first of links' URLs that a source
+// registered on sm can parse, preferring Tidal then Deezer. Amazon is
+// deliberately excluded: AmazonSource.ParseURL always errors (it's
+// download/ISRC-search only, never URL-routable), so it could never be
+// picked here anyway. Exported so internal/api's own SourceManager-backed
+// server can share this selection logic instead of duplicating it.
+func PickOdesliCandidate(sm *core.SourceManager, links *core.OdesliLinks) (string, bool) {
+	for _, candidate := range []string{links.Tidal, links.Deezer} {
+		if candidate == "" {
+			continue
+		}
+		if _, err := sm.DetectSource(candidate); err == nil {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
+// ResolveViaOdesli looks up rawURL on Odesli/song.link for input FLACidal has
+// no native parser for (Spotify already has one — this covers Apple Music,
+// YouTube Music, Deezer short links, etc.) and returns the first resolved
+// link a source registered on sm can actually parse. Skips the Odesli call
+// entirely when no source is registered, since nothing could consume the
+// result anyway.
+func ResolveViaOdesli(sm *core.SourceManager, rawURL string) (string, error) {
+	if len(sm.GetSourcesInfo()) == 0 {
+		return "", fmt.Errorf("no source found for URL: %s", rawURL)
+	}
+	links, err := core.ResolveOdesliLinks(rawURL)
+	if err != nil {
+		return "", err
+	}
+	if candidate, ok := PickOdesliCandidate(sm, links); ok {
+		return candidate, nil
+	}
+	return "", fmt.Errorf("odesli resolved %s but no supported source could parse the result", rawURL)
+}
+
 func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error) {
+	resolvedViaOdesli := false
 	source, err := a.sourceManager.DetectSource(rawURL)
 	if err != nil {
-		return nil, err
+		resolvedURL, rerr := ResolveViaOdesli(a.sourceManager, rawURL)
+		if rerr != nil {
+			return nil, rerr
+		}
+		if a.logBuffer != nil {
+			a.logBuffer.Info(fmt.Sprintf("Resolved %s via Odesli to %s", rawURL, resolvedURL))
+		}
+		rawURL = resolvedURL
+		resolvedViaOdesli = true
+		source, err = a.sourceManager.DetectSource(rawURL)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	id, contentType, err := source.ParseURL(rawURL)
@@ -386,6 +437,9 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		"source": source.Name(),
 		"type":   contentType,
 		"id":     id,
+	}
+	if resolvedViaOdesli {
+		result["resolvedVia"] = "odesli"
 	}
 
 	// Helper to convert SourceTrack to frontend-compatible format

@@ -64,6 +64,20 @@ The source order can be adjusted in **Settings -> General -> Source Mode**.
 
 **Outbound proxy (HTTP / SOCKS5)** — a personal network proxy you can route FLACidal's traffic through (corporate VPN, SOCKS5 tunnel, etc.). Most users do not need this. Configure it in **Settings -> General -> HTTP / SOCKS5 Proxy**.
 
+### Self-hosted / private endpoints
+
+The community proxy pool is shared by every FLACidal user, which is exactly why it goes down: rate limits and cooldowns apply to everyone at once. If you run your own Tidal HiFi API or Qobuz proxy instance, point FLACidal at it and it is **tried first, before the community pool** — no waiting on shared rate limits, no dependency on pool uptime.
+
+Configure this in **Settings -> General**:
+
+- `tidalPriorityEndpoints` — one or more self-hosted Tidal HiFi API URLs, tried in order before the public pool
+- `qobuzPriorityEndpoints` — one or more self-hosted Qobuz proxy URLs, tried in order before the public pool
+- `amazonPriorityEndpoints` — one or more self-hosted Amazon proxy URLs, tried in order before the public pool
+
+The Tidal and Qobuz fields also exist as single-URL legacy versions (`tidalCustomEndpoint`, `qobuzCustomEndpoint`) for backward compatibility — prefer the priority-list fields for new setups, since they support more than one fallback instance.
+
+Leave these empty to use the default community pool with Soulseek as the automatic first source (see below).
+
 ### Source availability — what to expect
 
 The major streaming platforms actively work to block unofficial API access. As a result:
@@ -166,7 +180,7 @@ Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool e
 <img src="docs/screenshots/home.png" alt="FLACidal Home tab" width="800">
 </div>
 
-1. **Paste a Tidal or Qobuz URL** into the input field and click **Fetch**
+1. **Paste a URL** into the input field and click **Fetch**
 2. FLACidal retrieves the track list and displays the content
 3. Click **Download All FLAC** — tracks are added to the Queue
 4. Previously fetched URLs appear as cards below the input for quick re-downloads
@@ -177,6 +191,10 @@ Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool e
 |---------|-------|
 | **Tidal** | Playlist · Album · Track · Mix · Artist |
 | **Qobuz** | Album · Playlist · Track |
+| **Spotify** | Track · Album · Playlist (metadata only — routed to Tidal/Qobuz/Amazon/Soulseek for the actual FLAC) |
+| **Deezer** | Track · Album · Playlist |
+
+**Other services (Apple Music, YouTube Music, Deezer short links, ...):** FLACidal doesn't parse these directly, but automatically resolves them via [Odesli/song.link](https://song.link) to an equivalent Tidal or Deezer URL before fetching — no extra step needed, just paste the link.
 
 ### Search — find music without leaving the app
 
@@ -283,6 +301,19 @@ wails dev
 
 FLACidal can also run as a plain HTTP server — no Wails, no desktop shell — and be driven from any browser on the machine (or LAN). Useful for a NAS, a home server, or anywhere a desktop UI isn't practical.
 
+### Docker
+
+The image bundles the server, the built frontend, `ffmpeg`, and `sldl` (Soulseek) — no separate setup needed.
+
+```bash
+curl -O https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/main/docker-compose.yml
+docker compose up -d
+```
+
+Open `http://localhost:8080`. Downloads land in `./music/FLACidal`; config and the database persist in the `flacidal-config` volume across restarts. See [docker-compose.yml](docker-compose.yml) for the port/volume layout.
+
+### From source
+
 ```bash
 git clone https://github.com/kushiemoon-dev/FLACidal.git
 cd FLACidal
@@ -322,7 +353,7 @@ False positive. Go-compiled binaries are sometimes flagged heuristically. Build 
 It routes FLACidal's network traffic through a personal proxy such as a corporate VPN or SOCKS5 tunnel. Most users do not need it. It is completely separate from the community proxy pool used for Tidal and Amazon.
 
 **Is there an AUR package for Arch Linux?**
-No. Use the `.AppImage` from the releases page, or build from source with `wails build`.
+Yes — `flacidal-bin`. `yay -S flacidal-bin` or `paru -S flacidal-bin`. It wraps the same `.AppImage` from the releases page.
 
 ---
 

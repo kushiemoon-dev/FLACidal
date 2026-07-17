@@ -50,8 +50,10 @@ func (a *App) SaveConfig(config core.Config) error {
 		opts.SaveLyricsFile = config.SaveLyricsFile
 		opts.SaveFolderCover = config.SaveFolderCover
 		a.downloader.SetOptions(opts)
-		// Re-apply priority endpoints live without restart
-		if len(config.TidalHifiEndpoints) == 0 {
+		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		if len(config.TidalHifiEndpoints) > 0 {
+			a.downloader.SetEndpoints(config.TidalHifiEndpoints)
+		} else {
 			base := core.GetTidalEndpoints()
 			priority := config.TidalPriorityEndpoints
 			if len(priority) == 0 && config.TidalCustomEndpoint != "" {
@@ -61,6 +63,36 @@ func (a *App) SaveConfig(config core.Config) error {
 				a.downloader.SetEndpoints(append(priority, base...))
 			} else {
 				a.downloader.SetEndpoints(base)
+			}
+		}
+	}
+	if a.qobuzSource != nil {
+		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		if len(config.QobuzEndpoints) > 0 {
+			a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
+		} else {
+			base := core.DefaultQobuzEndpoints()
+			priority := config.QobuzPriorityEndpoints
+			if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
+				priority = []string{config.QobuzCustomEndpoint}
+			}
+			if len(priority) > 0 {
+				a.qobuzSource.SetEndpoints(append(priority, base...))
+			} else {
+				a.qobuzSource.SetEndpoints(base)
+			}
+		}
+	}
+	if a.amazonSource != nil {
+		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		if len(config.AmazonProxyEndpoints) > 0 {
+			a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
+		} else {
+			base := core.GetEndpoints("amazon")
+			if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
+				a.amazonSource.SetEndpoints(append(priority, base...))
+			} else {
+				a.amazonSource.SetEndpoints(base)
 			}
 		}
 	}
