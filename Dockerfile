@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     && rm -rf /var/lib/apt/lists/*
 # Same pinned tag + per-arch asset names as sldlDownloadURLs in flacidal-core/sldl_installer.go.
 RUN case "$TARGETARCH" in \
-      amd64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.0-dev.11/sockseek_linux-x64.tar.gz' ;; \
-      arm64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.0-dev.11/sockseek_linux-arm.tar.gz' ;; \
+      amd64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.4/sockseek_3.0.4_linux-x64.tar.gz' ;; \
+      arm64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.4/sockseek_3.0.4_linux-arm.tar.gz' ;; \
       *) echo "unsupported arch: $TARGETARCH" >&2; exit 1 ;; \
     esac \
     && curl -fsSL "$SLDL_URL" -o /tmp/sldl.tar.gz \
