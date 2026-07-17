@@ -362,7 +362,9 @@
                 {#if album.albumType}
                   <span class="album-type-badge">{album.albumType}</span>
                 {/if}
-                <span>{album.trackCount} tracks</span>
+                {#if album.trackCount > 0}
+                  <span>{album.trackCount} tracks</span>
+                {/if}
               </div>
             </div>
             <button

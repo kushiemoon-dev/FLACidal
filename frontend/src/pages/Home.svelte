@@ -825,7 +825,7 @@
                 <span class="album-meta">
                   {album.artist}
                   {#if album.releaseDate}· {album.releaseDate.slice(0,4)}{/if}
-                  · {album.trackCount} tracks
+                  {#if album.trackCount > 0}· {album.trackCount} tracks{/if}
                 </span>
               </div>
               {#if album.albumType}
