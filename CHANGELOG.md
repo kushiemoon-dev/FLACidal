@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.15.1 — 2026-07-17
+
+### Fixes
+- **`sldl` auto-installer downloaded a dead URL** — pinned to a `fiso64/sockseek` tag that's been removed upstream, breaking both the in-app "Install sldl" button and the Docker image build (also fixed there). Repinned to the current stable release.
+
+### Internal
+- Core dependency bumped to `v0.16.1` (same fix, see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md)).
+
 ## v4.15.0 — 2026-07-17
 
 ### New features
