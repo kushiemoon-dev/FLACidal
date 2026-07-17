@@ -126,9 +126,19 @@ func (s *Server) handleFetchContent(c *fiber.Ctx) error {
 // playlist) into its details. Shared by handleFetchContent and
 // handleRefetchFromHistory so both stay in sync.
 func (s *Server) fetchContentByURL(rawURL string) (fiber.Map, int, error) {
+	resolvedViaOdesli := false
 	source, err := s.sourceManager.DetectSource(rawURL)
 	if err != nil {
-		return nil, fiber.StatusBadRequest, fmt.Errorf("Unknown URL format")
+		resolvedURL, rerr := app.ResolveViaOdesli(s.sourceManager, rawURL)
+		if rerr != nil {
+			return nil, fiber.StatusBadRequest, fmt.Errorf("Unknown URL format")
+		}
+		rawURL = resolvedURL
+		resolvedViaOdesli = true
+		source, err = s.sourceManager.DetectSource(rawURL)
+		if err != nil {
+			return nil, fiber.StatusBadRequest, fmt.Errorf("Unknown URL format")
+		}
 	}
 
 	id, contentType, err := source.ParseURL(rawURL)
@@ -140,6 +150,9 @@ func (s *Server) fetchContentByURL(rawURL string) (fiber.Map, int, error) {
 		"source": source.Name(),
 		"type":   contentType,
 		"id":     id,
+	}
+	if resolvedViaOdesli {
+		result["resolvedVia"] = "odesli"
 	}
 
 	switch contentType {

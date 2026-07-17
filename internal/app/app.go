@@ -298,13 +298,19 @@ func (a *App) Startup(ctx context.Context) {
 			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
 		}
 	}
-	if config.QobuzCustomEndpoint != "" {
-		base := core.DefaultQobuzEndpoints()
-		a.qobuzSource.SetEndpoints(append([]string{config.QobuzCustomEndpoint}, base...))
-		a.logBuffer.Info("Qobuz custom endpoint prepended: " + config.QobuzCustomEndpoint)
-	} else if len(config.QobuzEndpoints) > 0 {
+	if len(config.QobuzEndpoints) > 0 {
 		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured", len(config.QobuzEndpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured (override)", len(config.QobuzEndpoints)))
+	} else {
+		base := core.DefaultQobuzEndpoints()
+		priority := config.QobuzPriorityEndpoints
+		if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
+			priority = []string{config.QobuzCustomEndpoint} // backward compat with legacy single-endpoint field
+		}
+		if len(priority) > 0 {
+			a.qobuzSource.SetEndpoints(append(priority, base...))
+			a.logBuffer.Info(fmt.Sprintf("Qobuz priority endpoints: %d self-host + %d public", len(priority), len(base)))
+		}
 	}
 	if config.QobuzAuthToken != "" {
 		a.qobuzSource.SetCredentials(config.QobuzAppID, config.QobuzAppSecret, config.QobuzAuthToken)
@@ -328,6 +334,14 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Initialize Amazon Music fallback source (no auth required, via proxy pool)
 	a.amazonSource = core.NewAmazonSource()
+	if len(config.AmazonProxyEndpoints) > 0 {
+		a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
+		a.logBuffer.Info(fmt.Sprintf("Amazon endpoint pool: %d endpoints configured (override)", len(config.AmazonProxyEndpoints)))
+	} else if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
+		base := core.GetEndpoints("amazon")
+		a.amazonSource.SetEndpoints(append(priority, base...))
+		a.logBuffer.Info(fmt.Sprintf("Amazon priority endpoints: %d self-host + %d public", len(priority), len(base)))
+	}
 	a.sourceManager.RegisterSource(a.amazonSource)
 	a.logBuffer.Info("Amazon Music fallback source initialized")
 
@@ -368,9 +382,14 @@ func (a *App) Startup(ctx context.Context) {
 		}
 	}
 
-	// Wire multi-source orchestrator: tries Amazon → Bandcamp → Soulseek when Tidal+Qobuz fail
-	orchestratorPriority := []string{"tidal", "qobuz", "amazon", "bandcamp", "soulseek"}
-	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, orchestratorPriority, a.logBuffer)
+	// Wire multi-source orchestrator, priority order shared with downloadManager below
+	// (previously a separate hardcoded list that ignored config.SourceOrder and put
+	// Soulseek last, contradicting the Soulseek-first default described in the README).
+	sourceOrder := config.SourceOrder
+	if len(sourceOrder) == 0 {
+		sourceOrder = core.DefaultSourceOrder(config)
+	}
+	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, sourceOrder, a.logBuffer)
 	if a.db != nil {
 		a.orchestrator.SetDatabase(a.db)
 		if a.soulseekSource != nil {
@@ -378,16 +397,6 @@ func (a *App) Startup(ctx context.Context) {
 		}
 	}
 	a.downloadManager.SetOrchestrator(a.orchestrator)
-
-	sourceOrder := config.SourceOrder
-	if len(sourceOrder) == 0 {
-		// Default: prefer Tidal, fall back to Qobuz if enabled
-		if config.QobuzEnabled {
-			sourceOrder = []string{"tidal", "qobuz"}
-		} else {
-			sourceOrder = []string{"tidal"}
-		}
-	}
 	a.downloadManager.SetSourceOrder(sourceOrder)
 	a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
 	a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)

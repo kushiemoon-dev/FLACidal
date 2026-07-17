@@ -21,6 +21,7 @@
   } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import { toastStore } from '../stores/toast';
   import { formatBytes, formatDuration } from '../lib/format';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
@@ -308,22 +309,43 @@
           artistId: result.artistId
         });
       } else {
-        // Fallback to Tidal-only validation
-        const validation = await ValidateTidalURL(tidalUrl);
-        if (!validation.valid) {
-          throw new Error(validation.error);
+        // No native source detected the URL. Try the general resolver first —
+        // it also covers Apple Music/YouTube Music/etc. via Odesli/song.link,
+        // which the lightweight reactive detection above doesn't check (to
+        // avoid firing a network call on every keystroke). Fall back to the
+        // legacy Tidal-only validation if that still can't make sense of it.
+        try {
+          const result = await FetchContentFromURL(tidalUrl);
+          currentContent.set({
+            type: result.type,
+            id: result.id,
+            title: result.title,
+            creator: result.creator,
+            coverUrl: result.coverUrl,
+            tracks: result.tracks || [],
+            source: result.source,
+            artistId: result.artistId
+          });
+          if (result.resolvedVia === 'odesli') {
+            toastStore.show(`Resolved via song.link → ${result.source}`, 'info');
+          }
+        } catch {
+          const validation = await ValidateTidalURL(tidalUrl);
+          if (!validation.valid) {
+            throw new Error(validation.error);
+          }
+          const result = await FetchTidalContent(tidalUrl);
+          currentContent.set({
+            type: result.type,
+            id: result.id,
+            title: result.title,
+            creator: result.creator,
+            coverUrl: result.coverUrl,
+            tracks: result.tracks || [],
+            source: 'tidal',
+            artistId: result.artistId
+          });
         }
-        const result = await FetchTidalContent(tidalUrl);
-        currentContent.set({
-          type: result.type,
-          id: result.id,
-          title: result.title,
-          creator: result.creator,
-          coverUrl: result.coverUrl,
-          tracks: result.tracks || [],
-          source: 'tidal',
-          artistId: result.artistId
-        });
       }
       // Save to recent fetches on success
       const currentData = $currentContent;
