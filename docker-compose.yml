@@ -1,0 +1,14 @@
+services:
+  flacidal:
+    image: ghcr.io/kushiemoon-dev/flacidal:latest
+    build: .
+    container_name: flacidal
+    ports:
+      - "8080:8080"
+    volumes:
+      - flacidal-config:/home/flacidal/.flacidal
+      - ./music:/home/flacidal/Music
+    restart: unless-stopped
+
+volumes:
+  flacidal-config:
