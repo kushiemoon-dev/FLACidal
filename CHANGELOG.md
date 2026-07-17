@@ -1,5 +1,26 @@
 # Changelog
 
+## v4.15.0 — 2026-07-17
+
+### New features
+- **Self-hosted instance priority for Amazon** — reaches parity with Tidal/Qobuz: a priority-endpoint list tried before the shared community pool, live-reloaded on Settings save without a restart.
+- **Instance-aware default source order** — a source with a self-hosted instance configured now skips ahead of Soulseek in the default priority order, instead of Soulseek always leading regardless of instance setup.
+- **Odesli/song.link URL resolution** — pasting a Spotify, Apple Music, YouTube Music (or other Odesli-supported service) URL now resolves it to an equivalent Tidal or Deezer link automatically, in both the desktop app and the headless REST API. A toast confirms when this fallback was used.
+- **Docker packaging** for the headless server (multi-stage build + `docker-compose.yml` + CI image publish).
+- Settings: the self-host endpoint fields are now grouped under a collapsible "Advanced" section with a single explanation, a link to the README, and a live count badge per field — instead of three always-visible, unexplained text areas.
+
+### Fixes
+- `qobuzPriorityEndpoints` was persisted and shown in Settings but never actually applied — setting it silently did nothing.
+- Self-hosted override endpoints (Tidal/Qobuz/Amazon) only took effect at app startup, not when changed via Settings — required a restart.
+- The download orchestrator used a separate hardcoded priority list that ignored the configured source order entirely and always put Soulseek last, contradicting the documented Soulseek-first default.
+- Home's URL fetch silently bypassed the Odesli fallback for unrecognized URLs, falling into a Tidal-only validation path that always failed for non-Tidal input.
+
+### Internal
+- Core dependency bumped to `v0.16.0` — Amazon self-host support, instance-aware default source order, Odesli URL resolver (see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md)).
+- AUR package definition bumped to track v4.14.0 (was still on v4.11.0).
+
+---
+
 ## v4.14.0 — 2026-07-14
 
 ### New features
