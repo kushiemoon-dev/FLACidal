@@ -1,7 +1,7 @@
 # Maintainer: kushiemoon-dev <noreply@users.noreply.github.com>
 pkgname=flacidal-bin
 _appname=flacidal
-pkgver=4.11.0
+pkgver=4.14.0
 pkgrel=1
 pkgdesc='Free FLAC and hi-res music downloader (Tidal, Qobuz, Amazon, Soulseek, Bandcamp)'
 arch=('x86_64')
@@ -18,7 +18,7 @@ conflicts=('flacidal')
 options=('!strip' '!debug')
 source=("${_appname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/flacidal.AppImage"
         "LICENSE-${pkgver}::${url}/raw/v${pkgver}/LICENSE")
-sha256sums=('dc751abc5166fc196c9e0230320077151fbff420586216ae63fff691116d2d52'
+sha256sums=('cd2f263d622af5121d7e6665ed534e34c07ea9800f8744c9e2e4217be0cb0e20'
             '7576c6620cb1d95a2633595c1bedf85c70541d4ae3c3b2fc31bad8be11a14e67')
 
 prepare() {
