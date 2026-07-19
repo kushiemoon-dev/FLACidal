@@ -80,6 +80,8 @@
         class:active={activePage === item.id}
         onclick={() => onNavigate(item.id)}
         title={item.label}
+        aria-label={item.label}
+        aria-current={activePage === item.id ? 'page' : undefined}
       >
         <item.Icon size={20} />
         {#if item.id === 'queue' && queueCount > 0}
@@ -98,6 +100,7 @@
         class:active={showToolsFlyout || ['tool-analyzer','tool-resampler','tool-converter','tool-filemanager','tool-lyricsmanager'].includes(activePage)}
         onclick={toggleToolsFlyout}
         title="Tools"
+        aria-label="Tools"
       >
         <LayoutGrid size={20} />
       </button>
@@ -125,6 +128,8 @@
         class:active={activePage === item.id}
         onclick={() => onNavigate(item.id)}
         title={item.label}
+        aria-label={item.label}
+        aria-current={activePage === item.id ? 'page' : undefined}
       >
         <item.Icon size={20} />
       </button>
@@ -135,6 +140,7 @@
       class="nav-item"
       onclick={handleBugReport}
       title="Report a Bug"
+      aria-label="Report a Bug"
     >
       <Bug size={20} />
     </button>

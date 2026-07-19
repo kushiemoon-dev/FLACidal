@@ -179,7 +179,7 @@
     {/key}
   </div>
 </main>
-<IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/flacidal/flacidal/issues" />
+<IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/kushiemoon-dev/FLACidal/issues" />
 <Toast />
 <QueuePanel />
 
