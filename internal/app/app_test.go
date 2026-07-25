@@ -23,17 +23,17 @@ func TestDefaultSldlPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("darwin/linux path only; current test runner is not windows")
 	}
-	got := defaultSldlPath()
+	got := DefaultSldlPath()
 	homeDir, _ := os.UserHomeDir()
 	want := filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
 	if got != want {
-		t.Errorf("defaultSldlPath() = %q, want %q", got, want)
+		t.Errorf("DefaultSldlPath() = %q, want %q", got, want)
 	}
 }
 
 func TestEnsureSldlExecutable(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("chmod semantics differ on windows; ensureSldlExecutable is a no-op there")
+		t.Skip("chmod semantics differ on windows; EnsureSldlExecutable is a no-op there")
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sldl")
@@ -41,22 +41,22 @@ func TestEnsureSldlExecutable(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	if err := ensureSldlExecutable(path); err != nil {
-		t.Fatalf("ensureSldlExecutable() error = %v", err)
+	if err := EnsureSldlExecutable(path); err != nil {
+		t.Fatalf("EnsureSldlExecutable() error = %v", err)
 	}
 
 	info, err := os.Stat(path)
 	if err != nil {
-		t.Fatalf("stat after ensureSldlExecutable: %v", err)
+		t.Fatalf("stat after EnsureSldlExecutable: %v", err)
 	}
 	if info.Mode().Perm()&0100 == 0 {
-		t.Errorf("ensureSldlExecutable() did not set the owner-executable bit, mode = %v", info.Mode())
+		t.Errorf("EnsureSldlExecutable() did not set the owner-executable bit, mode = %v", info.Mode())
 	}
 }
 
 func TestEnsureSldlExecutable_MissingFile(t *testing.T) {
-	err := ensureSldlExecutable(filepath.Join(t.TempDir(), "does-not-exist"))
+	err := EnsureSldlExecutable(filepath.Join(t.TempDir(), "does-not-exist"))
 	if err == nil {
-		t.Error("ensureSldlExecutable() on a missing file: want error, got nil")
+		t.Error("EnsureSldlExecutable() on a missing file: want error, got nil")
 	}
 }

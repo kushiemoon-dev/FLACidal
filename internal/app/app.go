@@ -44,8 +44,8 @@ func NewApp(version string) *App {
 	return &App{version: version}
 }
 
-// defaultSldlPath returns the platform-appropriate default path for the sldl binary.
-func defaultSldlPath() string {
+// DefaultSldlPath returns the platform-appropriate default path for the sldl binary.
+func DefaultSldlPath() string {
 	if goruntime.GOOS == "windows" {
 		appData := os.Getenv("APPDATA")
 		if appData == "" {
@@ -57,12 +57,12 @@ func defaultSldlPath() string {
 	return filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
 }
 
-// ensureSldlExecutable ensures the sldl binary is executable and not quarantined.
+// EnsureSldlExecutable ensures the sldl binary is executable and not quarantined.
 // On Linux/macOS it sets the executable bit (mirrors what the FFmpeg installer does).
 // On macOS it also removes the com.apple.quarantine xattr that Gatekeeper applies to
 // files downloaded via a browser — without this the process is killed on launch even
 // though os.Stat reports the file as present.
-func ensureSldlExecutable(path string) error {
+func EnsureSldlExecutable(path string) error {
 	if goruntime.GOOS == "windows" {
 		return nil
 	}
@@ -73,6 +73,24 @@ func ensureSldlExecutable(path string) error {
 		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck // attr commonly absent, not an error
 	}
 	return nil
+}
+
+// resolveAndPersistSourceOrder returns config.SourceOrder, resolving it via
+// core.DefaultSourceOrder and persisting the result back to config when it
+// was empty — so App.GetConfig() (and therefore Settings.svelte) subsequently
+// reports the order the orchestrator is actually using, instead of the
+// resolution living only in a local variable that never reaches disk.
+// warnf receives a best-effort diagnostic if the persist fails; pass nil to
+// skip logging.
+func resolveAndPersistSourceOrder(config *core.Config, warnf func(string)) []string {
+	if len(config.SourceOrder) > 0 {
+		return config.SourceOrder
+	}
+	config.SourceOrder = core.DefaultSourceOrder(config)
+	if err := core.SaveConfig(config); err != nil && warnf != nil {
+		warnf(fmt.Sprintf("failed to persist resolved source order: %v", err))
+	}
+	return config.SourceOrder
 }
 
 // Startup is called when the app starts
@@ -359,9 +377,9 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize Soulseek fallback source (last-resort P2P, independent of streaming proxies)
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
-		sldlPath = defaultSldlPath()
+		sldlPath = DefaultSldlPath()
 	}
-	if err := ensureSldlExecutable(sldlPath); err != nil {
+	if err := EnsureSldlExecutable(sldlPath); err != nil {
 		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
@@ -385,10 +403,7 @@ func (a *App) Startup(ctx context.Context) {
 	// Wire multi-source orchestrator, priority order shared with downloadManager below
 	// (previously a separate hardcoded list that ignored config.SourceOrder and put
 	// Soulseek last, contradicting the Soulseek-first default described in the README).
-	sourceOrder := config.SourceOrder
-	if len(sourceOrder) == 0 {
-		sourceOrder = core.DefaultSourceOrder(config)
-	}
+	sourceOrder := resolveAndPersistSourceOrder(config, func(msg string) { a.logBuffer.Warn(msg) })
 	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, sourceOrder, a.logBuffer)
 	if a.db != nil {
 		a.orchestrator.SetDatabase(a.db)

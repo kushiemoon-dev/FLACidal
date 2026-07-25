@@ -1,15 +1,16 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
+
+	"flacidal/internal/app"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
 // handleSetSourceOrder implements POST /api/sources/order.
-// Mirrors internal/app's App.SetSourceOrder, except it has no equivalent of
+// Mirrors internal/app's App.SetSourceOrder via the shared
+// app.ValidateSourceOrder, except it has no equivalent of
 // a.orchestrator.SetPriority — the Server struct has no orchestrator field
 // (that's a Wails-app-only concern for live in-flight request routing), so
 // only the persisted config + download manager priority are updated here.
@@ -21,26 +22,16 @@ func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if len(req.Order) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "source order cannot be empty"})
-	}
-	validSources := map[string]bool{"tidal": true, "qobuz": true, "amazon": true, "bandcamp": true, "soulseek": true}
-	seen := map[string]bool{}
-	for _, src := range req.Order {
-		if !validSources[src] {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("unknown source: %s", src)})
-		}
-		if seen[src] {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("duplicate source: %s", src)})
-		}
-		seen[src] = true
+	validated, err := app.ValidateSourceOrder(req.Order)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	if s.downloadManager != nil {
-		s.downloadManager.SetSourceOrder(req.Order)
+		s.downloadManager.SetSourceOrder(validated)
 	}
 	if s.config != nil {
-		s.config.SourceOrder = req.Order
+		s.config.SourceOrder = validated
 		if err := core.SaveConfig(s.config); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}

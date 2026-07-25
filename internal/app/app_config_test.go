@@ -27,7 +27,7 @@ func TestGetConfig(t *testing.T) {
 func TestSaveConfig(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 
-	// A real, but not "available", sldl path so ensureSldlExecutable succeeds.
+	// A real, but not "available", sldl path so EnsureSldlExecutable succeeds.
 	sldlPath := filepath.Join(t.TempDir(), "sldl")
 	if err := os.WriteFile(sldlPath, []byte("fake"), 0644); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -121,8 +121,87 @@ func TestSetSourceOrder(t *testing.T) {
 		if err := a.SetSourceOrder([]string{"tidal", "qobuz"}); err != nil {
 			t.Fatalf("SetSourceOrder() error = %v", err)
 		}
-		if got := a.config.SourceOrder; len(got) != 2 || got[0] != "tidal" || got[1] != "qobuz" {
+		if got := a.config.SourceOrder; len(got) != 3 || got[0] != "soulseek" || got[1] != "tidal" || got[2] != "qobuz" {
 			t.Errorf("SetSourceOrder() did not update a.config.SourceOrder, got %v", got)
+		}
+	})
+}
+
+func TestValidateSourceOrder(t *testing.T) {
+	tests := []struct {
+		name    string
+		order   []string
+		want    []string
+		wantErr string
+	}{
+		{name: "empty order", order: nil, wantErr: "source order cannot be empty"},
+		{name: "unknown source", order: []string{"napster"}, wantErr: "unknown source: napster"},
+		{name: "duplicate source", order: []string{"tidal", "tidal"}, wantErr: "duplicate source: tidal"},
+		{name: "omits soulseek: prepended", order: []string{"tidal", "qobuz"}, want: []string{"soulseek", "tidal", "qobuz"}},
+		{name: "contains soulseek not first: unchanged", order: []string{"tidal", "soulseek", "qobuz"}, want: []string{"tidal", "soulseek", "qobuz"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ValidateSourceOrder(tt.order)
+			if tt.wantErr != "" {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Errorf("ValidateSourceOrder(%v) error = %v, want %q", tt.order, err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateSourceOrder(%v) unexpected error = %v", tt.order, err)
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("ValidateSourceOrder(%v) = %v, want %v", tt.order, got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("ValidateSourceOrder(%v) = %v, want %v", tt.order, got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestResolveAndPersistSourceOrder(t *testing.T) {
+	t.Run("already set: returned unchanged, not persisted", func(t *testing.T) {
+		core.SetDataDir(t.TempDir())
+		config := &core.Config{SourceOrder: []string{"tidal"}}
+		got := resolveAndPersistSourceOrder(config, nil)
+		if len(got) != 1 || got[0] != "tidal" {
+			t.Errorf("resolveAndPersistSourceOrder() = %v, want [tidal]", got)
+		}
+		if len(config.SourceOrder) != 1 || config.SourceOrder[0] != "tidal" {
+			t.Errorf("config.SourceOrder = %v, want unchanged [tidal]", config.SourceOrder)
+		}
+	})
+
+	t.Run("empty: resolved via DefaultSourceOrder and persisted", func(t *testing.T) {
+		core.SetDataDir(t.TempDir())
+		config := &core.Config{}
+		want := core.DefaultSourceOrder(config)
+
+		got := resolveAndPersistSourceOrder(config, nil)
+
+		if len(got) != len(want) {
+			t.Fatalf("resolveAndPersistSourceOrder() = %v, want %v", got, want)
+		}
+		for i := range got {
+			if got[i] != want[i] {
+				t.Errorf("resolveAndPersistSourceOrder() = %v, want %v", got, want)
+			}
+		}
+		if len(config.SourceOrder) != len(want) {
+			t.Errorf("config.SourceOrder = %v, want mutated to match %v", config.SourceOrder, want)
+		}
+
+		data, err := os.ReadFile(core.GetConfigPath())
+		if err != nil {
+			t.Fatalf("reading persisted config: %v", err)
+		}
+		if len(data) == 0 {
+			t.Error("resolveAndPersistSourceOrder() did not persist a non-empty config file")
 		}
 	})
 }

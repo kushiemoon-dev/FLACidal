@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	goruntime "runtime"
+	"slices"
 	"strings"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
@@ -118,9 +119,9 @@ func (a *App) SaveConfig(config core.Config) error {
 	// Re-initialize Soulseek source when credentials or enabled state change
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
-		sldlPath = defaultSldlPath()
+		sldlPath = DefaultSldlPath()
 	}
-	if err := ensureSldlExecutable(sldlPath); err != nil && a.logBuffer != nil {
+	if err := EnsureSldlExecutable(sldlPath); err != nil && a.logBuffer != nil {
 		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
@@ -144,31 +145,53 @@ func (a *App) SaveConfig(config core.Config) error {
 
 // SetSourceOrder updates the download source priority order live and persists it
 func (a *App) SetSourceOrder(order []string) error {
+	validated, err := ValidateSourceOrder(order)
+	if err != nil {
+		return err
+	}
+	if a.orchestrator != nil {
+		a.orchestrator.SetPriority(validated)
+	}
+	if a.downloadManager != nil {
+		a.downloadManager.SetSourceOrder(validated)
+	}
+	if a.config != nil {
+		a.config.SourceOrder = validated
+		return core.SaveConfig(a.config)
+	}
+	return nil
+}
+
+// ValidateSourceOrder validates a submitted source order — rejecting the
+// whole call on any unknown or duplicate source, matching both
+// App.SetSourceOrder's and the REST handler's existing behavior (unlike
+// FLACidal-Core's rpc_sources.go, which filters and continues instead of
+// rejecting) — then re-injects "soulseek" as primary when the validated
+// order omits it, since an order missing it is a migration gap, not a
+// deliberate exclusion (mirrors FLACidal-Core/core.go's NewCore() migration
+// and rpc_sources.go's handleSetSourceOrder). An order already containing
+// "soulseek" anywhere is returned unchanged — only its absence triggers the
+// prepend. Shared by the desktop (Wails) and HTTP server APIs (same sharing
+// pattern as SldlStatus / TestSoulseekLogin above).
+func ValidateSourceOrder(order []string) ([]string, error) {
 	if len(order) == 0 {
-		return fmt.Errorf("source order cannot be empty")
+		return nil, fmt.Errorf("source order cannot be empty")
 	}
 	validSources := map[string]bool{"tidal": true, "qobuz": true, "amazon": true, "bandcamp": true, "soulseek": true}
 	seen := map[string]bool{}
 	for _, s := range order {
 		if !validSources[s] {
-			return fmt.Errorf("unknown source: %s", s)
+			return nil, fmt.Errorf("unknown source: %s", s)
 		}
 		if seen[s] {
-			return fmt.Errorf("duplicate source: %s", s)
+			return nil, fmt.Errorf("duplicate source: %s", s)
 		}
 		seen[s] = true
 	}
-	if a.orchestrator != nil {
-		a.orchestrator.SetPriority(order)
+	if !slices.Contains(order, "soulseek") {
+		order = append([]string{"soulseek"}, order...)
 	}
-	if a.downloadManager != nil {
-		a.downloadManager.SetSourceOrder(order)
-	}
-	if a.config != nil {
-		a.config.SourceOrder = order
-		return core.SaveConfig(a.config)
-	}
-	return nil
+	return order, nil
 }
 
 // ResetToDefaults resets configuration to default values

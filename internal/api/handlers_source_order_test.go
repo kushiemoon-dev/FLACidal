@@ -78,7 +78,7 @@ func TestHandleSetSourceOrder_Success(t *testing.T) {
 	if body["success"] != true {
 		t.Errorf("body = %v, want success:true", body)
 	}
-	if len(s.config.SourceOrder) != 2 || s.config.SourceOrder[0] != "qobuz" {
-		t.Errorf("config.SourceOrder = %v, want [qobuz tidal]", s.config.SourceOrder)
+	if got := s.config.SourceOrder; len(got) != 3 || got[0] != "soulseek" || got[1] != "qobuz" || got[2] != "tidal" {
+		t.Errorf("config.SourceOrder = %v, want [soulseek qobuz tidal]", got)
 	}
 }
