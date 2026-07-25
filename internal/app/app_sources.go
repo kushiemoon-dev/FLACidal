@@ -121,7 +121,7 @@ func (a *App) InstallSldl() error {
 
 	// Remove quarantine attribute on macOS and ensure executable bit
 	sldlPath := core.GetSldlPath()
-	if err := ensureSldlExecutable(sldlPath); err != nil {
+	if err := EnsureSldlExecutable(sldlPath); err != nil {
 		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 
@@ -159,7 +159,7 @@ func (a *App) GetSldlStatus() map[string]interface{} {
 func SldlStatus(binaryPath string) map[string]interface{} {
 	sldlPath := binaryPath
 	if sldlPath == "" {
-		sldlPath = defaultSldlPath()
+		sldlPath = DefaultSldlPath()
 	}
 
 	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
@@ -216,7 +216,7 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 func TestSoulseekLogin(binaryPath, username, password string, logf func(level, msg string)) map[string]interface{} {
 	sldlPath := binaryPath
 	if sldlPath == "" {
-		sldlPath = defaultSldlPath()
+		sldlPath = DefaultSldlPath()
 	}
 	log := func(level, msg string) {
 		if logf != nil {
@@ -235,7 +235,7 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 	// after authentication succeeds — independently of whether search results arrive via
 	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
 	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
-	if err := ensureSldlExecutable(sldlPath); err != nil {
+	if err := EnsureSldlExecutable(sldlPath); err != nil {
 		log("warn", fmt.Sprintf("sldl binary may not be executable: %v", err))
 	}
 	cmd := exec.CommandContext(ctx, sldlPath,

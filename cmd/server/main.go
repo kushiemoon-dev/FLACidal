@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"flacidal/internal/api"
+	"flacidal/internal/app"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
@@ -70,6 +71,7 @@ func main() {
 	sourceManager := core.NewSourceManager()
 	sourceManager.RegisterSource(tidalSource)
 	sourceManager.RegisterSource(qobuzSource)
+	registerSoulseekSource(sourceManager, config)
 	sourceManager.SetPreferredSource(config.PreferredSource)
 
 	// Initialize lyrics client
@@ -125,5 +127,27 @@ func main() {
 	log.Printf("Server listening on :%s", port)
 	if err := server.Listen(":" + port); err != nil {
 		log.Fatalf("Server error: %v", err) //nolint:gocritic // process is exiting; deferred cancel() has nothing left to clean up
+	}
+}
+
+// registerSoulseekSource constructs a Soulseek source and registers it with sm
+// when enabled and available, mirroring internal/app's Startup Soulseek-init
+// block for this headless binary — without it, cmd/server can never reach
+// Soulseek in its fallback cascade even after handleSetSourceOrder is fixed,
+// because sourceManager never knows a Soulseek source exists.
+func registerSoulseekSource(sm *core.SourceManager, config *core.Config) {
+	sldlPath := config.SoulseekBinaryPath
+	if sldlPath == "" {
+		sldlPath = app.DefaultSldlPath()
+	}
+	if err := app.EnsureSldlExecutable(sldlPath); err != nil {
+		log.Printf("Warning: sldl binary may not be executable: %v", err)
+	}
+	soulseekSource := core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
+	if config.SoulseekEnabled && soulseekSource.IsAvailable() {
+		sm.RegisterSource(soulseekSource)
+		log.Println("Soulseek fallback source registered")
+	} else if config.SoulseekEnabled {
+		log.Println("Warning: Soulseek enabled but unavailable (check binary path / credentials)")
 	}
 }
