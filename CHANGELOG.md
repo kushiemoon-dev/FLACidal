@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.15.2 — 2026-07-25
+
+### Fixes
+- Soulseek could still be silently dropped from the source order via the desktop app's Settings save or the REST API (`POST /api/sources/order`) — the fix previously shipped for FLACidal-Core's internal RPC layer didn't cover these two paths. Both now re-add it automatically when omitted.
+- The headless server (`cmd/server`) never constructed or registered a Soulseek source at all — even with Soulseek enabled, it could never be reached through this binary. Now registered on startup, same as the desktop app.
+- The default source order resolved on first run wasn't written back to the saved config, so Settings could keep showing a stale order.
+
 ## v4.15.1 — 2026-07-17
 
 ### Fixes
