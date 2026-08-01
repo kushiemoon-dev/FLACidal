@@ -21,7 +21,7 @@
 
 **FLACidal** is a desktop application that downloads lossless FLAC files with full metadata and embedded cover art. It tries multiple sources — Soulseek P2P, Tidal, Qobuz, Amazon Music, and Bandcamp — and falls back automatically until one succeeds.
 
-> **Note:** Tidal, Qobuz, and Amazon have significantly hardened their APIs against third-party access. The community proxy pools FLACidal uses to reach them go offline regularly, sometimes for days at a time. **Soulseek is the most reliable source right now, and once configured it's tried automatically before any proxy-dependent source** — no manual reordering needed. Setup takes about 5 minutes and works independently of all proxy pool health.
+> **Note:** Tidal, Qobuz, and Amazon have significantly hardened their APIs against third-party access. The community proxy pools FLACidal uses to reach them go offline regularly, sometimes for days at a time. **Soulseek is the most reliable source right now** — it doesn't depend on any proxy pool. Setup takes about 5 minutes. By default Tidal is tried first (see [source order](#download-chain) below); move Soulseek to the top of **Settings -> General -> Source Mode** if you want it prioritized over the proxy-dependent sources.
 
 ---
 
@@ -56,7 +56,7 @@ FLACidal tries each source in order and stops at the first success:
 | 4 | **Bandcamp** | FLAC | Direct |
 | 5 | **Soulseek P2P** | FLAC | Via `sldl` — requires a free account |
 
-The source order can be adjusted in **Settings -> General -> Source Mode**.
+The source order can be adjusted in **Settings -> General -> Source Mode** — sources are tried strictly in the order you set, top to bottom, no exceptions. Given how often the proxy pools go down, many users move Soulseek to position 1 for maximum reliability.
 
 ### Two things called "proxy" — they are different
 
@@ -76,7 +76,7 @@ Configure this in **Settings -> General**:
 
 The Tidal and Qobuz fields also exist as single-URL legacy versions (`tidalCustomEndpoint`, `qobuzCustomEndpoint`) for backward compatibility — prefer the priority-list fields for new setups, since they support more than one fallback instance.
 
-Leave these empty to use the default community pool with Soulseek as the automatic first source (see below).
+Leave these empty to use the default community pool.
 
 ### Source availability — what to expect
 
@@ -93,7 +93,7 @@ Check real-time endpoint health at any time in **Settings -> Status**.
 ## Features
 
 - **Multi-Source Fallback** — Soulseek, Tidal, Qobuz, Amazon, Bandcamp — automatic cascade
-- **Soulseek P2P** — tried first automatically, independent of streaming proxy availability
+- **Soulseek P2P** — independent of streaming proxy availability; move it to the top of Source Mode for maximum reliability
 - **Smart Dedup** — skips tracks already on disk (ISRC match), across every source and an optional external library path (e.g. a Navidrome/Jellyfin library)
 - **Jellyfin Integration** — triggers a library scan automatically once a download batch finishes
 - **Hi-Res and Lossless** — 24-bit / up to 192 kHz (Hi-Res) and 16-bit / 44.1 kHz (Lossless) from streaming sources
