@@ -53,6 +53,8 @@ export namespace core {
 	    details: string;
 	    sampleRate: number;
 	    bitDepth: number;
+	    bpm: number;
+	    musicalKey: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AnalysisResult(source);
@@ -71,6 +73,8 @@ export namespace core {
 	        this.details = source["details"];
 	        this.sampleRate = source["sampleRate"];
 	        this.bitDepth = source["bitDepth"];
+	        this.bpm = source["bpm"];
+	        this.musicalKey = source["musicalKey"];
 	    }
 	}
 	export class Config {
