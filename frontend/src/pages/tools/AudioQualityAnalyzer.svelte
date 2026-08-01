@@ -103,6 +103,8 @@
         <span class="th confidence-col">Confidence</span>
         <span class="th rate-col">Sample Rate</span>
         <span class="th depth-col">Bit Depth</span>
+        <span class="th bpm-col">BPM</span>
+        <span class="th key-col">Key</span>
       </div>
       <div class="table-body">
         {#each results as result}
@@ -123,6 +125,8 @@
             <span class="cell confidence-col">{Math.round(result.confidence)}%</span>
             <span class="cell rate-col mono">{(result.sampleRate / 1000).toFixed(1)} kHz</span>
             <span class="cell depth-col mono">{result.bitDepth}-bit</span>
+            <span class="cell bpm-col mono">{result.bpm > 0 ? Math.round(result.bpm) : '—'}</span>
+            <span class="cell key-col mono">{result.musicalKey || '—'}</span>
           </div>
         {/each}
       </div>
@@ -216,7 +220,7 @@
 
   .table-header {
     display: grid;
-    grid-template-columns: 1fr 160px 100px 110px 90px;
+    grid-template-columns: 1fr 160px 100px 110px 90px 80px 70px;
     gap: 16px;
     padding: 12px 16px;
     background: var(--color-bg-primary);
@@ -237,7 +241,7 @@
 
   .table-row {
     display: grid;
-    grid-template-columns: 1fr 160px 100px 110px 90px;
+    grid-template-columns: 1fr 160px 100px 110px 90px 80px 70px;
     gap: 16px;
     padding: 12px 16px;
     align-items: center;

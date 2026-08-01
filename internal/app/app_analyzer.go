@@ -11,12 +11,27 @@ import (
 // Analyzer Methods (exposed to frontend)
 // =============================================================================
 
+// enrichWithAudioFeatures adds BPM/musical key to an analysis result via
+// aubiotrack/keyfinder-cli. Best-effort: these tools are optional system
+// dependencies (unlike ffmpeg for AnalyzeFLAC), so a missing binary or an
+// inconclusive result just leaves the field at its zero value rather than
+// failing the whole analysis.
+func enrichWithAudioFeatures(result *core.AnalysisResult) {
+	if bpm, err := core.DetectBPM(result.FilePath); err == nil {
+		result.BPM = bpm
+	}
+	if key, err := core.DetectKey(result.FilePath); err == nil {
+		result.MusicalKey = key
+	}
+}
+
 // AnalyzeFile analyzes a single FLAC file for quality/authenticity
 func (a *App) AnalyzeFile(filePath string) (*core.AnalysisResult, error) {
 	result, err := core.AnalyzeFLAC(filePath)
 	if err != nil {
 		return nil, err
 	}
+	enrichWithAudioFeatures(result)
 
 	if a.logBuffer != nil {
 		a.logBuffer.Info(fmt.Sprintf("Analyzed: %s - %s", result.FileName, result.VerdictLabel))
@@ -49,6 +64,11 @@ func (a *App) SelectFolderForAnalysis() ([]string, error) {
 // AnalyzeMultiple analyzes multiple files
 func (a *App) AnalyzeMultiple(filePaths []string) []core.AnalysisResult {
 	results := core.AnalyzeMultiple(filePaths)
+	for i := range results {
+		if results[i].Verdict != "error" {
+			enrichWithAudioFeatures(&results[i])
+		}
+	}
 
 	if a.logBuffer != nil {
 		lossless := 0
