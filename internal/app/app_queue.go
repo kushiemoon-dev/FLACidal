@@ -252,19 +252,23 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 		return fmt.Errorf("no output directory specified")
 	}
 
-	// Fetch ISRC from Tidal metadata so the orchestrator can search by ISRC on fallback sources.
-	isrc := ""
-	if track, err := a.downloader.GetTrackAsTidalTrack(trackID); err == nil && track != nil {
-		isrc = track.ISRC
-		if title == "" {
-			title = track.Title
+	// Fetch full Tidal metadata (not just ISRC) so sources that don't tag
+	// themselves (see needsRetag in flacidal-core) still get album/tracknumber/
+	// discnumber/year/cover embedded after download.
+	var err error
+	track, lookupErr := a.downloader.GetTrackAsTidalTrack(trackID)
+	if lookupErr == nil && track != nil {
+		if title != "" {
+			track.Title = title
 		}
-		if artist == "" {
-			artist = track.Artist
+		if artist != "" {
+			track.Artist = artist
 		}
+		title, artist = track.Title, track.Artist
+		err = a.downloadManager.QueueDownloadTrack(*track, outputDir)
+	} else {
+		err = a.downloadManager.QueueDownloadWithISRC(trackID, outputDir, title, artist, "")
 	}
-
-	err := a.downloadManager.QueueDownloadWithISRC(trackID, outputDir, title, artist, isrc)
 	if err == nil && a.db != nil {
 		contentID := strconv.Itoa(trackID)
 		if saveErr := a.db.SaveDownloadRecord(&core.DownloadRecord{
@@ -381,11 +385,10 @@ func (a *App) RetryDownload(trackID int) error {
 		return fmt.Errorf("no download folder configured")
 	}
 
-	isrc, title, artist := "", "", ""
 	if track, err := a.downloader.GetTrackAsTidalTrack(trackID); err == nil && track != nil {
-		isrc, title, artist = track.ISRC, track.Title, track.Artist
+		return a.downloadManager.QueueDownloadTrack(*track, folder)
 	}
-	return a.downloadManager.QueueDownloadWithISRC(trackID, folder, title, artist, isrc)
+	return a.downloadManager.QueueDownloadWithISRC(trackID, folder, "", "", "")
 }
 
 // RetryAllFailed retries all failed downloads
