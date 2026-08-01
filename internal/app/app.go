@@ -198,6 +198,13 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize download manager with 4 concurrent workers
 	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
 	a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
+	if a.db != nil {
+		a.downloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
+			if err := a.db.InsertHistoryEntry(entry); err != nil {
+				a.logBuffer.Warn(fmt.Sprintf("Failed to record per-track history for '%s - %s': %v", entry.Artist, entry.Title, err))
+			}
+		})
+	}
 
 	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
 	// Events are queued and emitted one at a time from a dedicated goroutine.
