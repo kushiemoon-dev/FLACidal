@@ -171,6 +171,8 @@ export function SearchTidalArtists(arg1:string):Promise<Array<core.TidalArtist>>
 
 export function SelectDownloadFolder():Promise<string>;
 
+export function SelectFolderForAnalysis():Promise<Array<string>>;
+
 export function SelectFolderForConversion():Promise<Array<string>>;
 
 export function SetDownloadFolder(arg1:string):Promise<void>;

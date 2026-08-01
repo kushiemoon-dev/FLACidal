@@ -580,6 +580,14 @@ export async function SelectFolderForConversion(): Promise<string[]> {
   return []
 }
 
+export async function SelectFolderForAnalysis(): Promise<string[]> {
+  if (isWailsRuntime()) {
+    return Wails.SelectFolderForAnalysis()
+  }
+  console.warn('SelectFolderForAnalysis: not available in browser mode (same limitation as OpenFLACFilesDialog)')
+  return []
+}
+
 export async function OpenDownloadFolder(path: string): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.OpenDownloadFolder(path)

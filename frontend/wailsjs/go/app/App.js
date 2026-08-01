@@ -338,6 +338,10 @@ export function SelectDownloadFolder() {
   return window['go']['app']['App']['SelectDownloadFolder']();
 }
 
+export function SelectFolderForAnalysis() {
+  return window['go']['app']['App']['SelectFolderForAnalysis']();
+}
+
 export function SelectFolderForConversion() {
   return window['go']['app']['App']['SelectFolderForConversion']();
 }

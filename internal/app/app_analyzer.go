@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // =============================================================================
@@ -22,6 +23,27 @@ func (a *App) AnalyzeFile(filePath string) (*core.AnalysisResult, error) {
 	}
 
 	return result, nil
+}
+
+// SelectFolderForAnalysis opens a directory dialog and returns paths of FLAC
+// files within it (recursively), for scanning an existing library for
+// upscaled/fake-lossless files after the fact.
+func (a *App) SelectFolderForAnalysis() ([]string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select folder to scan for upscaled files",
+	})
+	if err != nil || dir == "" {
+		return nil, err
+	}
+	files, err := core.ListFLACFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+	paths := make([]string, len(files))
+	for i, f := range files {
+		paths[i] = f.Path
+	}
+	return paths, nil
 }
 
 // AnalyzeMultiple analyzes multiple files
