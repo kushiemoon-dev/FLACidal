@@ -12,10 +12,13 @@ import (
 // =============================================================================
 
 // enrichWithAudioFeatures adds BPM/musical key to an analysis result via
-// aubiotrack/keyfinder-cli. Best-effort: these tools are optional system
-// dependencies (unlike ffmpeg for AnalyzeFLAC), so a missing binary or an
-// inconclusive result just leaves the field at its zero value rather than
-// failing the whole analysis.
+// aubiotrack/keyfinder-cli, embeds them into the file's tags, and (best-effort)
+// fills in album/tracknumber/discnumber/year/genre/cover via a Deezer ISRC
+// lookup -- for files an untrusted source (Soulseek/Bandcamp/Amazon) delivered
+// with incomplete tags before the download-time retag existed, or that only
+// got title/artist/isrc from it (see needsRetag in flacidal-core). Every step
+// here is best-effort: a missing optional binary, no ISRC to match on, or no
+// Deezer match just leaves that part alone rather than failing the analysis.
 func enrichWithAudioFeatures(result *core.AnalysisResult) {
 	if bpm, err := core.DetectBPM(result.FilePath); err == nil {
 		result.BPM = bpm
@@ -26,6 +29,7 @@ func enrichWithAudioFeatures(result *core.AnalysisResult) {
 	if result.BPM > 0 || result.MusicalKey != "" {
 		_ = core.NewFLACTagger().EmbedAudioFeatures(result.FilePath, result.BPM, result.MusicalKey)
 	}
+	core.RetagFromDeezer([]string{result.FilePath})
 }
 
 // AnalyzeFile analyzes a single FLAC file for quality/authenticity
