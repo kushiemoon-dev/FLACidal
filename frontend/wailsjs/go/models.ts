@@ -436,6 +436,8 @@ export namespace core {
 	    label?: string;
 	    composer?: string;
 	    comment: string;
+	    bpm?: string;
+	    musicalKey?: string;
 	    size: number;
 	    duration: number;
 	    sampleRate: number;
@@ -472,6 +474,8 @@ export namespace core {
 	        this.label = source["label"];
 	        this.composer = source["composer"];
 	        this.comment = source["comment"];
+	        this.bpm = source["bpm"];
+	        this.musicalKey = source["musicalKey"];
 	        this.size = source["size"];
 	        this.duration = source["duration"];
 	        this.sampleRate = source["sampleRate"];
