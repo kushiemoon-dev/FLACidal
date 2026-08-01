@@ -238,12 +238,14 @@ Access the Tools panel via the grid icon in the sidebar:
 
 | Tool | What it does |
 |------|-------------|
-| **Quality Analyzer** | Inspects actual frequency content to verify a file is true lossless |
+| **Quality Analyzer** | Inspects actual frequency content to verify a file is true lossless, and reports BPM/musical key |
 | **Resampler** | Changes sample rate (e.g. 192 kHz to 44.1 kHz) |
 | **Converter** | Transcodes to other formats (MP3, AAC, Opus) via FFmpeg |
 | **File Manager** | Batch-renames files using metadata templates |
 
-FFmpeg is required for Converter and Resampler. Install it via your system package manager or use the in-app installer in **Settings -> Status**.
+FFmpeg is required for Converter, Resampler, and the Quality Analyzer's lossless check. Install it via your system package manager or use the in-app installer in **Settings -> Status**.
+
+BPM/key detection in the Quality Analyzer needs [`aubio`](https://aubio.org/) and [`keyfinder-cli`](https://github.com/EvanPurkhiser/keyfinder-cli) on PATH — both optional (e.g. on Arch: `pacman -S aubio libkeyfinder` then `yay -S keyfinder-cli` for the AUR package). Without them, BPM/key just show as empty; the rest of the analysis still runs.
 
 ---
 
@@ -303,7 +305,7 @@ FLACidal can also run as a plain HTTP server — no Wails, no desktop shell — 
 
 ### Docker
 
-The image bundles the server, the built frontend, `ffmpeg`, and `sldl` (Soulseek) — no separate setup needed.
+The image bundles the server, the built frontend, `ffmpeg`, `aubio` (BPM), and `sldl` (Soulseek) — no separate setup needed. `keyfinder-cli` (musical key) isn't bundled yet — no Debian package, needs a source build; key detection stays empty in Docker until that's added.
 
 ```bash
 curl -O https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/main/docker-compose.yml

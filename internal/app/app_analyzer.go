@@ -23,6 +23,9 @@ func enrichWithAudioFeatures(result *core.AnalysisResult) {
 	if key, err := core.DetectKey(result.FilePath); err == nil {
 		result.MusicalKey = key
 	}
+	if result.BPM > 0 || result.MusicalKey != "" {
+		_ = core.NewFLACTagger().EmbedAudioFeatures(result.FilePath, result.BPM, result.MusicalKey)
+	}
 }
 
 // AnalyzeFile analyzes a single FLAC file for quality/authenticity

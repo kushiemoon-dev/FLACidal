@@ -42,7 +42,7 @@ RUN case "$TARGETARCH" in \
 
 # --- runtime ---------------------------------------------------------------
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg aubio-tools \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 -s /usr/sbin/nologin flacidal
 
