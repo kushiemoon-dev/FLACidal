@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { onNativeFileDrop } from '../../lib/runtime';
-  import { AnalyzeMultiple, OpenFLACFilesDialog, SelectDownloadFolder } from '../../lib/api';
+  import { AnalyzeMultiple, OpenFLACFilesDialog, SelectFolderForAnalysis } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { FileSearch, CheckCircle, AlertTriangle, XCircle } from 'lucide-svelte';
 
@@ -31,10 +31,9 @@
   }
 
   async function handleSelectFolder() {
-    const folder = await SelectDownloadFolder();
-    if (folder) {
-      // For now, fall back to file dialog since we need individual file paths
-      await handleSelectFiles();
+    const paths = await SelectFolderForAnalysis();
+    if (paths && paths.length > 0) {
+      await analyzeFiles(paths);
     }
   }
 
