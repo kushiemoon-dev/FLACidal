@@ -1,37 +1,45 @@
+version: "2"
 linters:
+  enable:
+    - gocritic
+    - misspell
+    - revive
+  settings:
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+      enabled-tags:
+        - diagnostic
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - gocritic
+        path: _test\.go
+    paths:
+      - frontend
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
   enable:
     - gofmt
     - goimports
-    - govet
-    - errcheck
-    - staticcheck
-    - gosimple
-    - ineffassign
-    - typecheck
-    - unused
-    - gocritic
-    - revive
-    - misspell
-
-linters-settings:
-  gocritic:
-    enabled-tags:
-      - diagnostic
-    disabled-checks:
-      - ifElseChain
-  revive:
-    rules:
-      - name: exported
-        arguments: ["checkPrivateReceivers"]
-
-run:
-  timeout: 5m
-
-issues:
-  exclude-dirs:
-    - frontend
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocritic
-        - errcheck
+  exclusions:
+    generated: lax
+    paths:
+      - frontend
+      - third_party$
+      - builtin$
+      - examples$
