@@ -24,7 +24,7 @@ func enrichWithAudioFeatures(result *core.AnalysisResult) {
 		result.BPM = bpm
 	}
 	if key, err := core.DetectKey(result.FilePath); err == nil {
-		result.MusicalKey = key
+		result.MusicalKey = core.ToCamelotKey(key)
 	}
 	if result.BPM > 0 || result.MusicalKey != "" {
 		_ = core.NewFLACTagger().EmbedAudioFeatures(result.FilePath, result.BPM, result.MusicalKey)
