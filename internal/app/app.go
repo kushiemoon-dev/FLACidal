@@ -312,6 +312,21 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize Tidal source
 	a.tidalSource = core.NewTidalSource()
 	a.tidalSource.SetAvailable(config.TidalEnabled)
+	// Mirror the downloader's custom/priority endpoints so playlist/album/track
+	// fetch (which goes through this separate TidalHifiService instance) also
+	// uses the self-hosted proxy instead of being stuck on the public pool.
+	if len(config.TidalHifiEndpoints) > 0 {
+		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
+	} else {
+		base := core.GetTidalEndpoints()
+		priority := config.TidalPriorityEndpoints
+		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
+			priority = []string{config.TidalCustomEndpoint}
+		}
+		if len(priority) > 0 {
+			a.tidalSource.GetService().SetEndpoints(append(priority, base...))
+		}
+	}
 	a.sourceManager.RegisterSource(a.tidalSource)
 	a.logBuffer.Info("Tidal source registered")
 
