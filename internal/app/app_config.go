@@ -67,6 +67,24 @@ func (a *App) SaveConfig(config core.Config) error {
 			}
 		}
 	}
+	if a.tidalSource != nil {
+		// Mirror the downloader's endpoints onto the source-manager's Tidal
+		// instance (used for playlist/album/track fetch) — see Startup wiring.
+		if len(config.TidalHifiEndpoints) > 0 {
+			a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
+		} else {
+			base := core.GetTidalEndpoints()
+			priority := config.TidalPriorityEndpoints
+			if len(priority) == 0 && config.TidalCustomEndpoint != "" {
+				priority = []string{config.TidalCustomEndpoint}
+			}
+			if len(priority) > 0 {
+				a.tidalSource.GetService().SetEndpoints(append(priority, base...))
+			} else {
+				a.tidalSource.GetService().SetEndpoints(base)
+			}
+		}
+	}
 	if a.qobuzSource != nil {
 		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
 		if len(config.QobuzEndpoints) > 0 {
