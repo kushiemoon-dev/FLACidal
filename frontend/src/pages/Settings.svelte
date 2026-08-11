@@ -891,6 +891,7 @@
               <option value="HI_RES">Hi-Res (24-bit/48kHz+)</option>
               <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
               <option value="HIGH">High (320kbps)</option>
+              <option value="ATMOS">Dolby Atmos (lossy, .m4a — Tidal only)</option>
             </select>
           </div>
         </div>
