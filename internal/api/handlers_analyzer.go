@@ -28,7 +28,7 @@ func (s *Server) handleAnalyzeFileImpl(c *fiber.Ctx) error {
 		defer cleanupTemp(tempPath)
 	}
 
-	result, err := core.AnalyzeFLAC(filePath)
+	result, err := core.AnalyzeAudioFile(filePath)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -90,6 +90,15 @@ func RegisterAnalyzerRoutes(router fiber.Router, s *Server) {
 
 // --- helpers ----------------------------------------------------------------
 
+// supportedAnalyzeExtensions are the audio formats /api/analyze accepts.
+// AnalyzeAudioFile (core) gives FLAC full fake-lossless detection and every
+// other format here a real ffprobe/spectral read with no lossless verdict.
+var supportedAnalyzeExtensions = map[string]bool{
+	".flac": true, ".mp3": true, ".m4a": true, ".mp4": true, ".m4b": true,
+	".aac": true, ".wav": true, ".aiff": true, ".aif": true, ".ogg": true,
+	".opus": true, ".ape": true, ".wv": true, ".mpc": true,
+}
+
 // resolveAnalyzePath returns the absolute file path to analyse.
 // For multipart uploads the file is written to /tmp; the caller must remove it.
 func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
@@ -97,8 +106,8 @@ func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 	file, uploadErr := c.FormFile("file")
 	if uploadErr == nil {
 		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if ext != ".flac" {
-			return "", "", fmt.Errorf("only FLAC files are supported, got %s", ext)
+		if !supportedAnalyzeExtensions[ext] {
+			return "", "", fmt.Errorf("unsupported file type: %s", ext)
 		}
 		tmp := fmt.Sprintf("/tmp/flacidal-analyze-%s", file.Filename)
 		if saveErr := c.SaveFile(file, tmp); saveErr != nil {
@@ -132,10 +141,18 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 		}
 	}
 
+	format := strings.ToUpper(strings.TrimPrefix(filepath.Ext(r.FileName), "."))
+	if format == "" {
+		format = "FLAC"
+	}
+
 	return fiber.Map{
-		"isUpscaled":     !r.IsTrueLossless,
+		// Only a real upscale-detection verdict means "upscaled" -- a lossy
+		// format's own verdict is "not_applicable" (no fake-lossless claim to
+		// make), which isn't the same as IsTrueLossless being false.
+		"isUpscaled":     r.Verdict == "upscaled" || r.Verdict == "likely_upscaled",
 		"spectralCutoff": r.SpectrumCutoff,
-		"format":         "FLAC",
+		"format":         format,
 		"message":        msg,
 		"confidence":     int(r.Confidence),
 		"verdict":        r.Verdict,
