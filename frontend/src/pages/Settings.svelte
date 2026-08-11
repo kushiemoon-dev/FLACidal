@@ -75,6 +75,7 @@
     countryCode: 'US',
     fontFamily: '',
     downloadQuality: 'LOSSLESS',
+    enableReplayGain: false,
   });
   let activeTab = $state('general');
   let apiStatuses: any[] = $state([]);
@@ -373,6 +374,7 @@
         config.countryCode = result.countryCode || 'US';
         config.fontFamily = result.fontFamily || '';
         config.downloadQuality = result.downloadQuality || 'LOSSLESS';
+        config.enableReplayGain = result.enableReplayGain || false;
         config.soulseekEnabled = result.soulseekEnabled || false;
         config.soulseekUsername = result.soulseekUsername || '';
         config.soulseekPassword = result.soulseekPassword || '';
@@ -482,6 +484,7 @@
         countryCode: config.countryCode,
         fontFamily: config.fontFamily,
         downloadQuality: config.downloadQuality,
+        enableReplayGain: config.enableReplayGain,
       });
 
       // Save download options
@@ -549,6 +552,7 @@
         config.countryCode = result.countryCode || 'US';
         config.fontFamily = result.fontFamily || '';
         config.downloadQuality = result.downloadQuality || 'LOSSLESS';
+        config.enableReplayGain = result.enableReplayGain || false;
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
@@ -899,6 +903,19 @@
           <div class="setting-control">
             <label class="toggle">
               <input type="checkbox" bind:checked={config.autoQualityFallback} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>ReplayGain</label>
+            <span class="setting-desc">Measure loudness and tag tracks for volume-normalized playback (adds an ffmpeg pass per download)</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" bind:checked={config.enableReplayGain} />
               <span class="toggle-slider"></span>
             </label>
           </div>

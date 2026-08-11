@@ -99,6 +99,7 @@ export namespace core {
 	    autoAnalyze: boolean;
 	    autoQualityFallback: boolean;
 	    autoStopOnCooldown: boolean;
+	    enableReplayGain: boolean;
 	    tidalEnabled: boolean;
 	    qobuzEnabled: boolean;
 	    soulseekEnabled: boolean;
@@ -168,6 +169,7 @@ export namespace core {
 	        this.autoAnalyze = source["autoAnalyze"];
 	        this.autoQualityFallback = source["autoQualityFallback"];
 	        this.autoStopOnCooldown = source["autoStopOnCooldown"];
+	        this.enableReplayGain = source["enableReplayGain"];
 	        this.tidalEnabled = source["tidalEnabled"];
 	        this.qobuzEnabled = source["qobuzEnabled"];
 	        this.soulseekEnabled = source["soulseekEnabled"];
