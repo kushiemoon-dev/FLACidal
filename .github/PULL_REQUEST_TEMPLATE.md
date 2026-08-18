@@ -1,17 +1,17 @@
-## What does this PR do?
+## Summary of this PR
 
-<!-- Brief description of the changes -->
+<!-- Describe what changed, briefly -->
 
-## Type of change
+## Change category
 
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Refactor
 - [ ] Documentation
-- [ ] Other (describe)
+- [ ] Other (please specify)
 
-## Checklist
+## Pre-merge checklist
 
-- [ ] `wails build` passes
-- [ ] Tested manually
-- [ ] No breaking changes (or documented below)
+- [ ] `wails build` succeeds
+- [ ] Manually verified
+- [ ] No breaking changes introduced (or noted below)

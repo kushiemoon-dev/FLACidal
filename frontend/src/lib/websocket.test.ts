@@ -39,14 +39,13 @@ class MockWebSocket {
     this.onclose?.()
   }
 
-  // Test helper: simulate the server pushing a message.
   emit(data: unknown) {
     this.readyState = MockWebSocket.OPEN
     this.onmessage?.({ data: JSON.stringify(data) })
   }
 }
 
-describe('websocket EventsOn/EventsOff — Wails mode', () => {
+describe('EventsOn/EventsOff over websocket — Wails mode', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -56,7 +55,7 @@ describe('websocket EventsOn/EventsOff — Wails mode', () => {
     clearWailsRuntime()
   })
 
-  it('EventsOn delegates straight to the Wails runtime binding', async () => {
+  it('EventsOn forwards directly to the Wails runtime binding', async () => {
     const unsub = vi.fn()
     wailsRuntimeMock.EventsOn.mockReturnValue(unsub)
 
@@ -68,7 +67,7 @@ describe('websocket EventsOn/EventsOff — Wails mode', () => {
     expect(result).toBe(unsub)
   })
 
-  it('EventsOff delegates straight to the Wails runtime binding', async () => {
+  it('EventsOff forwards directly to the Wails runtime binding', async () => {
     const { EventsOff } = await import('./websocket')
     EventsOff('ffmpeg-install-progress')
 
@@ -76,7 +75,7 @@ describe('websocket EventsOn/EventsOff — Wails mode', () => {
   })
 })
 
-describe('websocket EventsOn/EventsOff — browser mode', () => {
+describe('EventsOn/EventsOff over websocket — browser mode', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -88,7 +87,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     vi.unstubAllGlobals()
   })
 
-  it('opens a WebSocket to /ws on first subscription', async () => {
+  it('opens a WebSocket connection to /ws on the first subscription', async () => {
     const { EventsOn } = await import('./websocket')
     EventsOn('download-progress', vi.fn())
 
@@ -96,7 +95,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     expect(MockWebSocket.instances[0].url).toMatch(/\/ws$/)
   })
 
-  it('dispatches a download-progress message to matching listeners, stripped of the "type" wrapper', async () => {
+  it('delivers a download-progress message to matching listeners with the "type" wrapper stripped off', async () => {
     const { EventsOn } = await import('./websocket')
     const cb = vi.fn()
     EventsOn('download-progress', cb)
@@ -107,7 +106,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     expect(cb).toHaveBeenCalledWith({ trackId: 42, status: 'completed', result: { filePath: '/music/a.flac' } })
   })
 
-  it('never fires listeners for event names the /ws hub does not broadcast', async () => {
+  it('skips listeners for event names the /ws hub never broadcasts', async () => {
     const { EventsOn } = await import('./websocket')
     const cb = vi.fn()
     EventsOn('queue-paused', cb)
@@ -118,7 +117,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('the unsubscribe function returned by EventsOn stops further dispatch', async () => {
+  it('calling the unsubscribe function from EventsOn halts further dispatch', async () => {
     const { EventsOn } = await import('./websocket')
     const cb = vi.fn()
     const unsubscribe = EventsOn('download-progress', cb)
@@ -130,7 +129,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('EventsOff removes all listeners registered for that event name', async () => {
+  it('EventsOff clears every listener registered under that event name', async () => {
     const { EventsOn, EventsOff } = await import('./websocket')
     const cb1 = vi.fn()
     const cb2 = vi.fn()
@@ -145,7 +144,7 @@ describe('websocket EventsOn/EventsOff — browser mode', () => {
     expect(cb2).not.toHaveBeenCalled()
   })
 
-  it('reuses the existing socket for a second subscription instead of opening another one', async () => {
+  it('reuses the existing socket for a second subscription rather than opening a new one', async () => {
     const { EventsOn } = await import('./websocket')
     const socket = MockWebSocket.instances
     EventsOn('download-progress', vi.fn())

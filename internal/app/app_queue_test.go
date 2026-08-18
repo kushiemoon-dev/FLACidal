@@ -6,28 +6,28 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Download Methods" section of app.go, plus
-// the trailing queue-control methods (RetryDownload, RetryAllFailed,
-// ExportFailedDownloads, CancelDownload, PauseDownloads, ResumeDownloads,
-// IsQueuePaused) that live in the same file without their own header.
+// Behavioral snapshot tests covering the download methods section of app.go,
+// plus the queue-control methods further down the same file (RetryDownload,
+// RetryAllFailed, ExportFailedDownloads, CancelDownload, PauseDownloads,
+// ResumeDownloads, IsQueuePaused), which don't have their own header comment.
 //
-// NOT tested here (documented, not fixed):
-//   - OpenFLACFilesDialog / SelectDownloadFolder: open real native file/folder
-//     picker dialogs via the Wails runtime — requires a real runtime context.
+// Deliberately left uncovered here:
+//   - OpenFLACFilesDialog / SelectDownloadFolder: pop real native file/folder
+//     picker dialogs through the Wails runtime, which needs an actual runtime context.
 //   - IsDownloaderAvailable's non-nil branch: core.TidalHifiService.IsAvailable()
-//     makes a live network HEAD request with no injectable seam. Only the
-//     nil-downloader branch is exercised.
+//     issues a live network HEAD request with no injectable seam. Only the
+//     nil-downloader branch is covered.
 //   - DownloadTrack / DownloadTrackFromTidal / QueueDownloads / QueueQobuzDownloads
 //     / QueueArtistAlbum / DownloadArtistAssets / QueueSingleDownload success
-//     paths: all require live network access (Tidal proxy / artist image URLs).
-//     Only their nil-guard and empty-argument error branches are exercised.
+//     paths: each needs live network access (Tidal proxy / artist image URLs).
+//     Only their nil-guard and empty-argument error branches are covered.
 //   - OpenDownloadFolder's success branch: calls runtime.BrowserOpenURL, which
-//     requires a real Wails runtime context (see app_logging_test.go note on
-//     runtime.EventsEmit — same log.Fatalf risk). Only the folder=="" error
-//     branch is exercised.
-//   - ExportFailedDownloads' non-empty-jobs branch: opens a real native save
-//     dialog via runtime.SaveFileDialog. Only the "no failed jobs" early
-//     return (which happens before the dialog) is exercised.
+//     needs an actual Wails runtime context (see the note on runtime.EventsEmit
+//     in app_logging_test.go — same log.Fatalf risk). Only the folder=="" error
+//     branch is covered.
+//   - ExportFailedDownloads' non-empty-jobs branch: pops a real native save
+//     dialog through runtime.SaveFileDialog. Only the early "no failed jobs"
+//     return, which happens before the dialog opens, is covered.
 
 func TestGetDownloadFolder_SetDownloadFolder(t *testing.T) {
 	core.SetDataDir(t.TempDir())

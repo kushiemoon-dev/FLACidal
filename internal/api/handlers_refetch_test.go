@@ -8,13 +8,11 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for POST /api/history/refetch/:id.
-//
-// Mirrors internal/app's TestRefetchFromHistory. Only the "no db", "not
-// found" and "unknown content type" branches are exercised — the "known
-// content type" success path calls fetchContentByURL, which makes a live
-// network call with no injectable HTTP seam (same documented limitation as
-// handlers_search_test.go).
+// Only the "no db", "not found", and "unknown content type" branches are
+// exercised here — the "known content type" success path goes through
+// fetchContentByURL, which makes a real network call with no seam for
+// swapping in a fake HTTP client, the same constraint called out in
+// handlers_search_test.go.
 
 func newTestServerWithDB(t *testing.T) *Server {
 	t.Helper()

@@ -2,12 +2,13 @@ import { test, expect } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
 /**
- * The standalone `pages/Analyzer.svelte` (which posts to /api/analyze) is NOT
- * routed in App.svelte. The user-facing analyzer is `tools/AudioQualityAnalyzer.svelte`,
- * which calls the Wails binding `AnalyzeMultiple`. We test that page here.
+ * `pages/Analyzer.svelte` (which posts to /api/analyze) is a standalone page and
+ * isn't wired into App.svelte's routing. What users actually reach is
+ * `tools/AudioQualityAnalyzer.svelte`, which talks to the Wails binding
+ * `AnalyzeMultiple` — that's the page exercised below.
  *
- * App.svelte's `{#key activePage}` + transition:fade keeps two DOM copies during
- * the 150ms fade — always use `.first()`.
+ * As elsewhere, App.svelte's `{#key activePage}` + transition:fade leaves two
+ * copies in the DOM for the fade duration, so lean on `.first()`.
  */
 async function gotoAnalyzer(page: any) {
   await injectWailsMocks(page)
@@ -19,18 +20,18 @@ async function gotoAnalyzer(page: any) {
 }
 
 test.describe('Audio Quality Analyzer tool', () => {
-  test('page loads via tools flyout', async ({ page }) => {
+  test('opens successfully from the tools flyout', async ({ page }) => {
     await gotoAnalyzer(page)
   })
 
-  test('drop zone or select-files affordance is present', async ({ page }) => {
+  test('offers a way to drop or select files', async ({ page }) => {
     await gotoAnalyzer(page)
     await expect(
       page.locator('text=/Drop|Drag|FLAC|Select|Choose/i').first(),
     ).toBeVisible()
   })
 
-  test('renders without runtime errors', async ({ page }) => {
+  test('loads with no runtime errors', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await gotoAnalyzer(page)

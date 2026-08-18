@@ -10,8 +10,7 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// handleQueueQobuzDownloads implements POST /api/downloads/queue/qobuz.
-// Mirrors internal/app's App.QueueQobuzDownloads.
+// Functionally equivalent to internal/app's App.QueueQobuzDownloads.
 func (s *Server) handleQueueQobuzDownloads(c *fiber.Ctx) error {
 	var req struct {
 		Tracks      []core.SourceTrack `json:"tracks"`

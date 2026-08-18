@@ -7,21 +7,22 @@ import (
 	"testing"
 )
 
-// Characterization tests for app.go's package-level helpers and lifecycle hooks.
+// Behavioral snapshot tests covering app.go's package-level helpers and lifecycle hooks.
 //
-// NOT tested here (documented, not fixed):
-//   - startup(ctx): full bootstrap — opens the real config/database, makes a live
-//     network call via core.InitTidalEndpoints, and starts goroutines bound to
-//     runtime.EventsEmit(ctx, ...). Without a real Wails runtime context, any
-//     runtime.* call panics via log.Fatalf (see wails/v2/pkg/runtime/runtime.go).
-//     This is an integration-level entrypoint, not a unit-testable method.
-//   - shutdown(ctx): stops the download manager and persists config/db — trivial
-//     nil-guards aside, exercising it meaningfully requires the same real
-//     dependencies as startup.
+// Deliberately left uncovered here:
+//   - startup(ctx): the full bootstrap sequence — it opens the real
+//     config/database, makes a live network call via core.InitTidalEndpoints,
+//     and starts goroutines bound to runtime.EventsEmit(ctx, ...). Without an
+//     actual Wails runtime context, any runtime.* call panics via log.Fatalf
+//     (see wails/v2/pkg/runtime/runtime.go). This is an integration-level
+//     entrypoint rather than something unit-testable.
+//   - shutdown(ctx): stops the download manager and persists config/db.
+//     Aside from trivial nil-guards, testing it meaningfully needs the same
+//     real dependencies startup does.
 
 func TestDefaultSldlPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("darwin/linux path only; current test runner is not windows")
+		t.Skip("this path only applies to darwin/linux; the test runner isn't windows")
 	}
 	got := DefaultSldlPath()
 	homeDir, _ := os.UserHomeDir()
@@ -33,12 +34,12 @@ func TestDefaultSldlPath(t *testing.T) {
 
 func TestEnsureSldlExecutable(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("chmod semantics differ on windows; EnsureSldlExecutable is a no-op there")
+		t.Skip("windows has different chmod semantics; EnsureSldlExecutable is a no-op there")
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sldl")
 	if err := os.WriteFile(path, []byte("fake binary"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
+		t.Fatalf("test setup failed: %v", err)
 	}
 
 	if err := EnsureSldlExecutable(path); err != nil {

@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for POST /api/downloads/queue/qobuz.
-
 func TestHandleQueueQobuzDownloads_NoDownloadManager(t *testing.T) {
 	s := newTestServer(t)
 

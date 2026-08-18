@@ -6,26 +6,26 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Converter Methods" section of app.go
+// Behavioral snapshot tests covering the converter methods section of app.go
 // (the FFmpeg/conversion methods only — see app_sources_test.go for
 // GetSourceHealth/InstallSldl/GetSldlStatus/TestSoulseekConnection, which
-// share app.go's "Converter Methods" comment header in the original file
-// despite being about source health/Soulseek, not conversion).
+// live under app.go's "Converter Methods" comment header despite actually
+// being about source health/Soulseek rather than conversion).
 //
-// NOT tested here (documented, not fixed):
-//   - InstallFFmpeg: downloads a real FFmpeg binary over the network and
-//     emits progress via runtime.EventsEmit, which requires a real Wails
+// Deliberately left uncovered here:
+//   - InstallFFmpeg: pulls a real FFmpeg binary over the network and reports
+//     progress through runtime.EventsEmit, which needs an actual Wails
 //     runtime context.
-//   - SelectFolderForConversion: opens a real native folder picker dialog via
-//     the Wails runtime.
-//   - ConvertFiles' "converter available" branch depends on whether FFmpeg is
-//     actually installed on the machine running the tests, so it is
-//     exercised adaptively below rather than assumed either way.
+//   - SelectFolderForConversion: pops a real native folder picker via the
+//     Wails runtime.
+//   - ConvertFiles' "converter available" branch depends on whether the test
+//     machine actually has FFmpeg installed, so it's exercised adaptively
+//     below instead of being assumed one way or the other.
 
 func TestIsConverterAvailable(t *testing.T) {
 	a := &App{}
-	// Just verify it reflects core.IsConverterAvailable() without panicking;
-	// whether FFmpeg is actually present depends on the machine running tests.
+	// This only confirms it mirrors core.IsConverterAvailable() without
+	// panicking; actual FFmpeg presence depends on the test machine.
 	if got, want := a.IsConverterAvailable(), core.IsConverterAvailable(); got != want {
 		t.Errorf("IsConverterAvailable() = %v, want %v (core.IsConverterAvailable())", got, want)
 	}
@@ -52,7 +52,7 @@ func TestGetFFmpegInstallStatus(t *testing.T) {
 
 func TestGetConversionFormats(t *testing.T) {
 	a := &App{}
-	got := a.GetConversionFormats() // must not panic regardless of FFmpeg availability
+	got := a.GetConversionFormats() // should never panic, whether or not FFmpeg is available
 	if core.GetConverter() == nil && len(got) != 0 {
 		t.Errorf("GetConversionFormats() with no converter = %v, want empty", got)
 	}
@@ -60,7 +60,7 @@ func TestGetConversionFormats(t *testing.T) {
 
 func TestConvertFiles_NoConverterAvailable(t *testing.T) {
 	if core.GetConverter() != nil {
-		t.Skip("FFmpeg is available on this machine; the 'unavailable' branch isn't reachable here")
+		t.Skip("this machine has FFmpeg installed, so the 'unavailable' branch can't be exercised")
 	}
 	a := &App{}
 	got := a.ConvertFiles([]string{"/tmp/a.flac", "/tmp/b.flac"}, "mp3", "320k", "/tmp/out", false)

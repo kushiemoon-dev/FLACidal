@@ -1,23 +1,24 @@
-// Runtime-detecting real-time events layer.
+// Real-time events layer that adapts to its runtime.
 //
-// Wails mode: EventsOn/EventsOff wrap the native runtime 1:1 (../../wailsjs/
-// runtime/runtime.js), so App.svelte/Terminal.svelte/Settings.svelte keep
-// their exact existing behavior — only the import path changes.
+// Wails mode: EventsOn/EventsOff wrap the native runtime one-to-one
+// (../../wailsjs/runtime/runtime.js), so App.svelte/Terminal.svelte/
+// Settings.svelte keep behaving exactly as before — only the import path
+// changes.
 //
 // Browser mode: connects to the headless server's /ws WebSocket hub
 // (internal/api/server.go), which broadcasts download-progress events as
 // {"type":"download-progress","trackId":N,"status":"...","result":{...}}
-// (see cmd/server/main.go's DownloadManager.SetProgressCallback -> this is
-// the only event type the hub currently carries). Messages are unwrapped
-// and redispatched to 'download-progress' listeners with the exact same
-// payload shape Wails emits ({trackId, status, result}), so App.svelte's
-// handler works unchanged.
+// (see cmd/server/main.go's DownloadManager.SetProgressCallback — this is
+// the only event type the hub currently emits). Messages get unwrapped and
+// redispatched to 'download-progress' listeners using the exact payload
+// shape Wails emits ({trackId, status, result}), so App.svelte's handler
+// needs no changes.
 //
 // Known gap: 'queue-paused', 'endpoint-cooldown', 'log',
-// 'ffmpeg-install-progress' and 'sldl-install-progress' have no server-side
-// broadcaster in headless mode today (those are Wails-app-only features —
-// see migration report). Subscribing to them in browser mode is safe (no
-// error) but the callback will simply never fire.
+// 'ffmpeg-install-progress', and 'sldl-install-progress' have no
+// server-side broadcaster in headless mode yet (those are Wails-app-only
+// features — see migration report). Subscribing to them in browser mode is
+// harmless (no error), but the callback will just never fire.
 
 import { EventsOn as WailsEventsOn, EventsOff as WailsEventsOff } from '../../wailsjs/runtime/runtime.js'
 import { isWailsRuntime } from './api'
@@ -46,7 +47,7 @@ function dispatch(eventName: string, payload: any): void {
     try {
       cb(payload)
     } catch (err) {
-      console.error(`websocket listener for '${eventName}' threw:`, err)
+      console.error(`listener for websocket event '${eventName}' raised an error:`, err)
     }
   }
 }
@@ -90,11 +91,8 @@ function connect(): void {
   }
 }
 
-/**
- * Subscribes to a real-time event by name. Wraps Wails' EventsOn in Wails
- * mode; lazily opens the /ws connection on first subscription in browser
- * mode. Returns an unsubscribe function (same contract as Wails' EventsOn).
- */
+// Lazily opens the /ws connection on first subscription; the returned
+// unsubscribe function matches Wails' EventsOn contract.
 export function EventsOn(eventName: string, callback: EventCallback): () => void {
   if (isWailsRuntime()) {
     return WailsEventsOn(eventName, callback)
@@ -113,7 +111,6 @@ export function EventsOn(eventName: string, callback: EventCallback): () => void
   }
 }
 
-/** Unsubscribes all listeners for the given event name(s). Mirrors Wails' EventsOff. */
 export function EventsOff(eventName: string, ...additionalEventNames: string[]): void {
   if (isWailsRuntime()) {
     WailsEventsOff(eventName, ...additionalEventNames)

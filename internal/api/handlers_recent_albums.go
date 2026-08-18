@@ -8,8 +8,6 @@ import (
 	"flacidal/internal/app"
 )
 
-// handleGetRecentAlbums implements GET /api/history/recent.
-// Mirrors internal/app's App.GetRecentAlbums via the shared app.RecentAlbums.
 func (s *Server) handleGetRecentAlbums(c *fiber.Ctx) error {
 	limit, err := strconv.Atoi(c.Query("limit", "24"))
 	if err != nil || limit <= 0 {

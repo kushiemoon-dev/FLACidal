@@ -1,22 +1,21 @@
 import { test, expect } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
-test.describe('QueuePanel (global, mounted in App.svelte)', () => {
-  test('panel is mounted and visible', async ({ page }) => {
+test.describe('QueuePanel (global component mounted from App.svelte)', () => {
+  test('is mounted and visible on load', async ({ page }) => {
     await injectWailsMocks(page)
     await page.goto('/')
     await expect(page.locator('.queue-panel')).toBeVisible()
   })
 
-  test('shows empty state when no jobs', async ({ page }) => {
+  test('shows the empty state when there are no jobs', async ({ page }) => {
     await injectWailsMocks(page)
     await page.goto('/')
-    // Expand if collapsed (panel-header click toggles)
     const panel = page.locator('.queue-panel')
     await expect(panel).toBeVisible()
-    // The empty message uses literal text from QueuePanel.svelte:
-    // "No downloads in progress" — only visible when expanded.
-    // First make sure the body is open by clicking the header if needed:
+    // QueuePanel.svelte renders the exact text "No downloads in progress" for
+    // its empty state, but that copy is only visible once the panel is expanded.
+    // Make sure the body is open before checking for it:
     const collapsed = await panel.evaluate((el) => el.classList.contains('collapsed'))
     if (collapsed) {
       await panel.locator('.panel-header').click()
@@ -25,7 +24,7 @@ test.describe('QueuePanel (global, mounted in App.svelte)', () => {
     await expect(panel.locator('.empty')).toContainText(/No download/i)
   })
 
-  test('does not crash when websocket unavailable', async ({ page }) => {
+  test('stays up even when the websocket is unavailable', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await injectWailsMocks(page)

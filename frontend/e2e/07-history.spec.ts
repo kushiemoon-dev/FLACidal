@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
 /**
- * App.svelte's `{#key activePage}` + transition:fade keeps two DOM copies during
- * the 150ms fade — always use `.first()` and wait for the transition.
+ * As with the other pages, App.svelte's `{#key activePage}` + transition:fade
+ * leaves two DOM copies around during the 150ms fade — stick to `.first()` and
+ * give the transition a moment to finish.
  */
-test.describe('History page', () => {
-  test('loads with empty history shows empty state', async ({ page }) => {
+test.describe('History screen', () => {
+  test('shows the empty state when history has no records', async ({ page }) => {
     await injectWailsMocks(page, {
       GetDownloadHistoryFiltered: { records: [], total: 0 },
     })
@@ -20,7 +21,7 @@ test.describe('History page', () => {
     ).toBeVisible()
   })
 
-  test('loads with records → table headers visible', async ({ page }) => {
+  test('shows table headers once records are loaded', async ({ page }) => {
     await injectWailsMocks(page, {
       GetDownloadHistoryFiltered: {
         records: [

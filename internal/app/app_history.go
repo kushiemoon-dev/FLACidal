@@ -9,11 +9,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// =============================================================================
-// Database Methods (exposed to frontend)
-// =============================================================================
-
-// GetCacheStats returns track cache statistics
 func (a *App) GetCacheStats() map[string]interface{} {
 	if a.db == nil {
 		return map[string]interface{}{"error": "database not initialized"}
@@ -30,7 +25,6 @@ func (a *App) GetCacheStats() map[string]interface{} {
 	}
 }
 
-// GetDownloadHistory returns all download history
 func (a *App) GetDownloadHistory() ([]core.DownloadRecord, error) {
 	if a.db == nil {
 		return nil, nil
@@ -38,7 +32,7 @@ func (a *App) GetDownloadHistory() ([]core.DownloadRecord, error) {
 	return a.db.GetAllDownloadRecords()
 }
 
-// GetRecentAlbums returns deduplicated recent album downloads for the home page grid
+// Deduplicated, for the home page grid.
 func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 	if a.db == nil {
 		return []map[string]interface{}{}, nil
@@ -46,16 +40,15 @@ func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 	return RecentAlbums(a.db, limit)
 }
 
-// RecentAlbums is the shared implementation of GetRecentAlbums, used by both
-// the desktop (Wails) and HTTP server APIs (same sharing pattern as
-// ConvertTidalSearchResults / SearchDeezerTracks in app_search.go).
+// RecentAlbums backs GetRecentAlbums and is shared by both the desktop
+// (Wails) and HTTP server APIs — the same sharing pattern used by
+// ConvertTidalSearchResults / SearchDeezerTracks in app_search.go.
 func RecentAlbums(db *core.Database, limit int) ([]map[string]interface{}, error) {
 	records, err := db.GetAllDownloadRecords()
 	if err != nil {
 		return nil, fmt.Errorf("GetRecentAlbums: %w", err)
 	}
 
-	// Sort by most recent first
 	sort.Slice(records, func(i, j int) bool {
 		return records[i].LastDownloadAt.After(records[j].LastDownloadAt)
 	})
@@ -72,7 +65,6 @@ func RecentAlbums(db *core.Database, limit int) ([]map[string]interface{}, error
 		}
 		seen[key] = true
 
-		// Parse "Artist — Title" if present, else use full name as title
 		title := r.TidalContentName
 		artist := ""
 		if parts := strings.SplitN(r.TidalContentName, " — ", 2); len(parts) == 2 {
@@ -94,13 +86,11 @@ func RecentAlbums(db *core.Database, limit int) ([]map[string]interface{}, error
 	return result, nil
 }
 
-// GetDownloadHistoryFiltered returns filtered download history with pagination
 func (a *App) GetDownloadHistoryFiltered(filter map[string]interface{}) (map[string]interface{}, error) {
 	if a.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
 
-	// Parse filter options
 	dbFilter := core.HistoryFilter{}
 
 	if ct, ok := filter["contentType"].(string); ok {
@@ -127,7 +117,6 @@ func (a *App) GetDownloadHistoryFiltered(filter map[string]interface{}) (map[str
 	}, nil
 }
 
-// DeleteHistoryRecord deletes a single download history record
 func (a *App) DeleteHistoryRecord(id int64) error {
 	if a.db == nil {
 		return fmt.Errorf("database not initialized")
@@ -135,25 +124,22 @@ func (a *App) DeleteHistoryRecord(id int64) error {
 	return a.db.DeleteDownloadRecord(id)
 }
 
-// ClearDownloadHistory removes all download history
 func (a *App) ClearDownloadHistory() error {
 	if a.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
 	err := a.db.ClearAllHistory()
 	if err == nil && a.logBuffer != nil {
-		a.logBuffer.Info("Download history cleared")
+		a.logBuffer.Info("Cleared the download history")
 	}
 	return err
 }
 
-// RefetchFromHistory re-downloads content from history
 func (a *App) RefetchFromHistory(tidalContentID string) (map[string]interface{}, error) {
 	if a.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
 
-	// Get the record to find the content type
 	record, err := a.db.GetDownloadRecord(tidalContentID)
 	if err != nil {
 		return nil, err
@@ -162,7 +148,6 @@ func (a *App) RefetchFromHistory(tidalContentID string) (map[string]interface{},
 		return nil, fmt.Errorf("history record not found")
 	}
 
-	// Reconstruct the Tidal URL
 	var url string
 	switch record.ContentType {
 	case "playlist":
@@ -175,11 +160,9 @@ func (a *App) RefetchFromHistory(tidalContentID string) (map[string]interface{},
 		return nil, fmt.Errorf("unknown content type: %s", record.ContentType)
 	}
 
-	// Fetch the content
 	return a.FetchTidalContent(url)
 }
 
-// GetMatchFailures returns all match failures
 func (a *App) GetMatchFailures() ([]core.MatchFailure, error) {
 	if a.db == nil {
 		return nil, nil

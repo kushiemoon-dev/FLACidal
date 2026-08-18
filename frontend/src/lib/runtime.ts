@@ -1,7 +1,7 @@
-// Dual-mode wrappers for Wails runtime capabilities that are neither
-// REST-mappable App bindings (see api.ts) nor generic pub/sub events
-// (see websocket.ts): opening external URLs, and native OS-level file
-// drag-and-drop.
+// Wrappers for the Wails runtime capabilities that don't fit neatly into
+// either the REST-mappable App bindings (see api.ts) or the generic pub/sub
+// events (see websocket.ts): opening external URLs and handling native
+// OS-level file drag-and-drop.
 
 import {
   BrowserOpenURL,
@@ -10,9 +10,6 @@ import {
 } from '../../wailsjs/runtime/runtime.js'
 import { isWailsRuntime } from './api'
 
-/**
- * Opens a URL in the user's default browser (Wails) or a new tab (plain browser).
- */
 export function OpenExternalURL(url: string): void {
   if (isWailsRuntime()) {
     BrowserOpenURL(url)
@@ -22,20 +19,14 @@ export function OpenExternalURL(url: string): void {
 }
 
 /**
- * Subscribes to native OS-level file drag-and-drop, which delivers absolute
- * filesystem paths (Wails' window-level EnableFileDrop capability).
- *
- * Wails mode: wraps OnFileDrop/OnFileDropOff 1:1 and returns a cleanup
- * function that calls OnFileDropOff.
- *
- * Browser mode: a no-op that returns a no-op cleanup. A browser's HTML5 drop
- * event only ever exposes File objects (name + content), never an absolute
- * filesystem path — and none of this app's REST endpoints currently accept
+ * Browser mode does nothing and returns a no-op cleanup. A browser's HTML5
+ * drop event only ever exposes File objects (name plus content), never an
+ * absolute filesystem path — and none of this app's REST endpoints accept
  * uploads for the batch operations that consume these paths (AnalyzeMultiple,
- * ConvertFiles, FetchAndEmbedLyricsMultiple all take path arrays). So there is
- * no way to honestly wire this up in browser mode today; callers should pair
- * this with DropZone's own browser-mode messaging rather than pretend drops
- * are handled. See migration report for the known-gap writeup.
+ * ConvertFiles, and FetchAndEmbedLyricsMultiple all take arrays of paths).
+ * There's no honest way to support this in browser mode right now; callers
+ * should rely on DropZone's own browser-mode messaging instead of pretending
+ * drops work. See the migration report for the known-gap writeup.
  */
 export function onNativeFileDrop(
   callback: (x: number, y: number, paths: string[]) => void,

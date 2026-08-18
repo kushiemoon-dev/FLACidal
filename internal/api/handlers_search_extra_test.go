@@ -8,12 +8,11 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/content/search/albums, /artists and /deezer.
-//
-// NOT tested here (documented, not fixed): the success path makes a live
-// network call (Tidal proxy / Deezer public API) with no injectable HTTP
-// seam, matching the existing limitation documented in handlers_search_test.go.
-// Only validation and nil-dependency branches are exercised.
+// Intentionally out of scope: the success path reaches a live network call
+// (the Tidal proxy / Deezer's public API), and there's no seam available to
+// swap in a fake HTTP client — the same limitation already noted in
+// handlers_search_test.go. What's actually exercised here is the validation
+// and nil-dependency branches.
 
 func TestHandleSearchTidalAlbums_MissingQuery(t *testing.T) {
 	s := newTestServer(t)

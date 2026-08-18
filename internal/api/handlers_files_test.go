@@ -10,9 +10,9 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/files, GET /api/files/metadata and GET /api/files/cover.
-// Mirrors internal/app's characterization-test style: exercise fail-fast
-// branches (no config, invalid FLAC content) rather than real audio decoding.
+// Follows the same characterization-test style used in internal/app: it
+// drives the fail-fast branches (missing config, bogus FLAC content) instead
+// of decoding real audio.
 
 func TestHandleListFiles_NoDownloadFolder(t *testing.T) {
 	s := newTestServer(t)

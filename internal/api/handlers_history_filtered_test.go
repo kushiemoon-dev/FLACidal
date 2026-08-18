@@ -8,10 +8,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/history/filtered — specifically that contentType and
-// search query params are actually threaded into the DB filter (previously
-// only limit/offset were parsed, silently ignoring the other filter fields
-// the frontend sends).
+// This checks GET /api/history/filtered actually threads the contentType and
+// search query params through to the DB filter. Previously only limit/offset
+// were parsed, and the rest of the filter fields the frontend sends were
+// quietly ignored.
 
 func TestHandleGetHistoryFiltered_ContentTypeAndSearch(t *testing.T) {
 	s := newTestServerWithDB(t)

@@ -13,11 +13,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// =============================================================================
-// Download Methods (exposed to frontend)
-// =============================================================================
-
-// OpenFLACFilesDialog opens a multi-file picker filtered to FLAC files.
 func (a *App) OpenFLACFilesDialog() ([]string, error) {
 	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select FLAC Files to Analyze",
@@ -31,7 +26,6 @@ func (a *App) OpenFLACFilesDialog() ([]string, error) {
 	return paths, nil
 }
 
-// SelectDownloadFolder opens a folder picker dialog
 func (a *App) SelectDownloadFolder() (string, error) {
 	folder, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Download Folder",
@@ -42,7 +36,6 @@ func (a *App) SelectDownloadFolder() (string, error) {
 	return folder, nil
 }
 
-// GetDownloadFolder returns the configured download folder
 func (a *App) GetDownloadFolder() string {
 	if a.config != nil && a.config.DownloadFolder != "" {
 		return a.config.DownloadFolder
@@ -50,7 +43,6 @@ func (a *App) GetDownloadFolder() string {
 	return ""
 }
 
-// SetDownloadFolder saves the download folder to config
 func (a *App) SetDownloadFolder(folder string) error {
 	if a.config == nil {
 		a.config = &core.Config{}
@@ -59,7 +51,6 @@ func (a *App) SetDownloadFolder(folder string) error {
 	return core.SaveConfig(a.config)
 }
 
-// IsDownloaderAvailable checks if the download service is reachable
 func (a *App) IsDownloaderAvailable() bool {
 	if a.downloader == nil {
 		return false
@@ -67,7 +58,6 @@ func (a *App) IsDownloaderAvailable() bool {
 	return a.downloader.IsAvailable()
 }
 
-// DownloadTrack downloads a single track by its Tidal ID
 func (a *App) DownloadTrack(trackID int, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
@@ -78,7 +68,6 @@ func (a *App) DownloadTrack(trackID int, outputDir string) (*core.DownloadResult
 	return a.downloader.DownloadTrack(trackID, outputDir, "", "", "", nil)
 }
 
-// DownloadTrackFromTidal downloads using TidalTrack data (for UI convenience)
 func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
@@ -89,7 +78,6 @@ func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*
 	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label, "", nil)
 }
 
-// QueueDownloads queues multiple tracks for concurrent download
 func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
@@ -98,7 +86,6 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 		return 0, fmt.Errorf("no output directory specified")
 	}
 
-	// Create subfolder with content name (playlist/album/track title)
 	if contentName != "" {
 		outputDir = filepath.Join(outputDir, core.SanitizeFileName(contentName))
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -108,7 +95,6 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 
 	queued := a.downloadManager.QueueMultiple(tracks, outputDir)
 
-	// Save initial history record
 	if a.db != nil && contentID != "" {
 		if err := a.db.SaveDownloadRecord(&core.DownloadRecord{
 			TidalContentID:   contentID,
@@ -116,10 +102,10 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 			ContentType:      contentType,
 			TracksTotal:      queued,
 		}); err != nil {
-			a.logBuffer.Warn(fmt.Sprintf("Failed to save download history for %s: %v", contentID, err))
+			a.logBuffer.Warn(fmt.Sprintf("Could not save download history for %s: %v", contentID, err))
 		}
 	}
-	// Map each trackID → contentID for progress callback
+	// Consumed by the progress callback to attribute a trackID back to its content.
 	for _, t := range tracks {
 		a.trackContentMap.Store(t.ID, contentID)
 	}
@@ -127,7 +113,6 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 	return queued, nil
 }
 
-// QueueQobuzDownloads queues Qobuz-sourced tracks for concurrent download
 func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, contentName string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
@@ -144,8 +129,7 @@ func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, c
 	return a.downloadManager.QueueQobuzTracks(tracks, outputDir), nil
 }
 
-// QueueArtistAlbum fetches a Tidal album's tracks and queues them all for download.
-// outputDir should be the artist folder; an album subfolder is created automatically.
+// outputDir should point at the artist's folder; an album subfolder gets created automatically.
 func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
@@ -159,7 +143,6 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 		return 0, fmt.Errorf("failed to fetch album: %w", err)
 	}
 
-	// Create {Artist}/{Album} folder structure
 	artistFolder := core.SanitizeFileName(artistName)
 	if artistFolder == "" {
 		artistFolder = core.SanitizeFileName(album.Artist)
@@ -174,9 +157,7 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 	return queued, nil
 }
 
-// DownloadArtistAssets downloads the artist's profile picture and banner image.
-// Files are saved to {outputDir}/{artistName}/ as profile.jpg, profile_hires.jpg, banner.jpg.
-// Returns the number of files successfully downloaded.
+// Files are written to {outputDir}/{artistName}/ as profile.jpg, profile_hires.jpg, banner.jpg.
 func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir string) (int, error) {
 	if outputDir == "" {
 		return 0, fmt.Errorf("no output directory specified")
@@ -190,7 +171,6 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 		return 0, fmt.Errorf("artist has no picture available")
 	}
 
-	// Use fetched name if caller didn't provide one
 	if artistName == "" {
 		artistName = name
 	}
@@ -200,13 +180,11 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 		return 0, fmt.Errorf("no image URLs generated")
 	}
 
-	// Save to {outputDir}/{artistName}/
 	destDir := filepath.Join(outputDir, core.SanitizeFileName(artistName))
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return 0, fmt.Errorf("failed to create artist folder: %w", err)
 	}
 
-	// Map of label → filename
 	fileNames := map[string]string{
 		"profile":       "profile.jpg",
 		"profile_hires": "profile_hires.jpg",
@@ -224,7 +202,7 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 			if resp != nil {
 				resp.Body.Close()
 			}
-			continue // skip unavailable sizes
+			continue // this size isn't available, move on
 		}
 
 		f, err := os.Create(destPath)
@@ -243,7 +221,6 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 	return downloaded, nil
 }
 
-// QueueSingleDownload queues a single track for download
 func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) error {
 	if a.downloadManager == nil {
 		return fmt.Errorf("download manager not initialized")
@@ -252,9 +229,9 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 		return fmt.Errorf("no output directory specified")
 	}
 
-	// Fetch full Tidal metadata (not just ISRC) so sources that don't tag
-	// themselves (see needsRetag in flacidal-core) still get album/tracknumber/
-	// discnumber/year/cover embedded after download.
+	// Pull the full Tidal metadata, not just the ISRC, so sources that don't
+	// self-tag (see needsRetag in flacidal-core) still end up with
+	// album/tracknumber/discnumber/year/cover embedded post-download.
 	var err error
 	track, lookupErr := a.downloader.GetTrackAsTidalTrack(trackID)
 	if lookupErr == nil && track != nil {
@@ -277,14 +254,13 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 			ContentType:      "track",
 			TracksTotal:      1,
 		}); saveErr != nil {
-			a.logBuffer.Warn(fmt.Sprintf("Failed to save download history for %s: %v", contentID, saveErr))
+			a.logBuffer.Warn(fmt.Sprintf("Could not save download history for %s: %v", contentID, saveErr))
 		}
 		a.trackContentMap.Store(trackID, contentID)
 	}
 	return err
 }
 
-// GetDownloadQueueStatus returns current queue status
 func (a *App) GetDownloadQueueStatus() map[string]interface{} {
 	if a.downloadManager == nil {
 		return map[string]interface{}{"running": false}
@@ -298,7 +274,6 @@ func (a *App) GetDownloadQueueStatus() map[string]interface{} {
 	}
 }
 
-// GetDownloadOptions returns current download options
 func (a *App) GetDownloadOptions() map[string]interface{} {
 	if a.config == nil {
 		return map[string]interface{}{
@@ -332,7 +307,6 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 	}
 }
 
-// SetDownloadOptions updates download options
 func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders, embedCover, saveCoverFile, autoAnalyze bool) error {
 	if a.config == nil {
 		a.config = &core.Config{}
@@ -345,7 +319,7 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 	a.config.SaveCoverFile = saveCoverFile
 	a.config.AutoAnalyze = autoAnalyze
 
-	// Update downloader options (preserve AutoQualityFallback from config)
+	// AutoQualityFallback isn't a SetDownloadOptions parameter, so preserve it from the existing config.
 	if a.downloader != nil {
 		autoQualityFallback := false
 		if a.config != nil {
@@ -365,7 +339,6 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 	return core.SaveConfig(a.config)
 }
 
-// OpenDownloadFolder opens the download folder in the system file manager
 func (a *App) OpenDownloadFolder(folder string) error {
 	if folder == "" {
 		return fmt.Errorf("no folder specified")
@@ -374,7 +347,6 @@ func (a *App) OpenDownloadFolder(folder string) error {
 	return nil
 }
 
-// RetryDownload retries a failed download
 func (a *App) RetryDownload(trackID int) error {
 	if a.downloadManager == nil {
 		return fmt.Errorf("download manager not initialized")
@@ -391,7 +363,6 @@ func (a *App) RetryDownload(trackID int) error {
 	return a.downloadManager.QueueDownloadWithISRC(trackID, folder, "", "", "")
 }
 
-// RetryAllFailed retries all failed downloads
 func (a *App) RetryAllFailed() (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
@@ -401,8 +372,7 @@ func (a *App) RetryAllFailed() (int, error) {
 	return count, nil
 }
 
-// ExportFailedDownloads saves failed download info to a TXT or CSV file chosen by the user.
-// format is "txt" or "csv". Returns the path of the saved file, or empty string if cancelled.
+// format should be "txt" or "csv". It returns the saved file's path, or an empty string if the user cancelled.
 func (a *App) ExportFailedDownloads(format string) (string, error) {
 	if a.downloadManager == nil {
 		return "", fmt.Errorf("download manager not initialized")
@@ -412,7 +382,6 @@ func (a *App) ExportFailedDownloads(format string) (string, error) {
 		return "", nil
 	}
 
-	// Determine file filter and default name
 	var filter []runtime.FileFilter
 	var defaultFilename string
 	if format == "csv" {
@@ -451,7 +420,6 @@ func (a *App) ExportFailedDownloads(format string) (string, error) {
 	return savePath, nil
 }
 
-// CancelDownload cancels a download in progress
 func (a *App) CancelDownload(trackID int) error {
 	if a.downloadManager == nil {
 		return fmt.Errorf("download manager not initialized")
@@ -460,7 +428,6 @@ func (a *App) CancelDownload(trackID int) error {
 	return a.downloadManager.CancelDownload(trackID)
 }
 
-// PauseDownloads pauses the download queue
 func (a *App) PauseDownloads() bool {
 	if a.downloadManager == nil {
 		return false
@@ -468,13 +435,12 @@ func (a *App) PauseDownloads() bool {
 
 	success := a.downloadManager.PauseQueue()
 	if success && a.logBuffer != nil {
-		a.logBuffer.Info("Download queue paused")
+		a.logBuffer.Info("Paused the download queue")
 		runtime.EventsEmit(a.ctx, "queue-paused", true)
 	}
 	return success
 }
 
-// ResumeDownloads resumes the download queue
 func (a *App) ResumeDownloads() bool {
 	if a.downloadManager == nil {
 		return false
@@ -482,13 +448,12 @@ func (a *App) ResumeDownloads() bool {
 
 	success := a.downloadManager.ResumeQueue()
 	if success && a.logBuffer != nil {
-		a.logBuffer.Info("Download queue resumed")
+		a.logBuffer.Info("Resumed the download queue")
 		runtime.EventsEmit(a.ctx, "queue-paused", false)
 	}
 	return success
 }
 
-// IsQueuePaused returns whether the download queue is paused
 func (a *App) IsQueuePaused() bool {
 	if a.downloadManager == nil {
 		return false

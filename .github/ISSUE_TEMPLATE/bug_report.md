@@ -4,27 +4,26 @@ about: Create a report to help us improve
 title: ''
 labels: bug
 assignees: ''
-
 ---
 
 **FLACidal version**
-e.g. v4.8.0 — visible in the About tab or the release filename
+e.g. v4.8.0 — found under the About tab or in the release filename
 
 **OS / Platform**
-e.g. Arch Linux x64, Windows 11, macOS 14
+e.g. Windows 11, macOS 14, Arch Linux x64
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What's the bug?**
+Give a short, clear account of the issue.
 
-**Steps to reproduce**
+**How to reproduce it**
 1. Go to '...'
 2. Click on '...'
 3. See error
 
-**Expected behavior**
-What you expected to happen.
+**What did you expect instead?**
+Describe the behavior you were expecting.
 
-**Source being used when the bug occurred**
+**Which source was active when it happened?**
 - [ ] Tidal (community proxy pool)
 - [ ] Qobuz
 - [ ] Amazon Music
@@ -32,18 +31,18 @@ What you expected to happen.
 - [ ] Soulseek
 - [ ] Not download-related
 
-**Settings → Status at time of bug**
-Are the proxy pool endpoints green / yellow / red? Is `sldl` detected? Is FFmpeg available?
+**Settings → Status at the time**
+Were the proxy pool endpoints green, yellow, or red? Was `sldl` detected? Was FFmpeg available?
 
 **Logs**
-Copy the relevant output from the **Terminal** tab in FLACidal and paste it here:
+Paste the relevant output from FLACidal's **Terminal** tab below:
 
 ```
 paste logs here
 ```
 
 **Screenshots**
-If applicable, add screenshots to help explain the problem.
+Add screenshots if they help illustrate the problem.
 
-**Additional context**
-Any other details that might help (e.g. VPN, custom proxy, specific URL that fails).
+**Anything else?**
+Other details that could be useful (VPN, custom proxy, a specific URL that fails, etc.).

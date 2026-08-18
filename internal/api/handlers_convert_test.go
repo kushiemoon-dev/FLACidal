@@ -8,9 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/convert/ffmpeg, GET /api/convert/available,
-// GET /api/convert/formats and POST /api/convert.
-
 func TestHandleIsConverterAvailable_MatchesCoreCheck(t *testing.T) {
 	s := newTestServer(t)
 
@@ -28,7 +25,7 @@ func TestHandleIsConverterAvailable_MatchesCoreCheck(t *testing.T) {
 
 func TestHandleGetConversionFormats_NoConverterAvailable(t *testing.T) {
 	if core.GetConverter() != nil {
-		t.Skip("FFmpeg is available on this machine; the 'unavailable' branch isn't reachable here")
+		t.Skip("this machine has FFmpeg, so the 'unavailable' branch can't be exercised here")
 	}
 	s := newTestServer(t)
 
@@ -45,7 +42,7 @@ func TestHandleGetConversionFormats_NoConverterAvailable(t *testing.T) {
 
 func TestHandleGetConversionFormats_ShapeMatchesCore(t *testing.T) {
 	if core.GetConverter() == nil {
-		t.Skip("FFmpeg not available on this machine; exercising the 'unavailable' branch instead")
+		t.Skip("no FFmpeg on this machine, so we're exercising the 'unavailable' branch instead")
 	}
 	s := newTestServer(t)
 
@@ -99,7 +96,7 @@ func TestHandleConvertFiles_EmptyList(t *testing.T) {
 
 func TestHandleConvertFiles_NonexistentSource(t *testing.T) {
 	if core.GetConverter() == nil {
-		t.Skip("FFmpeg not available on this machine; exercising the 'unavailable' branch instead")
+		t.Skip("no FFmpeg on this machine, so we're exercising the 'unavailable' branch instead")
 	}
 	s := newTestServer(t)
 
@@ -124,7 +121,7 @@ func TestHandleConvertFiles_NonexistentSource(t *testing.T) {
 
 func TestHandleConvertFiles_NoConverterAvailable(t *testing.T) {
 	if core.GetConverter() != nil {
-		t.Skip("FFmpeg is available on this machine; the 'unavailable' branch isn't reachable here")
+		t.Skip("this machine has FFmpeg, so the 'unavailable' branch can't be exercised here")
 	}
 	s := newTestServer(t)
 

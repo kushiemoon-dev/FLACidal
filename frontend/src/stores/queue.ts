@@ -19,8 +19,8 @@ export interface QueueItem {
     fileSize: number;
   };
   source?: string;
-  attempts?: string[];      // cascade order: all sources tried (first → last)
-  analysis?: AnalysisResult; // spectral analysis (auto for Soulseek/Bandcamp)
+  attempts?: string[];      // order of fallback attempts: every source tried, from first to last
+  analysis?: AnalysisResult; // spectral analysis result, generated automatically for Soulseek/Bandcamp
 }
 
 export interface QueueStats {
@@ -32,7 +32,6 @@ export interface QueueStats {
   cancelled: number;
 }
 
-// Main queue store
 function createQueueStore() {
   const { subscribe, set, update } = writable<Map<number, QueueItem>>(new Map());
 
@@ -95,12 +94,10 @@ function createQueueStore() {
 
 export const queueStore = createQueueStore();
 
-// Derived store for queue items as array
 export const queueItems = derived(queueStore, ($queue) => {
   return Array.from($queue.values());
 });
 
-// Derived store for queue stats
 export const queueStats = derived(queueStore, ($queue): QueueStats => {
   let pending = 0;
   let downloading = 0;
@@ -139,13 +136,10 @@ export const queueStats = derived(queueStore, ($queue): QueueStats => {
   };
 });
 
-// Download folder store
 export const downloadFolder = writable<string>('');
 
-// Queue paused state
 export const queuePaused = writable<boolean>(false);
 
-// Current content store (playlist/album/track being viewed)
 export interface TidalContent {
   type: 'playlist' | 'album' | 'track' | 'artist';
   id?: string;

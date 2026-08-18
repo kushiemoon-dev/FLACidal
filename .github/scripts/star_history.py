@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate a self-hosted star-history SVG (no third-party service).
-ponytail: stdlib-only, duplicated per-repo; extract to a shared action if this
-grows beyond a handful of repos.
+"""Render a star-history SVG ourselves instead of relying on a third-party service.
+ponytail: uses only the stdlib and is copy-pasted per repo for now; pull it into
+a shared action once more than a couple of repos need it.
 """
 import sys, os, json, urllib.request
 from datetime import datetime
@@ -62,4 +62,4 @@ svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="1
 
 with open(out, "w") as f:
     f.write(svg)
-print(f"{repo}: {n} stars -> {out}")
+print(f"{repo}: wrote {n} stars to {out}")

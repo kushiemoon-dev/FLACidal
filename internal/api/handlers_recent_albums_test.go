@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/history/recent.
-
 func TestHandleGetRecentAlbums_NoDB(t *testing.T) {
 	s := newTestServer(t)
 

@@ -1,16 +1,16 @@
 # Contributing to FLACidal
 
-Thanks for your interest in contributing!
+We appreciate you taking the time to contribute!
 
 ## Getting Started
 
-1. Fork the repository
-2. Clone your fork locally
-3. Install dependencies:
+1. Fork the repo
+2. Clone your fork to your machine
+3. Install the required tooling:
    - [Go 1.22+](https://go.dev/dl/)
    - [Node.js 18+](https://nodejs.org/)
    - [Wails v2](https://wails.io/docs/gettingstarted/installation)
-4. Run `wails dev` to start in development mode
+4. Launch development mode with `wails dev`
 
 ## Project Structure
 
@@ -22,29 +22,29 @@ Thanks for your interest in contributing!
 ## Development
 
 - Build: `wails build`
-- Dev mode with hot reload: `wails dev`
-- Frontend type-check: `cd frontend && npm run check`
-- Frontend tests: `cd frontend && npm test`
+- Hot-reload dev mode: `wails dev`
+- Type-check the frontend: `cd frontend && npm run check`
+- Run frontend tests: `cd frontend && npm test`
 
 ## Pull Requests
 
-- Create a feature branch from `main`
-- Keep changes focused and atomic
-- Ensure `wails build` passes before submitting
-- Describe what changed and why in the PR description
+- Branch off `main` for your feature
+- Keep each change focused and self-contained
+- Confirm `wails build` succeeds before you submit
+- Explain what changed and why in the description
 
 ## Reporting Issues
 
-- Use GitHub Issues
-- Include your OS, FLACidal version, and steps to reproduce
-- Attach logs from the Terminal tab in the app if applicable
+- File it through GitHub Issues
+- Note your OS, the FLACidal version, and how to reproduce it
+- If relevant, attach logs from the app's Terminal tab
 
 ## Code Style
 
-- Go: follow standard `gofmt` formatting
-- TypeScript/Svelte: match existing code style
+- Go: stick to standard `gofmt` formatting
+- TypeScript/Svelte: follow the conventions already in place
 - Commit format: `type: description` (feat, fix, refactor, docs, test, chore)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By submitting a contribution, you agree it will be released under the MIT License.

@@ -6,12 +6,12 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Matcher Methods" section of app.go.
+// Behavioral snapshot tests covering the matcher methods section of app.go.
 //
-// NOT tested here (documented, not fixed):
+// Deliberately left uncovered here:
 //   - The non-nil-matcher branches of MatchPlaylistTracks/MatchSingleTrack
-//     call into core.Matcher.MatchTrack, which queries the Spotify API over
-//     the network with no injectable seam.
+//     call into core.Matcher.MatchTrack, which hits the Spotify API over the
+//     network with no injectable seam available.
 
 func TestMatchPlaylistTracks_NilMatcher(t *testing.T) {
 	a := &App{}

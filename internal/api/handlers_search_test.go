@@ -8,12 +8,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/content/search.
-//
-// NOT tested here (documented, not fixed): the success path makes a live
-// network call to the Tidal HiFi proxy with no injectable HTTP seam (same
-// limitation as internal/app's SearchTidal tests). Only validation and
-// nil-dependency branches are exercised.
+// Intentionally out of scope: the success path makes a real network call to
+// the Tidal HiFi proxy, with no seam available to substitute a fake HTTP
+// client (the same limitation internal/app's SearchTidal tests run into).
+// Only the validation and nil-dependency branches are exercised here.
 
 func TestHandleSearch_MissingQuery(t *testing.T) {
 	s := newTestServer(t)

@@ -12,10 +12,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for standalone frontend serving (no embedded frontendFS), covering
-// the "go run ./cmd/server" / "make serve" use case: frontend/dist built on
-// disk vs. not built yet.
-
 func TestServer_ServesFrontend_WhenDistBuilt(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html>flacidal</html>"), 0644); err != nil {
@@ -38,7 +34,7 @@ func TestServer_ServesFrontend_WhenDistBuilt(t *testing.T) {
 }
 
 func TestServer_HelpfulError_WhenDistMissing(t *testing.T) {
-	dir := t.TempDir() // exists but has no index.html — dist was never built
+	dir := t.TempDir()
 
 	s := NewServer(ServerConfig{
 		Config:      &core.Config{},

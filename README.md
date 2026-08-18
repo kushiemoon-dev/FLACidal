@@ -19,9 +19,9 @@
 
 ## Overview
 
-**FLACidal** is a desktop application that downloads lossless FLAC files with full metadata and embedded cover art. It tries multiple sources — Soulseek P2P, Tidal, Qobuz, Amazon Music, and Bandcamp — and falls back automatically until one succeeds.
+**FLACidal** is a desktop app for grabbing lossless FLAC files complete with full metadata and embedded cover art. It works through several sources in turn — Soulseek P2P, Tidal, Qobuz, Amazon Music, and Bandcamp — falling back automatically until one comes through.
 
-> **Note:** Tidal, Qobuz, and Amazon have significantly hardened their APIs against third-party access. The community proxy pools FLACidal uses to reach them go offline regularly, sometimes for days at a time. **Soulseek is the most reliable source right now** — it doesn't depend on any proxy pool. Setup takes about 5 minutes. By default Tidal is tried first (see [source order](#download-chain) below); move Soulseek to the top of **Settings -> General -> Source Mode** if you want it prioritized over the proxy-dependent sources.
+> **Note:** Tidal, Qobuz, and Amazon have locked down their APIs considerably against third-party access. The community proxy pools that let FLACidal reach them drop offline on a regular basis, sometimes for days. **Right now, Soulseek is the source you can count on** — no proxy pool dependency at all, and it takes roughly 5 minutes to configure. Tidal is tried first by default (see [source order](#download-chain) below); if you'd rather have Soulseek take priority over the proxy-dependent sources, move it to the top under **Settings -> General -> Source Mode**.
 
 ---
 
@@ -29,16 +29,16 @@
 
 **1. [Download FLACidal](#download) for your platform**
 
-**2. [Set up Soulseek](#setting-up-soulseek) — do this first**
+**2. [Set up Soulseek](#setting-up-soulseek) first — it matters**
 
-**3. Paste a URL or search, then download**
+**3. Paste a URL or run a search, then hit download**
 
 ```
 Home tab  ->  paste a Tidal or Qobuz URL  ->  Fetch  ->  Download All FLAC
 Search tab  ->  search by track / album / artist  ->  Download
 ```
 
-Check **Settings -> Status** at any time to see which sources are currently online.
+Anytime, check **Settings -> Status** to see which sources are online.
 
 ---
 
@@ -46,66 +46,66 @@ Check **Settings -> Status** at any time to see which sources are currently onli
 
 ### Download chain
 
-FLACidal tries each source in order and stops at the first success:
+Sources are attempted one at a time, in order, until one works:
 
 | Priority | Source | Quality | Notes |
 |----------|--------|---------|-------|
-| 1 | **Tidal** | FLAC / Hi-Res (24-bit) | Via community proxy pool |
-| 2 | **Qobuz** | FLAC / Hi-Res (24-bit) | Via community proxy pool — optional |
-| 3 | **Amazon Music** | FLAC / UHD | Via community proxy pool |
+| 1 | **Tidal** | FLAC / Hi-Res (24-bit) | Through the community proxy pool |
+| 2 | **Qobuz** | FLAC / Hi-Res (24-bit) | Through the community proxy pool — optional |
+| 3 | **Amazon Music** | FLAC / UHD | Through the community proxy pool |
 | 4 | **Bandcamp** | FLAC | Direct |
-| 5 | **Soulseek P2P** | FLAC | Via `sldl` — requires a free account |
+| 5 | **Soulseek P2P** | FLAC | Through `sldl` — needs a free account |
 
-The source order can be adjusted in **Settings -> General -> Source Mode** — sources are tried strictly in the order you set, top to bottom, no exceptions. Given how often the proxy pools go down, many users move Soulseek to position 1 for maximum reliability.
+You can reorder sources under **Settings -> General -> Source Mode**; whatever order you set is followed top to bottom with no exceptions. Because the proxy pools go down so often, plenty of users put Soulseek first for reliability's sake.
 
 ### Two things called "proxy" — they are different
 
-**Community proxy pool** — FLACidal's own relay infrastructure for Tidal, Qobuz, and Amazon. You do not configure this; it is built in. When these servers are down, those sources are unavailable.
+**Community proxy pool** — the relay infrastructure FLACidal maintains for Tidal, Qobuz, and Amazon. It's built-in and needs no setup from you. If these servers go down, those sources stop working.
 
-**Outbound proxy (HTTP / SOCKS5)** — a personal network proxy you can route FLACidal's traffic through (corporate VPN, SOCKS5 tunnel, etc.). Most users do not need this. Configure it in **Settings -> General -> HTTP / SOCKS5 Proxy**.
+**Outbound proxy (HTTP / SOCKS5)** — your own network proxy (a corporate VPN, a SOCKS5 tunnel, etc.) that FLACidal's traffic can be routed through. Most people won't need this. Set it up under **Settings -> General -> HTTP / SOCKS5 Proxy**.
 
 ### Self-hosted / private endpoints
 
-The community proxy pool is shared by every FLACidal user, which is exactly why it goes down: rate limits and cooldowns apply to everyone at once. If you run your own Tidal HiFi API or Qobuz proxy instance, point FLACidal at it and it is **tried first, before the community pool** — no waiting on shared rate limits, no dependency on pool uptime.
+Every FLACidal user shares the community proxy pool — which is precisely why it struggles: rate limits and cooldowns hit everyone simultaneously. Running your own Tidal HiFi API or Qobuz proxy instance and pointing FLACidal at it means it's **tried before the community pool**, with no shared rate-limit waiting and no reliance on pool uptime.
 
-Configure this in **Settings -> General**:
+Set this up under **Settings -> General**:
 
-- `tidalPriorityEndpoints` — one or more self-hosted Tidal HiFi API URLs, tried in order before the public pool
-- `qobuzPriorityEndpoints` — one or more self-hosted Qobuz proxy URLs, tried in order before the public pool
-- `amazonPriorityEndpoints` — one or more self-hosted Amazon proxy URLs, tried in order before the public pool
+- `tidalPriorityEndpoints` — one or more self-hosted Tidal HiFi API URLs, tried in order ahead of the public pool
+- `qobuzPriorityEndpoints` — one or more self-hosted Qobuz proxy URLs, tried in order ahead of the public pool
+- `amazonPriorityEndpoints` — one or more self-hosted Amazon proxy URLs, tried in order ahead of the public pool
 
-The Tidal and Qobuz fields also exist as single-URL legacy versions (`tidalCustomEndpoint`, `qobuzCustomEndpoint`) for backward compatibility — prefer the priority-list fields for new setups, since they support more than one fallback instance.
+For backward compatibility, Tidal and Qobuz also keep their single-URL legacy fields (`tidalCustomEndpoint`, `qobuzCustomEndpoint`) — for new setups, the priority-list fields are the better choice since they allow more than one fallback instance.
 
-Leave these empty to use the default community pool.
+Leave these blank to stick with the default community pool.
 
 ### Source availability — what to expect
 
-The major streaming platforms actively work to block unofficial API access. As a result:
+Major streaming platforms actively fight unofficial API access, which means:
 
-- Proxy pools can go offline without warning
-- Downloads may silently fall through to Soulseek as the final resort
-- **Soulseek is currently the most consistently available source**
+- Proxy pools may drop offline with no warning
+- Downloads can quietly fall through to Soulseek as a last resort
+- **Right now, Soulseek is the most consistently available source**
 
-Check real-time endpoint health at any time in **Settings -> Status**.
+You can check endpoint health live at any time under **Settings -> Status**.
 
 ---
 
 ## Features
 
-- **Multi-Source Fallback** — Soulseek, Tidal, Qobuz, Amazon, Bandcamp — automatic cascade
-- **Soulseek P2P** — independent of streaming proxy availability; move it to the top of Source Mode for maximum reliability
-- **Smart Dedup** — skips tracks already on disk (ISRC match), across every source and an optional external library path (e.g. a Navidrome/Jellyfin library)
-- **Jellyfin Integration** — triggers a library scan automatically once a download batch finishes
-- **Hi-Res and Lossless** — 24-bit / up to 192 kHz (Hi-Res) and 16-bit / 44.1 kHz (Lossless) from streaming sources
-- **Tidal and Qobuz** — Full support for playlists, albums, tracks, mixes, and artist pages
-- **Built-in Search** — Search Tidal (Tracks / Albums / Artists) or Deezer via the Universel tab (works even when Tidal is down)
-- **Concurrent Downloads** — Up to 10 parallel downloads with real-time queue progress
-- **Smart Metadata** — Vorbis comment tagging, embedded cover art, and lyrics
-- **Audio Tools Suite** — Quality Analyzer, Resampler, Converter (via FFmpeg), and File Manager
-- **Custom Filename Templates** — Define your own format, e.g. `{artist} - {title}`
-- **Artist Artwork** — Download artist profile pictures alongside music
-- **Source Status Panel** — Real-time endpoint health in Settings -> Status
-- **Outbound Proxy Support** — HTTP and SOCKS5 for all outbound requests
+- **Multi-Source Fallback** — automatic cascade across Soulseek, Tidal, Qobuz, Amazon, and Bandcamp
+- **Soulseek P2P** — unaffected by streaming-proxy uptime; put it first in Source Mode for the most reliable results
+- **Smart Dedup** — skips anything already on disk (matched by ISRC), checking every source plus an optional external library path (a Navidrome/Jellyfin library, say)
+- **Jellyfin Integration** — kicks off a library scan automatically once a download batch wraps up
+- **Hi-Res and Lossless** — from streaming sources: 24-bit up to 192 kHz (Hi-Res) and 16-bit / 44.1 kHz (Lossless)
+- **Tidal and Qobuz** — full coverage of playlists, albums, tracks, mixes, and artist pages
+- **Built-in Search** — search Tidal (Tracks / Albums / Artists) or Deezer through the Universel tab (still works when Tidal is down)
+- **Concurrent Downloads** — run up to 10 downloads in parallel with live queue progress
+- **Smart Metadata** — Vorbis comment tags, embedded cover art, and lyrics
+- **Audio Tools Suite** — Quality Analyzer, Resampler, Converter (FFmpeg-powered), and File Manager
+- **Custom Filename Templates** — set your own naming format, e.g. `{artist} - {title}`
+- **Artist Artwork** — grab artist profile pictures alongside the music
+- **Source Status Panel** — live endpoint health under Settings -> Status
+- **Outbound Proxy Support** — HTTP and SOCKS5 for every outbound request
 
 ---
 
@@ -121,41 +121,41 @@ Check real-time endpoint health at any time in **Settings -> Status**.
 | **Android** | [`FLACidal.apk`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) |
 | **iOS** | [`FLACidal.ipa`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) (via AltStore) |
 
-> **Linux:** No AUR package exists. Use the AppImage directly or [build from source](#build-from-source).
+> **Linux:** There's no AUR package. Grab the AppImage directly, or [build from source](#build-from-source).
 
-FLACidal is also available on Android and iOS: **[FLACidal Mobile](https://github.com/kushiemoon-dev/flacidal-mobile)**
+An Android and iOS build exists too: **[FLACidal Mobile](https://github.com/kushiemoon-dev/flacidal-mobile)**
 
-All releases on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases)
+Find every release on [GitHub](https://github.com/kushiemoon-dev/FLACidal/releases)
 
 ---
 
 ## Setting up Soulseek
 
-Soulseek is FLACidal's most reliable source right now. Setup takes about 5 minutes.
+Soulseek is, right now, FLACidal's most dependable source. Getting it running takes about 5 minutes.
 
 ### Step 1 — Get a Soulseek account
 
-- **Already using Nicotine+?** Use your existing username and password — FLACidal uses the same account system.
-- **New user:** Create a free account at [slsknet.org](https://www.slsknet.org/) (no email required) or through the Nicotine+ app.
+- **Already using Nicotine+?** Just use your existing username and password — FLACidal shares the same account system.
+- **New user:** Sign up for a free account at [slsknet.org](https://www.slsknet.org/) (no email needed) or through the Nicotine+ app.
 
 ### Step 2 — Install sldl
 
-`sldl` (slsk-batchdl) is the command-line tool FLACidal uses to talk to the Soulseek network.
+`sldl` (slsk-batchdl) is the command-line tool FLACidal relies on to talk to the Soulseek network.
 
-1. Download the latest binary for your platform from [github.com/fiso64/slsk-batchdl/releases](https://github.com/fiso64/slsk-batchdl/releases)
-2. Place it at this exact path:
-   - **Linux / macOS:** `~/.local/share/flacidal/sldl` — then make it executable: `chmod +x ~/.local/share/flacidal/sldl`
+1. Grab the latest binary for your platform from [github.com/fiso64/slsk-batchdl/releases](https://github.com/fiso64/slsk-batchdl/releases)
+2. Drop it at this exact path:
+   - **Linux / macOS:** `~/.local/share/flacidal/sldl` — then mark it executable: `chmod +x ~/.local/share/flacidal/sldl`
    - **Windows:** `%APPDATA%\flacidal\sldl.exe` (i.e. `C:\Users\YourName\AppData\Roaming\flacidal\sldl.exe`)
 
-FLACidal detects the binary automatically. The Soulseek section in **Settings -> General** shows a green checkmark when it is found.
+FLACidal picks up the binary on its own. Once found, the Soulseek section under **Settings -> General** shows a green checkmark.
 
 ### Step 3 — Connect your account
 
 1. Open FLACidal -> **Settings -> General**
-2. Scroll down to **Soulseek (Fallback P2P)**
-3. Toggle **Enable Soulseek** on
-4. Enter your **username** and **password**
-5. Click **Login** — FLACidal tests the connection live and shows a confirmation or an error message
+2. Scroll to **Soulseek (Fallback P2P)**
+3. Switch **Enable Soulseek** on
+4. Fill in your **username** and **password**
+5. Click **Login** — FLACidal checks the connection live and reports success or an error
 6. Click **Save Changes**
 
 <div align="center">
@@ -164,7 +164,7 @@ FLACidal detects the binary automatically. The Soulseek section in **Settings ->
 
 ### Step 4 — Verify in Settings -> Status
 
-Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool endpoints are red, Soulseek carries the load automatically.
+Head to **Settings -> Status**. The `sldl` row ought to be green. Should any proxy pool endpoints turn red, Soulseek picks up the slack automatically.
 
 <div align="center">
 <img src="docs/screenshots/settings-status.png" alt="Settings — Status tab showing endpoint health" width="800">
@@ -180,10 +180,10 @@ Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool e
 <img src="docs/screenshots/home.png" alt="FLACidal Home tab" width="800">
 </div>
 
-1. **Paste a URL** into the input field and click **Fetch**
-2. FLACidal retrieves the track list and displays the content
-3. Click **Download All FLAC** — tracks are added to the Queue
-4. Previously fetched URLs appear as cards below the input for quick re-downloads
+1. **Paste a URL** into the field and hit **Fetch**
+2. FLACidal pulls the track list and shows it on screen
+3. Click **Download All FLAC** to add the tracks to the Queue
+4. URLs you've fetched before show up as cards under the input, ready for a quick re-download
 
 **Supported URL types:**
 
@@ -194,7 +194,7 @@ Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool e
 | **Spotify** | Track · Album · Playlist (metadata only — routed to Tidal/Qobuz/Amazon/Soulseek for the actual FLAC) |
 | **Deezer** | Track · Album · Playlist |
 
-**Other services (Apple Music, YouTube Music, Deezer short links, ...):** FLACidal doesn't parse these directly, but automatically resolves them via [Odesli/song.link](https://song.link) to an equivalent Tidal or Deezer URL before fetching — no extra step needed, just paste the link.
+**Other services (Apple Music, YouTube Music, Deezer short links, ...):** FLACidal can't parse these directly, but it resolves them automatically through [Odesli/song.link](https://song.link) into an equivalent Tidal or Deezer URL before fetching — just paste the link, nothing extra required.
 
 ### Search — find music without leaving the app
 
@@ -202,7 +202,7 @@ Open **Settings -> Status**. The `sldl` row should be green. If any proxy pool e
 <img src="docs/screenshots/search.png" alt="FLACidal Search tab" width="800">
 </div>
 
-Open the **Search** tab. Four tabs are available:
+Open the **Search** tab, where four sub-tabs live:
 
 | Tab | What it searches | Works when Tidal is down? |
 |-----|-----------------|:---:|
@@ -211,7 +211,7 @@ Open the **Search** tab. Four tabs are available:
 | **Artists** | Tidal artist pages | No |
 | **Universel** | Deezer public catalog (by ISRC) | Yes |
 
-The **Universel** tab uses Deezer's public API and works independently of Tidal proxy health. Use it when Tidal search returns no results.
+**Universel** runs on Deezer's public API, so it keeps working regardless of Tidal proxy health — reach for it whenever a Tidal search comes up empty.
 
 ### Queue — monitor and control downloads
 
@@ -219,33 +219,33 @@ The **Universel** tab uses Deezer's public API and works independently of Tidal 
 <img src="docs/screenshots/queue.png" alt="FLACidal Queue tab" width="800">
 </div>
 
-The **Queue** tab shows all active and pending downloads:
+The **Queue** tab lists every active and pending download:
 
-- Real-time progress bar per track
-- **Pause / Resume** the entire queue at once
-- **Retry** individual failed downloads, or retry all failures at once
-- Export the list of failed downloads
+- A live progress bar per track
+- **Pause / Resume** for the whole queue at once
+- **Retry** a single failed download, or retry every failure in one go
+- An export option for the list of failed downloads
 
 ### History and Files
 
-**History** keeps a record of every download and URL fetch. Click any past entry to re-fetch it instantly.
+**History** logs every download and URL fetch — click any past entry to re-fetch it instantly.
 
-**Files** lists all FLAC files in your download folder with a button to open it in your system file manager.
+**Files** shows every FLAC file in your download folder, with a button to open the folder in your system's file manager.
 
 ### Audio Tools
 
-Access the Tools panel via the grid icon in the sidebar:
+Reach the Tools panel through the grid icon in the sidebar:
 
 | Tool | What it does |
 |------|-------------|
-| **Quality Analyzer** | Inspects actual frequency content to verify a file is true lossless, and reports BPM/musical key |
-| **Resampler** | Changes sample rate (e.g. 192 kHz to 44.1 kHz) |
-| **Converter** | Transcodes to other formats (MP3, AAC, Opus) via FFmpeg |
-| **File Manager** | Batch-renames files using metadata templates |
+| **Quality Analyzer** | Examines actual frequency content to confirm true lossless status, and reports BPM/musical key |
+| **Resampler** | Adjusts sample rate (192 kHz down to 44.1 kHz, for instance) |
+| **Converter** | Transcodes to other formats (MP3, AAC, Opus) through FFmpeg |
+| **File Manager** | Batch-renames files based on metadata templates |
 
-FFmpeg is required for Converter, Resampler, and the Quality Analyzer's lossless check. Install it via your system package manager or use the in-app installer in **Settings -> Status**.
+Converter, Resampler, and the Quality Analyzer's lossless check all need FFmpeg — get it through your system's package manager, or use the in-app installer under **Settings -> Status**.
 
-BPM/key detection in the Quality Analyzer needs [`aubio`](https://aubio.org/) and [`keyfinder-cli`](https://github.com/EvanPurkhiser/keyfinder-cli) on PATH — both optional (e.g. on Arch: `pacman -S aubio libkeyfinder` then `yay -S keyfinder-cli` for the AUR package). Without them, BPM/key just show as empty; the rest of the analysis still runs.
+The Quality Analyzer's BPM/key detection needs [`aubio`](https://aubio.org/) and [`keyfinder-cli`](https://github.com/EvanPurkhiser/keyfinder-cli) available on PATH — both optional (on Arch, for example: `pacman -S aubio libkeyfinder`, then `yay -S keyfinder-cli` for the AUR package). Skip them and BPM/key just show blank; the rest of the analysis proceeds regardless.
 
 ---
 
@@ -259,13 +259,13 @@ BPM/key detection in the Quality Analyzer needs [`aubio`](https://aubio.org/) an
     └── cover.jpg
 ```
 
-The download folder and filename template are fully configurable in **Settings -> File Management**.
+Both the download folder and the filename template can be fully customized under **Settings -> File Management**.
 
 ---
 
 ## Configuration
 
-Settings are stored at `~/.flacidal/config.json` and editable in-app via the Settings panel. The **Open Config Folder** button in Settings opens that directory.
+Settings live at `~/.flacidal/config.json` and can be edited from within the app via the Settings panel. The **Open Config Folder** button in Settings jumps straight to that directory.
 
 | Setting | Default | Options |
 |---------|---------|---------|
@@ -275,7 +275,7 @@ Settings are stored at `~/.flacidal/config.json` and editable in-app via the Set
 | Concurrent downloads | `4` | `1` – `10` |
 | Outbound proxy | _(none)_ | `http://host:port` or `socks5://host:port` |
 
-The config file lives in `~/.flacidal/config.json`. The `sldl` binary lives separately at `~/.local/share/flacidal/sldl` on Linux and macOS — these are two different locations.
+The config file sits at `~/.flacidal/config.json`, while the `sldl` binary lives separately at `~/.local/share/flacidal/sldl` on Linux and macOS — two distinct locations, worth not confusing.
 
 ---
 
@@ -291,7 +291,7 @@ wails build
 # Binary: build/bin/flacidal
 ```
 
-Development mode with hot reload:
+For hot-reload development mode:
 
 ```bash
 wails dev
@@ -301,18 +301,18 @@ wails dev
 
 ## Headless / Run in browser
 
-FLACidal can also run as a plain HTTP server — no Wails, no desktop shell — and be driven from any browser on the machine (or LAN). Useful for a NAS, a home server, or anywhere a desktop UI isn't practical.
+FLACidal can run as a plain HTTP server too — no Wails, no desktop shell — steerable from any browser on the machine (or the LAN). Handy for a NAS, a home server, or wherever a desktop UI doesn't fit.
 
 ### Docker
 
-The image bundles the server, the built frontend, `ffmpeg`, `aubio` (BPM), and `sldl` (Soulseek) — no separate setup needed. `keyfinder-cli` (musical key) isn't bundled yet — no Debian package, needs a source build; key detection stays empty in Docker until that's added.
+The image bundles the server, the built frontend, `ffmpeg`, `aubio` (BPM), and `sldl` (Soulseek), so nothing extra needs installing. `keyfinder-cli` (musical key) isn't bundled yet — there's no Debian package for it and it needs a source build, so key detection stays empty in Docker for now.
 
 ```bash
 curl -O https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/main/docker-compose.yml
 docker compose up -d
 ```
 
-Open `http://localhost:8080`. Downloads land in `./music/FLACidal`; config and the database persist in the `flacidal-config` volume across restarts. See [docker-compose.yml](docker-compose.yml) for the port/volume layout.
+Then open `http://localhost:8080`. Downloads go to `./music/FLACidal`, while config and the database persist across restarts in the `flacidal-config` volume. Port and volume layout details are in [docker-compose.yml](docker-compose.yml).
 
 ### From source
 
@@ -324,38 +324,38 @@ go run ./cmd/server
 # or: make serve
 ```
 
-Open `http://localhost:8080`.
+Then open `http://localhost:8080`.
 
-The server reads the same `~/.flacidal/config.json` as the desktop app. Two environment variables control it, both optional:
+The server reads from the same `~/.flacidal/config.json` as the desktop app. It's controlled by two optional environment variables:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `8080` | HTTP port the server listens on |
 | `FRONTEND_DIST_DIR` | `frontend/dist` | Where to find the built SPA on disk |
 
-If you run `go run ./cmd/server` before building the frontend, the server still starts (the API is fully usable on its own) but requests to `/` return a 503 with a reminder to run `npm run build` first.
+Running `go run ./cmd/server` before the frontend is built is fine — the server still comes up and the API works on its own — but requests to `/` return a 503 nudging you to run `npm run build` first.
 
 ---
 
 ## FAQ
 
-**Do I need a Tidal or Qobuz account?**
-No account is needed for streaming sources — FLACidal handles authentication internally via community proxy pools. However, a Soulseek account is required for Soulseek P2P, and given current proxy availability we strongly recommend setting one up. It is free.
+**Is a Tidal or Qobuz account required?**
+Not for the streaming sources — FLACidal handles authentication itself through the community proxy pools. A Soulseek account is a different story: Soulseek P2P needs one, and given how the proxies have been behaving, setting one up (free) is strongly worth doing.
 
-**Nothing downloads — everything fails or times out. What do I do?**
-Open **Settings -> Status**. If the proxy pool endpoints are red, the streaming sources are currently offline — this is expected and temporary. Make sure Soulseek is configured (see [Setting up Soulseek](#setting-up-soulseek)); it works independently of all proxy pool health.
+**Everything fails or times out — nothing downloads. What now?**
+Check **Settings -> Status**. Red proxy pool endpoints mean the streaming sources are down right now — expected, and usually temporary. Confirm Soulseek is set up (see [Setting up Soulseek](#setting-up-soulseek)), since it doesn't depend on proxy pool health at all.
 
-**What audio quality can I get?**
-From Tidal: Hi-Res (24-bit, up to 192 kHz) or Lossless (16-bit, 44.1 kHz). From Qobuz: up to 24-bit depending on album availability. From Soulseek: depends on what files other users are sharing — FLACidal searches for FLAC specifically.
+**What quality can I actually expect?**
+Tidal gives Hi-Res (24-bit, up to 192 kHz) or Lossless (16-bit, 44.1 kHz). Qobuz goes up to 24-bit depending on what's available for the album. Soulseek depends entirely on what other users are sharing — FLACidal specifically searches for FLAC there.
 
-**Why does my antivirus flag the binary?**
-False positive. Go-compiled binaries are sometimes flagged heuristically. Build from source if you have concerns.
+**My antivirus is flagging the binary — why?**
+That's a false positive; heuristic scanners sometimes flag Go binaries for no real reason. Build from source instead if it bothers you.
 
-**What is the outbound proxy setting and do I need it?**
-It routes FLACidal's network traffic through a personal proxy such as a corporate VPN or SOCKS5 tunnel. Most users do not need it. It is completely separate from the community proxy pool used for Tidal and Amazon.
+**What does the outbound proxy setting do, and do I need it?**
+It sends FLACidal's traffic through a personal proxy — a corporate VPN, a SOCKS5 tunnel, whatever you use. Most people can skip it entirely. It has nothing to do with the community proxy pool that Tidal and Amazon rely on.
 
-**Is there an AUR package for Arch Linux?**
-Yes — `flacidal-bin`. `yay -S flacidal-bin` or `paru -S flacidal-bin`. It wraps the same `.AppImage` from the releases page.
+**Does Arch Linux get an AUR package?**
+It does — `flacidal-bin`. Install with `yay -S flacidal-bin` or `paru -S flacidal-bin`. It just wraps the same `.AppImage` found on the releases page.
 
 ---
 
@@ -371,7 +371,7 @@ Yes — `flacidal-bin`. `yay -S flacidal-bin` or `paru -S flacidal-bin`. It wrap
 
 ## Disclaimer
 
-FLACidal is intended for **educational and personal use only**. It is not affiliated with, endorsed by, or connected to Tidal, Qobuz, or any other streaming service. You are solely responsible for ensuring your use complies with local laws and the Terms of Service of the platforms involved. The software is provided "as is" without warranty of any kind.
+FLACidal exists strictly for **educational and personal use**. It has no affiliation with, endorsement from, or connection to Tidal, Qobuz, or any other streaming service. Making sure your use stays within local law and each platform's Terms of Service is entirely on you. The software comes "as is," with no warranty of any kind.
 
 ---
 
@@ -379,6 +379,6 @@ FLACidal is intended for **educational and personal use only**. It is not affili
 
 **MIT License** · [Releases](https://github.com/kushiemoon-dev/FLACidal/releases) · [Mobile App](https://github.com/kushiemoon-dev/flacidal-mobile) · [YouFLAC](https://github.com/kushiemoon-dev/YouFLAC) · [OpenDrop-VJ](https://github.com/kushiemoon-dev/OpenDrop-VJ)
 
-Made with love by [KushieMoon](https://github.com/kushiemoon-dev)
+Built with love by [KushieMoon](https://github.com/kushiemoon-dev)
 
 </div>

@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "File Browser Methods" section of app.go.
-
 func TestListDownloadedFiles(t *testing.T) {
 	t.Run("no download folder configured", func(t *testing.T) {
 		a := &App{}
@@ -38,19 +36,19 @@ func TestDeleteFile(t *testing.T) {
 	a := &App{}
 	t.Run("rejects non-flac files", func(t *testing.T) {
 		if err := a.DeleteFile("/tmp/not-a-flac.mp3"); err == nil {
-			t.Error("DeleteFile() on a non-.flac path: want error, got nil")
+			t.Error("DeleteFile() with a non-.flac path: expected an error, got nil")
 		}
 	})
 	t.Run("deletes a real .flac file", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "song.flac")
 		if err := os.WriteFile(path, []byte("fake"), 0644); err != nil {
-			t.Fatalf("setup: %v", err)
+			t.Fatalf("test setup failed: %v", err)
 		}
 		if err := a.DeleteFile(path); err != nil {
 			t.Fatalf("DeleteFile() error = %v", err)
 		}
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			t.Error("DeleteFile() did not remove the file")
+			t.Error("DeleteFile() left the file in place")
 		}
 	})
 }
@@ -62,7 +60,7 @@ func TestGetFileMetadata_InvalidFile(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	if _, err := a.GetFileMetadata(path); err == nil {
-		t.Error("GetFileMetadata() on invalid FLAC content: want error, got nil")
+		t.Error("GetFileMetadata() with bogus FLAC content: expected an error, got nil")
 	}
 }
 
@@ -73,7 +71,7 @@ func TestGetFileCoverArt_InvalidFile(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	if _, err := a.GetFileCoverArt(path); err == nil {
-		t.Error("GetFileCoverArt() on invalid FLAC content: want error, got nil")
+		t.Error("GetFileCoverArt() with bogus FLAC content: expected an error, got nil")
 	}
 }
 
@@ -81,7 +79,7 @@ func TestGetRenameTemplates(t *testing.T) {
 	a := &App{}
 	got := a.GetRenameTemplates()
 	if len(got) == 0 {
-		t.Error("GetRenameTemplates() = empty, want at least one built-in template")
+		t.Error("GetRenameTemplates() returned none, expected at least one built-in template")
 	}
 }
 
@@ -94,7 +92,7 @@ func TestPreviewRename(t *testing.T) {
 }
 
 func TestRenameFiles(t *testing.T) {
-	a := &App{} // nil logBuffer — the Info() call is nil-guarded
+	a := &App{} // logBuffer left nil; the Info() call guards against that
 	dir := t.TempDir()
 	path := filepath.Join(dir, "old.flac")
 	if err := os.WriteFile(path, []byte("fake"), 0644); err != nil {

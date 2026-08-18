@@ -8,12 +8,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/sources/soulseek/status and POST /api/sources/soulseek/test.
-//
-// NOT tested here (documented, not fixed): both handlers shell out to a
-// local sldl binary that isn't present in CI, so only the "not found" /
-// "not installed" branches are exercised — same limitation as internal/app's
-// own TestGetSldlStatus / TestTestSoulseekConnection characterization tests.
+// Out of scope, by design: both handlers shell out to a local sldl binary
+// that CI doesn't have, so only the "not found" / "not installed" branches
+// get exercised — the same limitation internal/app's own TestGetSldlStatus
+// and TestTestSoulseekConnection characterization tests share.
 
 func TestHandleGetSldlStatus_NotInstalled(t *testing.T) {
 	s := NewServer(ServerConfig{

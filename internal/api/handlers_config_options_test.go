@@ -8,9 +8,9 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for the ResetConfig / DownloadOptions parity fixes: preserving the
-// download folder on reset, and round-tripping saveFolderCover/autoAnalyze
-// (previously silently dropped by these two handlers).
+// This file exercises the ResetConfig / DownloadOptions parity fixes: the
+// download folder must survive a reset, and saveFolderCover/autoAnalyze must
+// round-trip correctly instead of being quietly discarded by these handlers.
 
 func TestHandleResetConfig_PreservesDownloadFolder(t *testing.T) {
 	core.SetDataDir(t.TempDir())

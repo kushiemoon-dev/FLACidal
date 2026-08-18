@@ -8,14 +8,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// Tests for POST /api/lyrics/file, POST /api/lyrics/fetch-embed and
-// POST /api/lyrics/fetch-embed/multiple.
-//
-// NOT tested here (documented, not fixed): success paths reach a live
-// network call to LRCLIB with no injectable HTTP seam (same limitation as
-// internal/app's lyrics tests). Only validation and fail-fast "invalid file"
-// branches (which return before any network call, since core.ReadFLACMetadata
-// errors first) are exercised.
+// Out of scope, deliberately: the success paths hit LRCLIB over a live
+// network call with no seam to inject a fake HTTP client — the same
+// constraint internal/app's lyrics tests run into. What's actually covered
+// here is validation and the fail-fast "invalid file" branches, which return
+// before any network call happens because core.ReadFLACMetadata errors first.
 
 func TestHandleFetchLyricsForFile_MissingFilePath(t *testing.T) {
 	s := newTestServer(t)

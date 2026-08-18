@@ -5,32 +5,29 @@ interface AudioSettings {
   volume: number;
 }
 
-// Store for audio settings
 const audioSettings = writable<AudioSettings>({
   enabled: false,
   volume: 70
 });
 
-// Audio context
 let audioContext: AudioContext | null = null;
 
-// Sound definitions using Web Audio API oscillator (no external files needed)
+// Tones are synthesized with the Web Audio API oscillator, so no external audio files are needed
 type SoundType = 'complete' | 'error' | 'queue-done' | 'click' | 'success';
 
-// Initialize audio context on first user interaction
+// Lazily creates the audio context on first user interaction
 function ensureAudioContext(): AudioContext | null {
   if (!audioContext) {
     try {
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (e) {
-      console.warn('Web Audio API not supported');
+      console.warn('Web Audio API is not supported in this environment');
       return null;
     }
   }
   return audioContext;
 }
 
-// Play a success sound (two rising tones)
 function playSuccessSound() {
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -40,7 +37,6 @@ function playSuccessSound() {
 
   const volume = 0.2 * (settings.volume / 100);
 
-  // First tone
   const osc1 = ctx.createOscillator();
   const gain1 = ctx.createGain();
   osc1.connect(gain1);
@@ -53,7 +49,6 @@ function playSuccessSound() {
   osc1.start(ctx.currentTime);
   osc1.stop(ctx.currentTime + 0.15);
 
-  // Second tone (higher)
   const osc2 = ctx.createOscillator();
   const gain2 = ctx.createGain();
   osc2.connect(gain2);
@@ -67,7 +62,6 @@ function playSuccessSound() {
   osc2.stop(ctx.currentTime + 0.3);
 }
 
-// Play an error sound (descending tone)
 function playErrorSound() {
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -91,7 +85,6 @@ function playErrorSound() {
   osc.stop(ctx.currentTime + 0.25);
 }
 
-// Play a click sound (very short subtle tick)
 function playClickSound() {
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -113,7 +106,6 @@ function playClickSound() {
   osc.stop(ctx.currentTime + 0.001);
 }
 
-// Play a queue complete sound (triumphant chord)
 function playQueueDoneSound() {
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -141,7 +133,6 @@ function playQueueDoneSound() {
   });
 }
 
-// Main function to play sounds
 export function playSound(type: SoundType) {
   const settings = get(audioSettings);
   if (!settings.enabled) return;
@@ -163,7 +154,6 @@ export function playSound(type: SoundType) {
   }
 }
 
-// Initialize audio settings from config
 export function initializeAudioSettings(enabled: boolean, volume: number) {
   audioSettings.set({
     enabled,
@@ -171,21 +161,19 @@ export function initializeAudioSettings(enabled: boolean, volume: number) {
   });
 }
 
-// Update audio settings
 export function updateAudioSettings(enabled: boolean, volume: number) {
   audioSettings.set({ enabled, volume });
 }
 
-// Test sound (can be called from settings)
 export function testSound() {
   const settings = get(audioSettings);
   const wasEnabled = settings.enabled;
 
-  // Temporarily enable to play test
+  // Briefly force-enable so the preview actually plays
   audioSettings.set({ ...settings, enabled: true });
   playSuccessSound();
 
-  // Restore original state
+  // Put the enabled flag back the way it was
   if (!wasEnabled) {
     audioSettings.set({ ...settings, enabled: false });
   }

@@ -1,12 +1,13 @@
 /**
- * Wails runtime mock for E2E tests.
+ * Stand-in Wails runtime for the E2E suite.
  *
- * The frontend imports from `../wailsjs/go/main/App.js` and
- * `../wailsjs/runtime/runtime.js`, which at runtime call into
- * `window.go.main.App.*` and `window.runtime.*`.
+ * The app pulls its bindings from `../wailsjs/go/main/App.js` and
+ * `../wailsjs/runtime/runtime.js`, both of which end up calling into
+ * `window.go.main.App.*` and `window.runtime.*` at runtime.
  *
- * In a browser context (vite dev server) those globals do not exist, so we
- * inject mocks via `page.addInitScript` BEFORE any module loads.
+ * None of those globals exist under a plain browser context (the vite dev
+ * server), so this file installs them via `page.addInitScript` before any
+ * app module has a chance to load.
  */
 import type { Page } from '@playwright/test'
 
@@ -24,13 +25,12 @@ export interface WailsOverrides {
   IsConverterAvailable?: boolean
   AnalyzeMultiple?: any[]
   ListDownloadedFiles?: any[]
-  // Network: mock fetch for /api/* endpoints
+  // Network: stubbed fetch response for /api/* endpoints
   apiAnalyze?: { ok: boolean; body: any }
 }
 
 export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
   return page.addInitScript((opts) => {
-    // ---------- Default config ---------- //
     const defaultConfig = {
       theme: 'dark',
       accentColor: '#f472b6',
@@ -59,24 +59,19 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
 
     const config = opts.GetConfig ?? defaultConfig
 
-    // ---------- App methods ---------- //
     const App = {
-      // Config
       GetConfig: async () => config,
       SaveConfig: async (_c: any) => {},
       ResetToDefaults: async () => defaultConfig,
 
-      // App / version
       GetAppVersion: async () => opts.GetAppVersion ?? '4.0.0-test',
 
-      // Folder
       GetDownloadFolder: async () => opts.GetDownloadFolder ?? '/tmp/flacidal-test',
       SetDownloadFolder: async (_f: string) => {},
       SelectDownloadFolder: async () => '/tmp/flacidal-selected',
       OpenDownloadFolder: async (_f: string) => {},
       OpenConfigFolder: async () => {},
 
-      // Sources
       GetAvailableSources: async () =>
         opts.GetAvailableSources ?? [
           { name: 'tidal', displayName: 'Tidal', available: true },
@@ -85,7 +80,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetPreferredSource: async () => 'tidal',
       SetPreferredSource: async (_s: string) => {},
 
-      // Source detection / fetch
       DetectSourceFromURL: async (url: string) => {
         if (opts.DetectSourceFromURL !== undefined) return opts.DetectSourceFromURL
         if (!url) return {}
@@ -141,12 +135,10 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       }),
       FetchTidalPlaylist: async (_u: string) => ({}),
 
-      // Search
       SearchTidal: async (_q: string) => [],
       SearchTidalAlbums: async (_q: string) => [],
       SearchTidalArtists: async (_q: string) => [],
 
-      // Download / queue
       QueueDownloads: async (..._a: any[]) => 0,
       QueueQobuzDownloads: async (..._a: any[]) => 0,
       QueueSingleDownload: async (..._a: any[]) => {},
@@ -162,7 +154,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetDownloadQueueStatus: async () => ({ items: [] }),
       ExportFailedDownloads: async (_p: string) => '/tmp/failed.txt',
 
-      // History
       GetDownloadHistory: async () => [],
       GetDownloadHistoryFiltered: async (_f: any) =>
         opts.GetDownloadHistoryFiltered ?? { records: [], total: 0 },
@@ -170,13 +161,11 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       ClearDownloadHistory: async () => {},
       RefetchFromHistory: async (_id: string) => ({ url: '' }),
 
-      // Files
       ListDownloadedFiles: async () => opts.ListDownloadedFiles ?? [],
       DeleteFile: async (_p: string) => {},
       OpenFLACFilesDialog: async () => [],
       SelectFolderForConversion: async () => [],
 
-      // Analyzer
       AnalyzeFile: async (_p: string) => ({ verdict: 'lossless' }),
       AnalyzeMultiple: async (_paths: string[]) =>
         opts.AnalyzeMultiple ?? [
@@ -184,7 +173,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
         ],
       QuickAnalyze: async (_p: string) => ({ verdict: 'lossless' }),
 
-      // Conversion
       IsConverterAvailable: async () => opts.IsConverterAvailable ?? true,
       GetConversionFormats: async () =>
         opts.GetConversionFormats ?? [
@@ -201,7 +189,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetFFmpegInstallStatus: async () => ({ installed: true }),
       InstallFFmpeg: async () => {},
 
-      // Lyrics / metadata
       FetchAndEmbedLyrics: async (_p: string) => ({ synced: false }),
       FetchAndEmbedLyricsMultiple: async (_p: string[]) => [],
       FetchLyrics: async (..._a: any[]) => ({ synced: false }),
@@ -210,18 +197,15 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetFileMetadata: async (_p: string) => ({}),
       GetFileCoverArt: async (_p: string) => ({}),
 
-      // Logs
       GetLogs: async () => [],
       ClearLogs: async () => {},
       AddLog: async (_l: string, _m: string) => {},
 
-      // Recent albums (home page) + Soulseek status
       GetRecentAlbums: async (_limit: number) => [],
       GetSldlStatus: async () => ({ installed: false, version: '' }),
       InstallSldl: async () => {},
       GetSldlBinaryPath: async () => '',
 
-      // Misc
       CheckAPIStatus: async () => [],
       CheckForUpdate: async () => ({ available: false }),
       GetCacheStats: async () => ({}),
@@ -247,7 +231,6 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
 
     ;(window as any).go = { main: { App } }
 
-    // ---------- Wails runtime ---------- //
     const noop = () => {}
     const offFn = () => {}
     ;(window as any).runtime = {
@@ -303,7 +286,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       OnFileDropOff: () => {},
     }
 
-    // Mark wails as ready in case any code awaits this
+    // Flag Wails as ready, in case some code path waits on this
     ;(window as any).WailsInvoke = noop
   }, overrides as any)
 }

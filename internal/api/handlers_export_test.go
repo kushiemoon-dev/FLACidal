@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for GET /api/downloads/export.
-
 func TestHandleExportFailedDownloads_NoDownloadManager(t *testing.T) {
 	s := newTestServer(t)
 

@@ -6,20 +6,20 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Tidal Methods" section of app.go.
+// Behavioral snapshot tests covering the Tidal methods section of app.go.
 //
-// NOT tested here (documented, not fixed):
-//   - FetchTidalPlaylist / RefreshTidalEndpoints: make live network calls to
-//     the Tidal HiFi proxy / endpoint gist with no injectable HTTP seam.
+// Deliberately left uncovered here:
+//   - FetchTidalPlaylist / RefreshTidalEndpoints: these issue live network
+//     calls to the Tidal HiFi proxy / endpoint gist with no injectable HTTP seam.
 //   - FetchTidalContent success branches (playlist/album/track/mix/artist):
-//     each calls out to a.downloader/a.tidalClient over the network. Only the
-//     invalid-URL error branch (which returns before touching those fields) is
-//     exercised here.
+//     each one calls out to a.downloader/a.tidalClient over the network. Only
+//     the invalid-URL error branch, which returns before touching those
+//     fields, is covered here.
 //
-// Bug note (not fixed): FetchTidalContent's `default:` case
-// (`unsupported content type`) is unreachable — core.ParseTidalURL only ever
-// returns "playlist", "track", "album", "artist", "mix", or a non-nil error,
-// so contentType can never reach the switch's default arm.
+// Known gap (left as-is): FetchTidalContent's `default:` case
+// (`unsupported content type`) can't actually be reached — core.ParseTidalURL
+// only ever returns "playlist", "track", "album", "artist", "mix", or a
+// non-nil error, so contentType never hits the switch's default arm.
 func TestSetTidalCredentials(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 	a := &App{config: &core.Config{}}

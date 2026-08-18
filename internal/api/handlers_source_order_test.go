@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for POST /api/sources/order.
-
 func TestHandleSetSourceOrder_Empty(t *testing.T) {
 	s := newTestServer(t)
 
@@ -59,8 +57,9 @@ func TestHandleSetSourceOrder_Duplicate(t *testing.T) {
 }
 
 func TestHandleSetSourceOrder_Success(t *testing.T) {
-	// core.SaveConfig writes to core.GetDataDir(), a package-level global —
-	// redirect it to a temp dir so this never touches a real ~/.flacidal/config.json.
+	// core.SaveConfig writes wherever core.GetDataDir() points, which is a
+	// package-level global, so point it at a temp dir to avoid ever touching a
+	// real ~/.flacidal/config.json.
 	core.SetDataDir(t.TempDir())
 	s := NewServer(ServerConfig{
 		Config:          &core.Config{},

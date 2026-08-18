@@ -8,13 +8,9 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Config Methods" section of app.go
-// (GetConfig, SaveConfig, SetSourceOrder, ResetToDefaults, GetConnectionStatus,
-// CheckAPIStatus, endpointStatToStatus).
-//
-// NOT tested here (documented, not fixed):
-//   - OpenConfigFolder / openFolder: spawns a real OS file-manager process
-//     (xdg-open/open/explorer) as a side effect — unsafe to run in a test.
+// Deliberately left uncovered here:
+//   - OpenConfigFolder / openFolder: these spawn a real OS file-manager process
+//     (xdg-open/open/explorer), which isn't safe to trigger from a test.
 
 func TestGetConfig(t *testing.T) {
 	cfg := &core.Config{Theme: "dark"}
@@ -27,7 +23,7 @@ func TestGetConfig(t *testing.T) {
 func TestSaveConfig(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 
-	// A real, but not "available", sldl path so EnsureSldlExecutable succeeds.
+	// A genuine, if not "available", sldl path so EnsureSldlExecutable doesn't error.
 	sldlPath := filepath.Join(t.TempDir(), "sldl")
 	if err := os.WriteFile(sldlPath, []byte("fake"), 0644); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -48,7 +44,6 @@ func TestSaveConfig(t *testing.T) {
 		t.Errorf("SaveConfig() did not update a.config, got %+v", a.config)
 	}
 
-	// Verify it actually persisted to disk (real behavior, isolated temp dir).
 	data, err := os.ReadFile(core.GetConfigPath())
 	if err != nil {
 		t.Fatalf("reading saved config: %v", err)
@@ -71,7 +66,7 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 	}
 	baseCfg := core.Config{SoulseekBinaryPath: sldlPath}
 
-	// Priority endpoint set, no override -> self-host prepended before the public pool.
+	// With only a priority endpoint set (no override), the self-hosted entry goes ahead of the public pool.
 	cfg := baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	if err := a.SaveConfig(cfg); err != nil {
@@ -82,7 +77,7 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 		t.Fatalf("priority endpoint not prepended, got %+v", snap)
 	}
 
-	// Override set -> total override, priority field ignored.
+	// With an override set, it wins completely and the priority field is ignored.
 	cfg = baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	cfg.AmazonProxyEndpoints = []string{"https://override.example"}
@@ -209,8 +204,8 @@ func TestResolveAndPersistSourceOrder(t *testing.T) {
 func TestResetToDefaults(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 
-	// a.logBuffer left nil so the runtime.EventsEmit branch (which requires a
-	// real Wails runtime context and would otherwise call log.Fatalf) is skipped.
+	// a.logBuffer is left nil so we skip the runtime.EventsEmit branch, which
+	// needs an actual Wails runtime context and would call log.Fatalf otherwise.
 	a := &App{config: &core.Config{DownloadFolder: "/music/keep-me"}}
 
 	cfg, err := a.ResetToDefaults()
@@ -272,7 +267,7 @@ func TestEndpointStatToStatus(t *testing.T) {
 		{"blacklisted", "slow"},
 		{"probation", "slow"},
 		{"live", "online"},
-		{"", "online"}, // default branch
+		{"", "online"}, // falls through to the default case
 	}
 	for _, tt := range tests {
 		t.Run(tt.state, func(t *testing.T) {
