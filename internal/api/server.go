@@ -21,11 +21,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// defaultFrontendDir is where the built Svelte SPA is expected to live on
-// disk when frontendFS is not populated (i.e. no embedded build).
+// defaultFrontendDir is where the compiled Svelte SPA lives on disk; it's
+// used only when frontendFS doesn't carry an embedded build.
 const defaultFrontendDir = "frontend/dist"
 
-// ServerConfig holds all dependencies for the server
 type ServerConfig struct {
 	Config          *core.Config
 	DB              *core.Database
@@ -35,11 +34,10 @@ type ServerConfig struct {
 	QobuzSource     *core.QobuzSource
 	LyricsClient    *core.LyricsClient
 	Context         context.Context
-	FrontendFS      embed.FS // Embedded frontend assets
-	FrontendDir     string   // Filesystem path to the built SPA when FrontendFS is empty (default: "frontend/dist")
+	FrontendFS      embed.FS
+	FrontendDir     string // on-disk SPA path used when FrontendFS is empty (default: "frontend/dist")
 }
 
-// Server represents the HTTP API server
 type Server struct {
 	app              *fiber.App
 	config           *core.Config
@@ -56,19 +54,16 @@ type Server struct {
 	frontendDir      string
 }
 
-// NewServer creates a new API server instance
 func NewServer(cfg ServerConfig) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:      "FLACidal Server",
 		ServerHeader: "FLACidal",
-		BodyLimit:    50 * 1024 * 1024, // 50MB
+		BodyLimit:    50 * 1024 * 1024,
 	})
 
-	// Create WebSocket hub
 	wsHub := NewWebSocketHub()
 	go wsHub.Run()
 
-	// Create queue event broadcaster
 	queueBroadcaster := NewQueueBroadcaster()
 
 	frontendDir := cfg.FrontendDir
@@ -92,8 +87,7 @@ func NewServer(cfg ServerConfig) *Server {
 		frontendDir:      frontendDir,
 	}
 
-	// Hook queue events into the download manager's progress callback.
-	// This forwards queued/downloading/completed/failed states to all WS subscribers.
+	// So every queued/downloading/completed/failed transition reaches WS subscribers.
 	if cfg.DownloadManager != nil {
 		cfg.DownloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
 			jobID := fmt.Sprintf("%d", trackID)
@@ -117,7 +111,6 @@ func NewServer(cfg ServerConfig) *Server {
 				event.Type = "queued"
 			case "downloading":
 				event.Type = "started"
-				// Compute 0-100 progress from byte counters when available.
 				if result != nil && result.BytesTotal > 0 {
 					event.Type = "progress"
 					event.Progress = int(result.BytesDownloaded * 100 / result.BytesTotal)
@@ -139,13 +132,12 @@ func NewServer(cfg ServerConfig) *Server {
 		cfg.DownloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
 			if cfg.DB != nil {
 				if err := cfg.DB.InsertHistoryEntry(entry); err != nil {
-					log.Printf("WARN: failed to insert history entry: %v", err)
+					log.Printf("WARN: could not save history entry: %v", err)
 				}
 			}
 		})
 	}
 
-	// Middleware
 	app.Use(recover.New())
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] ${status} - ${method} ${path} (${latency})\n",
@@ -156,26 +148,20 @@ func NewServer(cfg ServerConfig) *Server {
 		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 	}))
 
-	// Setup routes
 	server.setupRoutes()
 
 	return server
 }
 
-// setupRoutes configures all API routes
 func (s *Server) setupRoutes() {
-	// Health check
 	s.app.Get("/api/health", s.handleHealth)
 
-	// API routes
 	api := s.app.Group("/api")
 
-	// Config routes
 	api.Get("/config", s.handleGetConfig)
 	api.Post("/config", s.handleSaveConfig)
 	api.Post("/config/reset", s.handleResetConfig)
 
-	// Source routes
 	api.Get("/sources", s.handleGetSources)
 	api.Get("/sources/preferred", s.handleGetPreferredSource)
 	api.Post("/sources/preferred", s.handleSetPreferredSource)
@@ -184,7 +170,6 @@ func (s *Server) setupRoutes() {
 	api.Get("/sources/soulseek/status", s.handleGetSldlStatus)
 	api.Post("/sources/soulseek/test", s.handleTestSoulseekConnection)
 
-	// Content routes (Tidal/Qobuz)
 	api.Post("/content/fetch", s.handleFetchContent)
 	api.Post("/content/validate", s.handleValidateURL)
 	api.Get("/content/search", s.handleSearch)
@@ -192,7 +177,6 @@ func (s *Server) setupRoutes() {
 	api.Get("/content/search/artists", s.handleSearchTidalArtists)
 	api.Get("/content/search/deezer", s.handleSearchDeezer)
 
-	// Download routes
 	api.Get("/downloads/queue", s.handleGetQueue)
 	api.Post("/downloads/queue", s.handleQueueDownloads)
 	api.Post("/downloads/queue/album", s.handleQueueArtistAlbum)
@@ -209,7 +193,6 @@ func (s *Server) setupRoutes() {
 	api.Get("/downloads/paused", s.handleIsPaused)
 	api.Get("/downloads/export", s.handleExportFailedDownloads)
 
-	// History routes
 	api.Get("/history", s.handleGetHistory)
 	api.Get("/history/filtered", s.handleGetHistoryFiltered)
 	api.Delete("/history/:id", s.handleDeleteHistory)
@@ -217,7 +200,6 @@ func (s *Server) setupRoutes() {
 	api.Post("/history/refetch/:id", s.handleRefetchFromHistory)
 	api.Get("/history/recent", s.handleGetRecentAlbums)
 
-	// Files routes
 	api.Get("/files", s.handleListFiles)
 	api.Delete("/files", s.handleDeleteFile)
 	api.Get("/files/metadata", s.handleGetMetadata)
@@ -226,44 +208,35 @@ func (s *Server) setupRoutes() {
 	api.Post("/files/rename/preview", s.handlePreviewRename)
 	api.Post("/files/rename", s.handleRenameFiles)
 
-	// Conversion routes
 	api.Get("/convert/available", s.handleIsConverterAvailable)
 	api.Get("/convert/ffmpeg", s.handleGetFFmpegInfo)
 	api.Get("/convert/formats", s.handleGetConversionFormats)
 	api.Post("/convert", s.handleConvertFiles)
 
-	// Analysis routes
 	RegisterAnalyzerRoutes(api, s)
 
-	// Lyrics routes
 	api.Get("/lyrics", s.handleFetchLyrics)
 	api.Post("/lyrics/file", s.handleFetchLyricsForFile)
 	api.Post("/lyrics/embed", s.handleEmbedLyrics)
 	api.Post("/lyrics/fetch-embed", s.handleFetchAndEmbedLyrics)
 	api.Post("/lyrics/fetch-embed/multiple", s.handleFetchAndEmbedMultiple)
 
-	// Qobuz routes
 	api.Post("/qobuz/credentials", s.handleUpdateQobuzCredentials)
 	api.Get("/qobuz/configured", s.handleIsQobuzConfigured)
 
-	// Folder routes
 	api.Get("/folder", s.handleGetDownloadFolder)
 	api.Post("/folder", s.handleSetDownloadFolder)
 
-	// System routes
 	api.Get("/version", s.handleGetVersion)
 	api.Get("/logs", s.handleGetLogs)
 	api.Post("/logs/clear", s.handleClearLogs)
 	api.Get("/connection", s.handleGetConnectionStatus)
 	api.Get("/downloader/available", s.handleIsDownloaderAvailable)
 
-	// Per-track download history endpoint
 	RegisterHistoryRoutes(api, s)
 
-	// Queue WebSocket endpoint — real-time download events
 	RegisterQueueRoutes(s.app, s)
 
-	// WebSocket endpoint
 	s.app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
 			return c.Next()
@@ -272,9 +245,10 @@ func (s *Server) setupRoutes() {
 	})
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 
-	// Static files (Svelte build) - prefer an embedded frontend (Docker/production
-	// builds). fs.Sub never errors for a syntactically valid path — even against
-	// an empty embed.FS — so existence must be checked explicitly with fs.Stat.
+	// An embedded build (as used for Docker/production images) takes priority
+	// when present. fs.Sub won't error on a syntactically valid path even
+	// against an empty embed.FS, so we still have to probe with fs.Stat to
+	// know whether anything was actually embedded.
 	_, embedErr := fs.Stat(s.frontendFS, "frontend/dist/index.html")
 	if embedErr == nil {
 		frontendDist, _ := fs.Sub(s.frontendFS, "frontend/dist")
@@ -282,19 +256,19 @@ func (s *Server) setupRoutes() {
 			Root:         http.FS(frontendDist),
 			Browse:       false,
 			Index:        "index.html",
-			NotFoundFile: "index.html", // SPA fallback
+			NotFoundFile: "index.html", // fall through to the SPA for unknown routes
 		}))
 	} else if indexPath := filepath.Join(s.frontendDir, "index.html"); fileExists(indexPath) {
-		// No embedded build (e.g. `go run ./cmd/server`) - serve the SPA straight
-		// from disk once it has been built with `cd frontend && npm run build`.
+		// Nothing embedded (typical of `go run ./cmd/server`) - fall back to
+		// whatever was built on disk via `cd frontend && npm run build`.
 		s.app.Static("/", s.frontendDir)
 		s.app.Get("/*", func(c *fiber.Ctx) error {
 			return c.SendFile(indexPath)
 		})
 	} else {
 		msg := fmt.Sprintf(
-			"Frontend not built. Run `cd frontend && npm install && npm run build` "+
-				"(or `make serve`), then restart the server. Looked for: %s", indexPath)
+			"No frontend build found. Run `cd frontend && npm install && npm run build` "+
+				"(or `make serve`) and restart the server. Checked path: %s", indexPath)
 		log.Printf("WARN: %s", msg)
 		s.app.Get("/*", func(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusServiceUnavailable).SendString(msg)
@@ -302,24 +276,21 @@ func (s *Server) setupRoutes() {
 	}
 }
 
-// fileExists reports whether path exists and is a regular file.
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
 }
 
-// Listen starts the HTTP server
 func (s *Server) Listen(addr string) error {
 	return s.app.Listen(addr)
 }
 
-// Shutdown gracefully shuts down the server
+// Shutdown closes WS connections first, before shutting down the app.
 func (s *Server) Shutdown() error {
 	s.wsHub.Close()
 	return s.app.Shutdown()
 }
 
-// BroadcastDownloadEvent sends a download event to all connected WebSocket clients
 func (s *Server) BroadcastDownloadEvent(event core.DownloadEvent) {
 	s.wsHub.Broadcast(map[string]interface{}{
 		"type":    "download-progress",
@@ -329,7 +300,6 @@ func (s *Server) BroadcastDownloadEvent(event core.DownloadEvent) {
 	})
 }
 
-// WebSocketHub manages WebSocket connections
 type WebSocketHub struct {
 	clients    map[*websocket.Conn]bool
 	broadcast  chan interface{}
@@ -339,7 +309,6 @@ type WebSocketHub struct {
 	done       chan struct{}
 }
 
-// NewWebSocketHub creates a new WebSocket hub
 func NewWebSocketHub() *WebSocketHub {
 	return &WebSocketHub{
 		clients:    make(map[*websocket.Conn]bool),
@@ -350,7 +319,6 @@ func NewWebSocketHub() *WebSocketHub {
 	}
 }
 
-// Run starts the WebSocket hub
 func (h *WebSocketHub) Run() {
 	for {
 		select {
@@ -360,7 +328,7 @@ func (h *WebSocketHub) Run() {
 			h.mu.Lock()
 			h.clients[conn] = true
 			h.mu.Unlock()
-			log.Printf("WebSocket client connected (total: %d)", len(h.clients))
+			log.Printf("WebSocket client joined (now %d connected)", len(h.clients))
 		case conn := <-h.unregister:
 			h.mu.Lock()
 			if _, ok := h.clients[conn]; ok {
@@ -368,12 +336,12 @@ func (h *WebSocketHub) Run() {
 				conn.Close()
 			}
 			h.mu.Unlock()
-			log.Printf("WebSocket client disconnected (total: %d)", len(h.clients))
+			log.Printf("WebSocket client left (now %d connected)", len(h.clients))
 		case message := <-h.broadcast:
 			h.mu.RLock()
 			for conn := range h.clients {
 				if err := conn.WriteJSON(message); err != nil {
-					log.Printf("WebSocket write error: %v", err)
+					log.Printf("WebSocket send failed: %v", err)
 					h.mu.RUnlock()
 					h.unregister <- conn
 					h.mu.RLock()
@@ -384,16 +352,14 @@ func (h *WebSocketHub) Run() {
 	}
 }
 
-// Broadcast sends a message to all connected clients
 func (h *WebSocketHub) Broadcast(message interface{}) {
 	select {
 	case h.broadcast <- message:
 	default:
-		log.Println("WebSocket broadcast channel full, dropping message")
+		log.Println("WebSocket broadcast queue is full; dropping message")
 	}
 }
 
-// Close shuts down the hub
 func (h *WebSocketHub) Close() {
 	close(h.done)
 	h.mu.Lock()
@@ -403,7 +369,6 @@ func (h *WebSocketHub) Close() {
 	h.mu.Unlock()
 }
 
-// handleWebSocket handles WebSocket connections
 func (s *Server) handleWebSocket(c *websocket.Conn) {
 	s.wsHub.register <- c
 	defer func() {

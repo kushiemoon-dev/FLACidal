@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-// wailsjs/go/app/App.js is a generated file that calls window.go.app.App.*
-// under the hood; mock it directly so Wails-mode tests never touch a real
-// window.go.
+// wailsjs/go/app/App.js is generated code that calls into window.go.app.App.*
+// under the hood, so it's mocked directly here — that way the Wails-mode
+// tests never touch a real window.go.
 const wailsMock = {
   GetAppVersion: vi.fn(),
   GetDownloadFolder: vi.fn(),
@@ -30,28 +30,27 @@ describe('isWailsRuntime', () => {
     clearWailsRuntime()
   })
 
-  it('returns true when window.go.app.App and window.runtime are present', async () => {
+  it('reports true once both window.go.app.App and window.runtime exist', async () => {
     setWailsRuntime()
     const { isWailsRuntime } = await import('./api')
     expect(isWailsRuntime()).toBe(true)
   })
 
-  it('returns false in a plain browser (no window.go)', async () => {
+  it('reports false in a plain browser where window.go is absent', async () => {
     const { isWailsRuntime } = await import('./api')
     expect(isWailsRuntime()).toBe(false)
   })
 
-  it('caches the result after the first call', async () => {
+  it('remembers its first result on subsequent calls', async () => {
     const { isWailsRuntime } = await import('./api')
     expect(isWailsRuntime()).toBe(false)
 
-    // Flipping window.go after the first call must not change the cached result.
     setWailsRuntime()
     expect(isWailsRuntime()).toBe(false)
   })
 })
 
-describe('API routing — Wails mode', () => {
+describe('API call routing in Wails mode', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -61,7 +60,7 @@ describe('API routing — Wails mode', () => {
     clearWailsRuntime()
   })
 
-  it('GetAppVersion calls the Wails binding and never touches fetch', async () => {
+  it('GetAppVersion goes through the Wails binding and skips fetch entirely', async () => {
     wailsMock.GetAppVersion.mockResolvedValue('4.12.0')
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
@@ -73,7 +72,7 @@ describe('API routing — Wails mode', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('QueueDownloads forwards all 5 args positionally to the Wails binding', async () => {
+  it('QueueDownloads passes all five positional arguments through to the Wails binding', async () => {
     wailsMock.QueueDownloads.mockResolvedValue(3)
     const tracks = [{ id: 1 }]
 
@@ -84,7 +83,7 @@ describe('API routing — Wails mode', () => {
     expect(wailsMock.QueueDownloads).toHaveBeenCalledWith(tracks, '/music', 'Discovery', 'content-1', 'album')
   })
 
-  it('OpenFLACFilesDialog delegates to the native Wails dialog', async () => {
+  it('OpenFLACFilesDialog hands off to the native Wails dialog', async () => {
     wailsMock.OpenFLACFilesDialog.mockResolvedValue(['/music/a.flac'])
 
     const { OpenFLACFilesDialog } = await import('./api')
@@ -95,7 +94,7 @@ describe('API routing — Wails mode', () => {
   })
 })
 
-describe('API routing — browser mode', () => {
+describe('API call routing in browser mode', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -118,7 +117,7 @@ describe('API routing — browser mode', () => {
     vi.unstubAllGlobals()
   })
 
-  it('GetAppVersion fetches GET /api/version and unwraps .version', async () => {
+  it('GetAppVersion issues a GET to /api/version and unwraps the .version field', async () => {
     const fetchMock = mockFetchOnce({ version: '1.0.0' })
 
     const { GetAppVersion } = await import('./api')
@@ -128,14 +127,14 @@ describe('API routing — browser mode', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/version', undefined)
   })
 
-  it('IsQueuePaused fetches GET /api/downloads/paused and unwraps .paused', async () => {
+  it('IsQueuePaused issues a GET to /api/downloads/paused and unwraps the .paused field', async () => {
     mockFetchOnce({ paused: true })
 
     const { IsQueuePaused } = await import('./api')
     expect(await IsQueuePaused()).toBe(true)
   })
 
-  it('QueueDownloads POSTs {tracks,outputDir,contentName} and unwraps .queued', async () => {
+  it('QueueDownloads POSTs {tracks,outputDir,contentName} and unwraps the .queued field', async () => {
     const fetchMock = mockFetchOnce({ queued: 3 })
     const tracks = [{ id: 1 }]
 
@@ -149,7 +148,7 @@ describe('API routing — browser mode', () => {
     expect(JSON.parse(init.body)).toEqual({ tracks, outputDir: '/music', contentName: 'Discovery' })
   })
 
-  it('AnalyzeMultiple normalizes the REST shape to the AnalysisResult shape', async () => {
+  it('AnalyzeMultiple converts the REST response shape into the AnalysisResult shape', async () => {
     mockFetchOnce([
       { fileName: 'a.flac', isUpscaled: false, confidence: 90, spectralCutoff: 22000, verdict: 'pass', verdictLabel: 'Lossless', message: 'Authentic lossless', sampleRate: 44100, bitDepth: 16 },
     ])
@@ -172,14 +171,14 @@ describe('API routing — browser mode', () => {
     })
   })
 
-  it('apiFetch throws with the server-provided error message on a non-ok response', async () => {
+  it('apiFetch throws using the server-supplied error message when the response is not ok', async () => {
     mockFetchOnce({ error: 'no output directory specified' }, false)
 
     const { QueueSingleDownload } = await import('./api')
     await expect(QueueSingleDownload(1, '', 'Track', 'Artist')).rejects.toThrow('no output directory specified')
   })
 
-  it('OpenFLACFilesDialog resolves to [] instead of throwing (native dialog has no browser equivalent)', async () => {
+  it('OpenFLACFilesDialog resolves to [] rather than throwing, since the native dialog has no browser counterpart', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
@@ -191,7 +190,7 @@ describe('API routing — browser mode', () => {
     warnSpy.mockRestore()
   })
 
-  it('SelectDownloadFolder resolves to "" instead of throwing', async () => {
+  it('SelectDownloadFolder resolves to "" rather than throwing', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { SelectDownloadFolder } = await import('./api')

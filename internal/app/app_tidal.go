@@ -7,11 +7,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// =============================================================================
-// Tidal Methods (exposed to frontend)
-// =============================================================================
-
-// SetTidalCredentials saves Tidal client credentials
 func (a *App) SetTidalCredentials(clientID, clientSecret string) error {
 	if a.config == nil {
 		a.config = &core.Config{}
@@ -19,15 +14,12 @@ func (a *App) SetTidalCredentials(clientID, clientSecret string) error {
 	a.config.TidalClientID = clientID
 	a.config.TidalClientSecret = clientSecret
 
-	// Initialize client with new credentials
 	a.tidalClient = core.NewTidalClient(clientID, clientSecret)
 
 	return core.SaveConfig(a.config)
 }
 
-// FetchTidalPlaylist fetches a public playlist from Tidal URL
 func (a *App) FetchTidalPlaylist(url string) (*core.TidalPlaylist, error) {
-	// Parse URL to get playlist UUID
 	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
 		return nil, err
@@ -40,7 +32,6 @@ func (a *App) FetchTidalPlaylist(url string) (*core.TidalPlaylist, error) {
 	return a.downloader.GetPlaylistFromProxy(id)
 }
 
-// FetchTidalContent fetches playlist, album, or single track from any Tidal URL
 func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
@@ -82,7 +73,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		}
 		trackIDInt, convErr := strconv.Atoi(id)
 		if convErr != nil {
-			return nil, fmt.Errorf("invalid track ID: %s", id)
+			return nil, fmt.Errorf("not a valid track ID: %s", id)
 		}
 		track, err := a.downloader.GetTrackAsTidalTrack(trackIDInt)
 		if err != nil {
@@ -116,7 +107,7 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 		result["albums"] = artist.Albums
 		result["albumCount"] = len(artist.Albums)
 		result["artistId"] = artist.ID
-		result["tracks"] = []core.TidalTrack{} // empty — tracks loaded per album
+		result["tracks"] = []core.TidalTrack{} // left empty; tracks get loaded per-album instead
 
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
@@ -125,7 +116,6 @@ func (a *App) FetchTidalContent(url string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-// ValidateTidalURL checks if a URL is a valid Tidal URL
 func (a *App) ValidateTidalURL(url string) map[string]interface{} {
 	id, contentType, err := core.ParseTidalURL(url)
 	if err != nil {
@@ -141,21 +131,19 @@ func (a *App) ValidateTidalURL(url string) map[string]interface{} {
 	}
 }
 
-// RefreshTidalEndpoints forces a re-fetch of the endpoint list from the gist
-// and returns the updated list.
 func (a *App) RefreshTidalEndpoints() ([]string, error) {
 	endpoints, err := core.RefreshTidalEndpoints(true)
 	if err != nil {
 		return endpoints, err
 	}
-	// Re-apply endpoints to the downloader unless the user has a full override.
+	// Push the refreshed endpoints to the downloader, unless the user has set a full override
 	if len(a.config.TidalHifiEndpoints) == 0 {
 		if a.config.TidalCustomEndpoint != "" {
 			a.downloader.SetEndpoints(append([]string{a.config.TidalCustomEndpoint}, endpoints...))
 		} else {
 			a.downloader.SetEndpoints(endpoints)
 		}
-		a.logBuffer.Info(fmt.Sprintf("Tidal endpoints refreshed: %d endpoints loaded", len(endpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Tidal endpoints refreshed: %d loaded", len(endpoints)))
 	}
 	return endpoints, nil
 }

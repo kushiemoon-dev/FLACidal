@@ -6,18 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// QueueEvent is a typed event emitted by the download system.
 type QueueEvent struct {
 	Type     string     `json:"type"` // "queued"|"started"|"progress"|"completed"|"failed"|"snapshot"
 	JobID    string     `json:"jobId"`
 	Title    string     `json:"title,omitempty"`
 	Artist   string     `json:"artist,omitempty"`
-	Progress int        `json:"progress,omitempty"` // 0–100
+	Progress int        `json:"progress,omitempty"` // percentage, 0 through 100
 	Error    string     `json:"error,omitempty"`
-	Jobs     []QueueJob `json:"jobs,omitempty"` // populated for "snapshot"
+	Jobs     []QueueJob `json:"jobs,omitempty"` // only set on a "snapshot" event
 }
 
-// QueueJob is a lightweight job summary sent in snapshots.
 type QueueJob struct {
 	ID       string `json:"id"`
 	Title    string `json:"title"`
@@ -26,21 +24,18 @@ type QueueJob struct {
 	Progress int    `json:"progress"`
 }
 
-// QueueBroadcaster fans out QueueEvents to all current WebSocket subscribers.
 type QueueBroadcaster struct {
-	subs    sync.Map // id(string) → chan QueueEvent
+	subs    sync.Map // subscriber id -> chan QueueEvent
 	snapsMu sync.RWMutex
-	snaps   map[string]QueueJob // id → latest known state
+	snaps   map[string]QueueJob
 }
 
-// NewQueueBroadcaster creates a ready-to-use broadcaster.
 func NewQueueBroadcaster() *QueueBroadcaster {
 	return &QueueBroadcaster{
 		snaps: make(map[string]QueueJob),
 	}
 }
 
-// Subscribe registers a new subscriber and returns its id and receive channel.
 func (b *QueueBroadcaster) Subscribe() (id string, ch <-chan QueueEvent) {
 	id = uuid.New().String()
 	c := make(chan QueueEvent, 64)
@@ -48,15 +43,14 @@ func (b *QueueBroadcaster) Subscribe() (id string, ch <-chan QueueEvent) {
 	return id, c
 }
 
-// Unsubscribe removes a subscriber and closes its channel.
 func (b *QueueBroadcaster) Unsubscribe(id string) {
 	if v, ok := b.subs.LoadAndDelete(id); ok {
 		close(v.(chan QueueEvent))
 	}
 }
 
-// Broadcast sends an event to every subscriber (non-blocking; drops if channel full).
-// It also maintains the internal snapshot state.
+// Broadcast pushes event to every subscriber without blocking, dropping it for
+// any subscriber whose channel is currently full.
 func (b *QueueBroadcaster) Broadcast(event QueueEvent) {
 	b.updateSnapshot(event)
 
@@ -65,13 +59,11 @@ func (b *QueueBroadcaster) Broadcast(event QueueEvent) {
 		select {
 		case ch <- event:
 		default:
-			// subscriber too slow — drop
 		}
 		return true
 	})
 }
 
-// Snapshot returns the current known state of all jobs.
 func (b *QueueBroadcaster) Snapshot() []QueueJob {
 	b.snapsMu.RLock()
 	defer b.snapsMu.RUnlock()
@@ -88,7 +80,7 @@ func (b *QueueBroadcaster) updateSnapshot(event QueueEvent) {
 
 	switch event.Type {
 	case "completed", "failed":
-		// Remove finished jobs from snapshot so they don't appear in new connections
+		// Drop finished jobs so newly connecting clients don't see them in the snapshot
 		delete(b.snaps, event.JobID)
 	case "queued", "started", "progress":
 		status := event.Type

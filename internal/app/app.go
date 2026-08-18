@@ -15,36 +15,33 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// App struct - main Wails application
 type App struct {
 	version         string
 	ctx             context.Context
 	config          *core.Config
 	db              *core.Database
 	tidalClient     *core.TidalClient
-	spotifySearch   *core.SpotifyClient // For search/matching (Client Credentials, no login)
+	spotifySearch   *core.SpotifyClient // Client Credentials, so no login is required
 	matcher         *core.Matcher
-	downloader      *core.TidalHifiService     // FLAC downloader
-	downloadManager *core.DownloadManager      // Concurrent download manager
-	logBuffer       *core.LogBuffer            // Log buffer for Terminal page
-	sourceManager   *core.SourceManager        // Multi-source manager
-	tidalSource     *core.TidalSource          // Tidal source
-	qobuzSource     *core.QobuzSource          // Qobuz source
-	amazonSource    *core.AmazonSource         // Amazon Music fallback source
-	soulseekSource  *core.SoulseekSource       // Soulseek last-resort source
-	deezerSource    *core.DeezerSource         // Deezer metadata-only source
-	spotifySource   *core.SpotifySource        // Spotify metadata-only source
-	bandcampSource  *core.BandcampSource       // Bandcamp name-your-price source
-	orchestrator    *core.DownloadOrchestrator // Download orchestrator for live priority updates
-	trackContentMap sync.Map                   // maps trackID (int) → contentID (string) for history tracking
+	downloader      *core.TidalHifiService
+	downloadManager *core.DownloadManager
+	logBuffer       *core.LogBuffer
+	sourceManager   *core.SourceManager
+	tidalSource     *core.TidalSource
+	qobuzSource     *core.QobuzSource
+	amazonSource    *core.AmazonSource
+	soulseekSource  *core.SoulseekSource
+	deezerSource    *core.DeezerSource         // metadata only
+	spotifySource   *core.SpotifySource        // metadata only
+	bandcampSource  *core.BandcampSource       // pay-what-you-want downloads
+	orchestrator    *core.DownloadOrchestrator // applies live priority changes
+	trackContentMap sync.Map                   // tracks trackID -> contentID, used when recording history
 }
 
-// NewApp creates a new App application struct
 func NewApp(version string) *App {
 	return &App{version: version}
 }
 
-// DefaultSldlPath returns the platform-appropriate default path for the sldl binary.
 func DefaultSldlPath() string {
 	if goruntime.GOOS == "windows" {
 		appData := os.Getenv("APPDATA")
@@ -57,17 +54,17 @@ func DefaultSldlPath() string {
 	return filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
 }
 
-// EnsureSldlExecutable ensures the sldl binary is executable and not quarantined.
-// On Linux/macOS it sets the executable bit (mirrors what the FFmpeg installer does).
-// On macOS it also removes the com.apple.quarantine xattr that Gatekeeper applies to
-// files downloaded via a browser — without this the process is killed on launch even
-// though os.Stat reports the file as present.
+// EnsureSldlExecutable makes sure the sldl binary can run and isn't quarantined by the OS.
+// On Linux and macOS this sets the executable bit, the same way the FFmpeg installer does.
+// On macOS it additionally strips the com.apple.quarantine xattr that Gatekeeper attaches to
+// browser-downloaded files; skipping this causes the process to be killed at launch even
+// when os.Stat confirms the file exists.
 func EnsureSldlExecutable(path string) error {
 	if goruntime.GOOS == "windows" {
 		return nil
 	}
 	if err := os.Chmod(path, 0755); err != nil {
-		return fmt.Errorf("chmod +x on sldl failed: %w", err)
+		return fmt.Errorf("failed to chmod +x sldl: %w", err)
 	}
 	if goruntime.GOOS == "darwin" {
 		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck // attr commonly absent, not an error
@@ -75,98 +72,90 @@ func EnsureSldlExecutable(path string) error {
 	return nil
 }
 
-// resolveAndPersistSourceOrder returns config.SourceOrder, resolving it via
-// core.DefaultSourceOrder and persisting the result back to config when it
-// was empty — so App.GetConfig() (and therefore Settings.svelte) subsequently
-// reports the order the orchestrator is actually using, instead of the
-// resolution living only in a local variable that never reaches disk.
-// warnf receives a best-effort diagnostic if the persist fails; pass nil to
-// skip logging.
+// resolveAndPersistSourceOrder returns config.SourceOrder, computing it with
+// core.DefaultSourceOrder and writing the result back to config whenever it
+// was blank — this way App.GetConfig() (and by extension Settings.svelte)
+// later reflects the order the orchestrator actually applies, rather than
+// leaving that resolution stuck in a local variable that never hits disk.
+// warnf is given a best-effort diagnostic when the persist step fails; pass
+// nil if logging isn't needed.
 func resolveAndPersistSourceOrder(config *core.Config, warnf func(string)) []string {
 	if len(config.SourceOrder) > 0 {
 		return config.SourceOrder
 	}
 	config.SourceOrder = core.DefaultSourceOrder(config)
 	if err := core.SaveConfig(config); err != nil && warnf != nil {
-		warnf(fmt.Sprintf("failed to persist resolved source order: %v", err))
+		warnf(fmt.Sprintf("could not persist resolved source order: %v", err))
 	}
 	return config.SourceOrder
 }
 
-// Startup is called when the app starts
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Initialize log buffer
 	a.logBuffer = core.NewLogBuffer(500)
-	a.logBuffer.Info("FLACidal starting...")
+	a.logBuffer.Info("Starting FLACidal...")
 
-	// Start background fetch of dynamic Tidal endpoints (before downloader is created).
+	// Must run before the downloader is constructed further down, which reads these endpoints.
 	core.SetTidalEndpointLogger(a.logBuffer)
 	core.InitTidalEndpoints()
 
-	// Load config
 	config, err := core.LoadConfig()
 	if err != nil {
-		a.logBuffer.Warn("Could not load config: " + err.Error())
+		a.logBuffer.Warn("Unable to load config: " + err.Error())
 		config = &core.Config{}
 	}
 	a.config = config
-	a.logBuffer.Success("Configuration loaded")
+	a.logBuffer.Success("Config loaded successfully")
 
-	// Initialize database
 	db, err := core.NewDatabase()
 	if err != nil {
-		a.logBuffer.Error("Database initialization failed: " + err.Error())
+		a.logBuffer.Error("Database init failed: " + err.Error())
 	} else {
-		a.logBuffer.Success("Database initialized")
+		a.logBuffer.Success("Database ready")
 	}
 	a.db = db
 
-	// Initialize Tidal client (uses internal credentials, no user config needed)
+	// Relies on built-in credentials — no user configuration is needed.
 	a.tidalClient = core.NewTidalClientDefault()
 	a.tidalClient.SetCountryCode(config.CountryCode)
 	if config.ProxyURL != "" {
 		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+			a.logBuffer.Warn("Tidal API proxy misconfigured: " + err.Error())
 		} else {
-			a.logBuffer.Info("Tidal API proxy: " + config.ProxyURL)
+			a.logBuffer.Info("Using Tidal API proxy: " + config.ProxyURL)
 		}
 	}
-	a.logBuffer.Info("Tidal client ready")
+	a.logBuffer.Info("Tidal client is ready")
 
-	// Initialize Spotify search client (Client Credentials, no login needed)
+	// Client Credentials — no login needed.
 	a.spotifySearch = core.NewSpotifyClientForSearch()
 
-	// Initialize matcher
 	a.matcher = core.NewMatcher(a.spotifySearch, a.db)
 
-	// Initialize FLAC downloader
 	a.downloader = core.NewTidalHifiService()
-	// Attach logger so endpoint rotation events appear in Terminal page
+	// So endpoint rotation shows up on the Terminal page.
 	a.downloader.SetLogger(a.logBuffer)
 	if config.ProxyURL != "" {
 		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+			a.logBuffer.Warn("Downloader proxy misconfigured: " + err.Error())
 		}
 	}
-	// Apply custom endpoints if configured.
-	// TidalHifiEndpoints = total override (no gist); TidalCustomEndpoint = prepend to dynamic list.
+	// TidalHifiEndpoints fully replaces the gist-sourced list; TidalCustomEndpoint is prepended to it instead.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoint pool: %d endpoints configured (override)", len(config.TidalHifiEndpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoints: %d configured (override)", len(config.TidalHifiEndpoints)))
 	} else {
 		base := core.GetTidalEndpoints()
 		priority := config.TidalPriorityEndpoints
 		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-			priority = []string{config.TidalCustomEndpoint} // backward compat with legacy single-endpoint field
+			priority = []string{config.TidalCustomEndpoint} // kept for compatibility with the older single-endpoint field
 		}
 		if len(priority) > 0 {
 			a.downloader.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Tidal HiFi priority endpoints: %d self-host + %d public", len(priority), len(base)))
+			a.logBuffer.Info(fmt.Sprintf("Tidal HiFi priority pool: %d self-hosted + %d public", len(priority), len(base)))
 		}
 	}
-	// Set download options from config
 	quality := config.DownloadQuality
 	if quality == "" {
 		quality = "LOSSLESS"
@@ -193,23 +182,21 @@ func (a *App) Startup(ctx context.Context) {
 		SaveLyricsFile:       config.SaveLyricsFile,
 		SaveFolderCover:      config.SaveFolderCover,
 	})
-	a.logBuffer.Info("FLAC downloader service ready")
+	a.logBuffer.Info("FLAC downloader ready")
 
-	// Initialize download manager with 4 concurrent workers
 	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
 	a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
 	if a.db != nil {
 		a.downloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
 			if err := a.db.InsertHistoryEntry(entry); err != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Failed to record per-track history for '%s - %s': %v", entry.Artist, entry.Title, err))
+				a.logBuffer.Warn(fmt.Sprintf("Could not save per-track history for '%s - %s': %v", entry.Artist, entry.Title, err))
 			}
 		})
 	}
 
-	// Serialized event channel to avoid concurrent ExecuteJS calls that crash WebKit on Linux.
-	// Events are queued and emitted one at a time from a dedicated goroutine.
+	// A single-file event channel keeps ExecuteJS calls from overlapping, which otherwise crashes WebKit on Linux.
 	type progressEvent struct {
-		eventType string // "download-progress" if empty
+		eventType string // defaults to "download-progress" when left blank
 		trackID   int
 		status    string
 		result    *core.DownloadResult
@@ -226,43 +213,40 @@ func (a *App) Startup(ctx context.Context) {
 				"status":  ev.status,
 				"result":  ev.result,
 			})
-			// Small delay between events to let WebKit/GTK process JS
+			// Brief pause between events so WebKit/GTK can process the JS
 			time.Sleep(50 * time.Millisecond)
 		}
 	}()
 
 	a.downloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
-		// Log download events
 		if a.logBuffer != nil {
 			switch status {
 			case "queued":
-				a.logBuffer.Info(fmt.Sprintf("Track %d added to queue", trackID))
+				a.logBuffer.Info(fmt.Sprintf("Queued track %d", trackID))
 			case "downloading":
-				a.logBuffer.Info(fmt.Sprintf("Downloading track %d...", trackID))
+				a.logBuffer.Info(fmt.Sprintf("Now downloading track %d...", trackID))
 			case "completed":
 				if result != nil {
-					a.logBuffer.Success(fmt.Sprintf("Downloaded: %s (quality: %s)", result.FilePath, result.Quality))
+					a.logBuffer.Success(fmt.Sprintf("Download complete: %s (quality: %s)", result.FilePath, result.Quality))
 					if result.QualityMismatch {
-						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch: requested %s but got %s",
+						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch — asked for %s, received %s",
 							result.RequestedQuality, result.Quality))
 					}
 					if result.Analysis != nil {
 						if result.Analysis.IsTrueLossless {
-							a.logBuffer.Info(fmt.Sprintf("Analysis: %s - True lossless", result.Analysis.VerdictLabel))
+							a.logBuffer.Info(fmt.Sprintf("Analysis: %s — confirmed true lossless", result.Analysis.VerdictLabel))
 						} else {
-							a.logBuffer.Warn(fmt.Sprintf("Analysis: %s - May be upscaled from lossy source", result.Analysis.VerdictLabel))
+							a.logBuffer.Warn(fmt.Sprintf("Analysis: %s — possibly upscaled from a lossy source", result.Analysis.VerdictLabel))
 						}
 					}
 				}
 			case "error":
 				if result != nil && result.Error != "" {
-					a.logBuffer.Error(fmt.Sprintf("Download failed: %s", result.Error))
+					a.logBuffer.Error(fmt.Sprintf("Download error: %s", result.Error))
 				}
-				// Auto-stop if all endpoints are in cooldown and the feature is enabled
 				if a.config.AutoStopOnCooldown && !a.downloader.HasHealthyEndpoints() {
 					if a.downloadManager.PauseQueue() {
-						a.logBuffer.Warn("All Tidal endpoints in cooldown — queue paused")
-						// Find the minimum cooldown across all dead endpoints
+						a.logBuffer.Warn("Every Tidal endpoint is cooling down — queue paused")
 						minCooldown := 0
 						for _, stat := range a.downloader.PoolSnapshot() {
 							if stat.CooldownSecs > 0 && (minCooldown == 0 || stat.CooldownSecs < minCooldown) {
@@ -270,51 +254,48 @@ func (a *App) Startup(ctx context.Context) {
 							}
 						}
 						eventCh <- progressEvent{eventType: "endpoint-cooldown", trackID: -1, status: "cooldown", result: &core.DownloadResult{
-							Error: fmt.Sprintf("all endpoints in cooldown, resuming in %ds", minCooldown),
+							Error: fmt.Sprintf("all endpoints cooling down, resuming in %ds", minCooldown),
 						}}
 					}
 				}
 			case "cancelled":
-				a.logBuffer.Warn(fmt.Sprintf("Track %d cancelled", trackID))
+				a.logBuffer.Warn(fmt.Sprintf("Cancelled track %d", trackID))
 			}
 		}
 
-		// Update download history counts
 		if a.db != nil {
 			switch status {
 			case "completed":
 				if cid, ok := a.trackContentMap.Load(trackID); ok {
 					if err := a.db.IncrementDownloadCounts(cid.(string), true); err != nil {
-						a.logBuffer.Warn(fmt.Sprintf("Failed to update download counts for %s: %v", cid.(string), err))
+						a.logBuffer.Warn(fmt.Sprintf("Could not update download counts for %s: %v", cid.(string), err))
 					}
 					a.trackContentMap.Delete(trackID)
 				}
 			case "error":
 				if cid, ok := a.trackContentMap.Load(trackID); ok {
 					if err := a.db.IncrementDownloadCounts(cid.(string), false); err != nil {
-						a.logBuffer.Warn(fmt.Sprintf("Failed to update download counts for %s: %v", cid.(string), err))
+						a.logBuffer.Warn(fmt.Sprintf("Could not update download counts for %s: %v", cid.(string), err))
 					}
 					a.trackContentMap.Delete(trackID)
 				}
 			}
 		}
 
-		// Queue event for serialized emission (blocking — workers wait
-		// briefly if buffer is full, which is negligible vs download time)
+		// Blocks briefly if the buffer is full — trivial next to download time.
 		eventCh <- progressEvent{trackID: trackID, status: status, result: result}
 	})
 	a.downloadManager.Start()
-	a.logBuffer.Success("Download manager started (4 workers)")
+	a.logBuffer.Success("Download manager running (4 workers)")
 
-	// Initialize source manager
 	a.sourceManager = core.NewSourceManager()
 
-	// Initialize Tidal source
 	a.tidalSource = core.NewTidalSource()
 	a.tidalSource.SetAvailable(config.TidalEnabled)
-	// Mirror the downloader's custom/priority endpoints so playlist/album/track
-	// fetch (which goes through this separate TidalHifiService instance) also
-	// uses the self-hosted proxy instead of being stuck on the public pool.
+	// Copy the downloader's custom/priority endpoints here too, so playlist,
+	// album, and track fetches (handled by this separate TidalHifiService
+	// instance) also route through the self-hosted proxy rather than falling
+	// back to the public pool.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 	} else {
@@ -328,28 +309,27 @@ func (a *App) Startup(ctx context.Context) {
 		}
 	}
 	a.sourceManager.RegisterSource(a.tidalSource)
-	a.logBuffer.Info("Tidal source registered")
+	a.logBuffer.Info("Registered the Tidal source")
 
-	// Initialize Qobuz source
 	a.qobuzSource = core.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
 	a.qobuzSource.SetLogger(a.logBuffer)
 	if config.ProxyURL != "" {
 		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+			a.logBuffer.Warn("Qobuz proxy misconfigured: " + err.Error())
 		}
 	}
 	if len(config.QobuzEndpoints) > 0 {
 		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoint pool: %d endpoints configured (override)", len(config.QobuzEndpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoints: %d configured (override)", len(config.QobuzEndpoints)))
 	} else {
 		base := core.DefaultQobuzEndpoints()
 		priority := config.QobuzPriorityEndpoints
 		if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
-			priority = []string{config.QobuzCustomEndpoint} // backward compat with legacy single-endpoint field
+			priority = []string{config.QobuzCustomEndpoint} // kept for compatibility with the older single-endpoint field
 		}
 		if len(priority) > 0 {
 			a.qobuzSource.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Qobuz priority endpoints: %d self-host + %d public", len(priority), len(base)))
+			a.logBuffer.Info(fmt.Sprintf("Qobuz priority pool: %d self-hosted + %d public", len(priority), len(base)))
 		}
 	}
 	if config.QobuzAuthToken != "" {
@@ -357,74 +337,72 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.sourceManager.RegisterSource(a.qobuzSource)
 	if config.QobuzEnabled && config.QobuzAppID != "" {
-		a.logBuffer.Info("Qobuz source registered")
+		a.logBuffer.Info("Registered the Qobuz source")
 	}
 
-	// Set preferred source
 	if config.PreferredSource != "" {
 		a.sourceManager.SetPreferredSource(config.PreferredSource)
 	}
 
-	// Configure inter-source fallback for download manager
 	if config.QobuzEnabled && a.qobuzSource.IsAvailable() {
 		a.downloadManager.SetFallbackQobuzSource(a.qobuzSource)
 	}
-	// Circuit breaker: wire TidalSource so selectBestService can check endpoint health
+	// Circuit breaker: give the download manager the TidalSource so selectBestService can check endpoint health
 	a.downloadManager.SetTidalSource(a.tidalSource)
 
-	// Initialize Amazon Music fallback source (no auth required, via proxy pool)
+	// No auth needed; routed through the proxy pool.
 	a.amazonSource = core.NewAmazonSource()
 	if len(config.AmazonProxyEndpoints) > 0 {
 		a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Amazon endpoint pool: %d endpoints configured (override)", len(config.AmazonProxyEndpoints)))
+		a.logBuffer.Info(fmt.Sprintf("Amazon endpoints: %d configured (override)", len(config.AmazonProxyEndpoints)))
 	} else if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
 		base := core.GetEndpoints("amazon")
 		a.amazonSource.SetEndpoints(append(priority, base...))
-		a.logBuffer.Info(fmt.Sprintf("Amazon priority endpoints: %d self-host + %d public", len(priority), len(base)))
+		a.logBuffer.Info(fmt.Sprintf("Amazon priority pool: %d self-hosted + %d public", len(priority), len(base)))
 	}
 	a.sourceManager.RegisterSource(a.amazonSource)
-	a.logBuffer.Info("Amazon Music fallback source initialized")
+	a.logBuffer.Info("Amazon Music fallback source ready")
 
-	// Initialize Deezer and Spotify metadata-only sources (URL routing, no download)
+	// Used for URL routing rather than downloads.
 	a.deezerSource = core.NewDeezerSource()
 	a.sourceManager.RegisterSource(a.deezerSource)
 	a.spotifySource = core.NewSpotifySource(a.spotifySearch)
 	a.sourceManager.RegisterSource(a.spotifySource)
 
-	// Initialize Bandcamp source (name-your-price / free FLAC downloads)
 	a.bandcampSource = core.NewBandcampSource()
 	a.sourceManager.RegisterSource(a.bandcampSource)
-	a.logBuffer.Info("Bandcamp source initialized")
+	a.logBuffer.Info("Bandcamp source ready")
 
-	// Initialize Soulseek fallback source (last-resort P2P, independent of streaming proxies)
+	// A last-resort P2P path, independent of the streaming proxies.
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
 		sldlPath = DefaultSldlPath()
 	}
 	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
 	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 		a.sourceManager.RegisterSource(a.soulseekSource)
-		a.logBuffer.Info("Soulseek fallback source initialized")
+		a.logBuffer.Info("Soulseek fallback source ready")
 	} else if config.SoulseekEnabled {
 		if config.SoulseekBinaryPath != "" {
 			if _, err := os.Stat(config.SoulseekBinaryPath); os.IsNotExist(err) {
-				a.logBuffer.Warn(fmt.Sprintf("Soulseek enabled but binary not found at %s", config.SoulseekBinaryPath))
+				a.logBuffer.Warn(fmt.Sprintf("Soulseek is enabled but no binary was found at %s", config.SoulseekBinaryPath))
 			}
 		} else if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
-			a.logBuffer.Warn(fmt.Sprintf("Soulseek enabled but binary not found at default path %s", sldlPath))
+			a.logBuffer.Warn(fmt.Sprintf("Soulseek is enabled but no binary exists at the default path %s", sldlPath))
 		}
 		if config.SoulseekUsername == "" || config.SoulseekPassword == "" {
-			a.logBuffer.Warn("Soulseek enabled but username/password not configured")
+			a.logBuffer.Warn("Soulseek is enabled but no username/password is set")
 		}
 	}
 
-	// Wire multi-source orchestrator, priority order shared with downloadManager below
-	// (previously a separate hardcoded list that ignored config.SourceOrder and put
-	// Soulseek last, contradicting the Soulseek-first default described in the README).
+	// Wire up the multi-source orchestrator; the priority order is shared with
+	// downloadManager below (this used to be a separate hardcoded list that ignored
+	// config.SourceOrder and placed Soulseek last, which contradicted the
+	// Soulseek-first default the README describes).
 	sourceOrder := resolveAndPersistSourceOrder(config, func(msg string) { a.logBuffer.Warn(msg) })
 	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, sourceOrder, a.logBuffer)
 	if a.db != nil {
@@ -438,22 +416,18 @@ func (a *App) Startup(ctx context.Context) {
 	a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
 	a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
 
-	a.logBuffer.Success("FLACidal ready!")
+	a.logBuffer.Success("FLACidal is ready!")
 }
 
-// Shutdown is called when the app is closing
 func (a *App) Shutdown(ctx context.Context) {
-	// Stop download manager
 	if a.downloadManager != nil {
 		a.downloadManager.Stop()
 	}
 
-	// Save config
 	if a.config != nil {
 		core.SaveConfig(a.config)
 	}
 
-	// Close database
 	if a.db != nil {
 		a.db.Close()
 	}

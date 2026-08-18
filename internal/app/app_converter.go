@@ -10,21 +10,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// =============================================================================
-// Converter Methods (exposed to frontend)
-// =============================================================================
-
-// IsConverterAvailable checks if FFmpeg is available
 func (a *App) IsConverterAvailable() bool {
 	return core.IsConverterAvailable()
 }
 
-// GetFFmpegInfo returns FFmpeg availability and version
 func (a *App) GetFFmpegInfo() map[string]interface{} {
 	return core.GetFFmpegInfo()
 }
 
-// InstallFFmpeg downloads and installs FFmpeg, emitting progress events
 func (a *App) InstallFFmpeg() error {
 	progressCh := make(chan core.FFmpegInstallProgress, 10)
 
@@ -39,12 +32,11 @@ func (a *App) InstallFFmpeg() error {
 		return err
 	}
 
-	// Reinitialize converter with new path
+	// So it picks up the newly installed binary's path.
 	core.ResetConverter()
 	return nil
 }
 
-// GetFFmpegInstallStatus returns whether FFmpeg is available and if local install exists
 func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 	return map[string]interface{}{
 		"systemAvailable": core.IsConverterAvailable(),
@@ -53,7 +45,6 @@ func (a *App) GetFFmpegInstallStatus() map[string]interface{} {
 	}
 }
 
-// GetConversionFormats returns available conversion formats
 func (a *App) GetConversionFormats() []core.ConversionFormat {
 	conv := core.GetConverter()
 	if conv == nil {
@@ -62,7 +53,6 @@ func (a *App) GetConversionFormats() []core.ConversionFormat {
 	return conv.GetFormats()
 }
 
-// ConvertFiles converts files to the specified format
 func (a *App) ConvertFiles(files []string, format, quality, outputDir string, deleteSource bool) []core.ConversionResult {
 	conv := core.GetConverter()
 	if conv == nil {
@@ -85,7 +75,6 @@ func (a *App) ConvertFiles(files []string, format, quality, outputDir string, de
 
 	results := conv.ConvertMultiple(files, opts)
 
-	// Log results
 	if a.logBuffer != nil {
 		success := 0
 		for _, r := range results {
@@ -99,10 +88,9 @@ func (a *App) ConvertFiles(files []string, format, quality, outputDir string, de
 	return results
 }
 
-// SelectFolderForConversion opens a directory dialog and returns paths of FLAC files within it
 func (a *App) SelectFolderForConversion() ([]string, error) {
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select folder to convert",
+		Title: "Choose a folder to convert",
 	})
 	if err != nil || dir == "" {
 		return nil, err
@@ -118,7 +106,6 @@ func (a *App) SelectFolderForConversion() ([]string, error) {
 	return paths, nil
 }
 
-// ConvertFolder converts all .flac files in a folder recursively
 func (a *App) ConvertFolder(folderPath, format, quality, outputDir string, deleteSource bool) []core.ConversionResult {
 	var files []string
 	filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {

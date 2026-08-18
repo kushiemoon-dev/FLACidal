@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
-test.describe('Home page', () => {
-  test('URL input is visible and focusable', async ({ page }) => {
+test.describe('Home screen', () => {
+  test('URL field renders and accepts focus', async ({ page }) => {
     await injectWailsMocks(page)
     await page.goto('/')
 
@@ -12,20 +12,18 @@ test.describe('Home page', () => {
     await expect(input).toBeFocused()
   })
 
-  test('clicking Fetch with empty input does nothing destructive', async ({ page }) => {
+  test('pressing Fetch on an empty field has no destructive side effect', async ({ page }) => {
     await injectWailsMocks(page)
     await page.goto('/')
 
     const fetchBtn = page.locator('button.btn-primary', { hasText: /Fetch/ })
     await expect(fetchBtn).toBeVisible()
     await fetchBtn.click()
-    // No content card should be created
     await expect(page.locator('.content-card')).toHaveCount(0)
-    // Empty state still visible
     await expect(page.locator('.empty-state h3', { hasText: 'Ready to Download' })).toBeVisible()
   })
 
-  test('Tidal album URL → source detected → fetch displays content card', async ({ page }) => {
+  test('a Tidal album URL is detected as its source and Fetch renders a content card', async ({ page }) => {
     await injectWailsMocks(page, {
       FetchContentFromURL: {
         type: 'album',
@@ -53,7 +51,6 @@ test.describe('Home page', () => {
     await page.goto('/')
 
     await page.locator('input.url-input').fill('https://tidal.com/browse/album/12345')
-    // wait for source detection badge
     await expect(page.locator('.source-badge.tidal')).toBeVisible()
 
     await page.locator('button.btn-primary', { hasText: /Fetch/ }).click()
@@ -63,7 +60,7 @@ test.describe('Home page', () => {
     await expect(page.locator('.track-title', { hasText: 'Get Lucky' })).toBeVisible()
   })
 
-  test('Spotify discography URL → confirm dialog with album count', async ({ page }) => {
+  test('a Spotify discography URL surfaces a confirmation dialog with the album count', async ({ page }) => {
     await injectWailsMocks(page, {
       ExpandDiscographyURL: [
         'https://open.spotify.com/album/aaa',
@@ -85,7 +82,7 @@ test.describe('Home page', () => {
     await expect(confirm.locator('button', { hasText: 'Cancel' })).toBeVisible()
   })
 
-  test('Cancel button dismisses discography confirm', async ({ page }) => {
+  test('the Cancel button dismisses the discography confirmation', async ({ page }) => {
     await injectWailsMocks(page, {
       ExpandDiscographyURL: ['https://open.spotify.com/album/aaa'],
     })

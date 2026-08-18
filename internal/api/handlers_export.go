@@ -7,11 +7,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// handleExportFailedDownloads implements GET /api/downloads/export.
-// Returns the current failed-download jobs as a downloadable CSV or TXT file
-// (format=csv|txt, defaults to txt). Mirrors internal/app's
-// App.ExportFailedDownloads, minus the native OS save dialog — the browser's
-// own download flow (Content-Disposition: attachment) replaces it.
+// Functionally mirrors internal/app's App.ExportFailedDownloads, but skips
+// the native OS save dialog in favor of a browser-driven download via
+// Content-Disposition: attachment.
 func (s *Server) handleExportFailedDownloads(c *fiber.Ctx) error {
 	format := c.Query("format", "txt")
 	if s.downloadManager == nil {
@@ -20,7 +18,7 @@ func (s *Server) handleExportFailedDownloads(c *fiber.Ctx) error {
 
 	jobs := s.downloadManager.GetFailedJobs()
 	if len(jobs) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "no failed downloads to export"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "there are no failed downloads to export"})
 	}
 
 	var sb strings.Builder

@@ -2,11 +2,9 @@ package app
 
 import "testing"
 
-// Characterization test for the "App Info" section of app.go.
-//
-// NOT tested here (documented, not fixed):
-//   - CheckForUpdate: makes a live HTTP call to api.github.com with no
-//     injectable http.Client seam.
+// Deliberately left uncovered here:
+//   - CheckForUpdate: issues a live HTTP call to api.github.com and has no
+//     injectable http.Client seam to intercept it.
 
 func TestGetAppVersion(t *testing.T) {
 	a := &App{version: "1.2.3"}

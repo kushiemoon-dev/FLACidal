@@ -8,22 +8,22 @@ describe('themeStore', () => {
     accentColor.set('#f472b6')
   })
 
-  it('should have default system theme', () => {
+  it('defaults to the system theme', () => {
     const currentTheme = get(themeStore)
     expect(currentTheme).toBe('system')
   })
 
-  it('should have default accent color', () => {
+  it('defaults to the standard accent color', () => {
     const color = get(accentColor)
     expect(color).toBe('#f472b6')
   })
 
-  it('should update theme', () => {
+  it('updates the theme', () => {
     themeStore.setTheme('dark')
     expect(get(themeStore)).toBe('dark')
   })
 
-  it('should accept valid themes', () => {
+  it('accepts every valid theme mode', () => {
     const validThemes: ThemeMode[] = ['dark', 'light', 'system']
 
     validThemes.forEach((t) => {
@@ -34,11 +34,11 @@ describe('themeStore', () => {
 })
 
 describe('accentPresets', () => {
-  it('should have 7 preset colors', () => {
+  it('provides 7 preset colors', () => {
     expect(accentPresets).toHaveLength(7)
   })
 
-  it('should have required properties', () => {
+  it('exposes the expected properties', () => {
     accentPresets.forEach((preset) => {
       expect(preset).toHaveProperty('name')
       expect(preset).toHaveProperty('color')
@@ -54,14 +54,14 @@ describe('applyAccentColor', () => {
     document.documentElement.style.removeProperty('--color-accent-subtle')
   })
 
-  it('should set CSS variables', () => {
+  it('sets the CSS variables', () => {
     applyAccentColor('#ff0000')
 
     const accent = document.documentElement.style.getPropertyValue('--color-accent')
     expect(accent).toBe('#ff0000')
   })
 
-  it('should handle valid hex colors', () => {
+  it('handles valid hex colors correctly', () => {
     applyAccentColor('#3b82f6')
 
     const accent = document.documentElement.style.getPropertyValue('--color-accent')
@@ -74,19 +74,19 @@ describe('initializeAccentColor', () => {
     accentColor.set('#f472b6')
   })
 
-  it('should use provided color', () => {
+  it('uses the given color', () => {
     initializeAccentColor('#00ff00')
     expect(get(accentColor)).toBe('#00ff00')
   })
 
-  it('should use default for empty color', () => {
+  it('falls back to the default when the color is empty', () => {
     initializeAccentColor('')
     expect(get(accentColor)).toBe('#f472b6')
   })
 })
 
 describe('accentColor store', () => {
-  it('should be updatable', () => {
+  it('can be updated directly', () => {
     accentColor.set('#a855f7')
     expect(get(accentColor)).toBe('#a855f7')
   })

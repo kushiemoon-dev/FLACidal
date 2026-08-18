@@ -13,7 +13,6 @@ import (
 	"flacidal/internal/app"
 )
 
-// Health check
 func (s *Server) handleHealth(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "ok",
@@ -21,7 +20,6 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 	})
 }
 
-// Config handlers
 func (s *Server) handleGetConfig(c *fiber.Ctx) error {
 	return c.JSON(s.config)
 }
@@ -41,7 +39,7 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 func (s *Server) handleResetConfig(c *fiber.Ctx) error {
 	config := core.GetDefaultConfig()
 
-	// Preserve download folder if set — mirrors internal/app's App.ResetToDefaults.
+	// Keep the existing download folder, mirroring internal/app's App.ResetToDefaults.
 	if s.config != nil && s.config.DownloadFolder != "" {
 		config.DownloadFolder = s.config.DownloadFolder
 	}
@@ -53,7 +51,6 @@ func (s *Server) handleResetConfig(c *fiber.Ctx) error {
 	return c.JSON(config)
 }
 
-// Source handlers
 func (s *Server) handleGetSources(c *fiber.Ctx) error {
 	return c.JSON(s.sourceManager.GetSourcesInfo())
 }
@@ -106,7 +103,6 @@ func (s *Server) handleDetectSource(c *fiber.Ctx) error {
 	})
 }
 
-// Content handlers
 func (s *Server) handleFetchContent(c *fiber.Ctx) error {
 	var req struct {
 		URL string `json:"url"`
@@ -122,22 +118,21 @@ func (s *Server) handleFetchContent(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-// fetchContentByURL resolves a source URL (Tidal/Qobuz track, album or
-// playlist) into its details. Shared by handleFetchContent and
-// handleRefetchFromHistory so both stay in sync.
+// fetchContentByURL is shared between handleFetchContent and
+// handleRefetchFromHistory so the two stay behaviorally identical.
 func (s *Server) fetchContentByURL(rawURL string) (fiber.Map, int, error) {
 	resolvedViaOdesli := false
 	source, err := s.sourceManager.DetectSource(rawURL)
 	if err != nil {
 		resolvedURL, rerr := app.ResolveViaOdesli(s.sourceManager, rawURL)
 		if rerr != nil {
-			return nil, fiber.StatusBadRequest, fmt.Errorf("Unknown URL format")
+			return nil, fiber.StatusBadRequest, fmt.Errorf("unrecognized URL format")
 		}
 		rawURL = resolvedURL
 		resolvedViaOdesli = true
 		source, err = s.sourceManager.DetectSource(rawURL)
 		if err != nil {
-			return nil, fiber.StatusBadRequest, fmt.Errorf("Unknown URL format")
+			return nil, fiber.StatusBadRequest, fmt.Errorf("unrecognized URL format")
 		}
 	}
 
@@ -200,7 +195,7 @@ func (s *Server) handleValidateURL(c *fiber.Ctx) error {
 
 	source, err := s.sourceManager.DetectSource(req.URL)
 	if err != nil {
-		return c.JSON(fiber.Map{"valid": false, "error": "Unknown URL format"})
+		return c.JSON(fiber.Map{"valid": false, "error": "unrecognized URL format"})
 	}
 
 	id, contentType, err := source.ParseURL(req.URL)
@@ -219,7 +214,7 @@ func (s *Server) handleValidateURL(c *fiber.Ctx) error {
 func (s *Server) handleSearch(c *fiber.Ctx) error {
 	query := c.Query("q")
 	if query == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Query parameter 'q' is required"})
+		return c.Status(400).JSON(fiber.Map{"error": "the 'q' query parameter is required"})
 	}
 	if s.tidalSource == nil || s.tidalSource.GetService() == nil {
 		return c.Status(500).JSON(fiber.Map{"error": "downloader not initialized"})
@@ -238,7 +233,6 @@ func (s *Server) handleSearch(c *fiber.Ctx) error {
 	return c.JSON(app.ConvertTidalSearchResults(results))
 }
 
-// Download handlers
 func (s *Server) handleGetQueue(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"active":  s.downloadManager.GetActiveCount(),
@@ -351,10 +345,10 @@ func (s *Server) handleSetDownloadOptions(c *fiber.Ctx) error {
 func (s *Server) handleRetryDownload(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid ID"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 
-	// Re-queue the download - the download manager tracks failed jobs internally
+	// The download manager already tracks failed jobs internally, so this just re-queues it.
 	outputDir := s.config.DownloadFolder
 	if outputDir == "" {
 		outputDir = core.GetDefaultDownloadFolder()
@@ -374,7 +368,7 @@ func (s *Server) handleRetryAllFailed(c *fiber.Ctx) error {
 func (s *Server) handleCancelDownload(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid ID"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 
 	if err := s.downloadManager.CancelDownload(id); err != nil {
@@ -398,7 +392,6 @@ func (s *Server) handleIsPaused(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"paused": s.downloadManager.IsPaused()})
 }
 
-// History handlers
 func (s *Server) handleGetHistory(c *fiber.Ctx) error {
 	if s.db == nil {
 		return c.JSON([]core.DownloadRecord{})
@@ -413,7 +406,6 @@ func (s *Server) handleGetHistory(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetHistoryFiltered(c *fiber.Ctx) error {
-	// Parse filter from query params
 	limit, _ := strconv.Atoi(c.Query("limit", "50"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
 
@@ -441,11 +433,11 @@ func (s *Server) handleGetHistoryFiltered(c *fiber.Ctx) error {
 func (s *Server) handleDeleteHistory(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid ID"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 
 	if s.db == nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Database not available"})
+		return c.Status(500).JSON(fiber.Map{"error": "no database available"})
 	}
 
 	if err := s.db.DeleteDownloadRecord(id); err != nil {
@@ -457,7 +449,7 @@ func (s *Server) handleDeleteHistory(c *fiber.Ctx) error {
 
 func (s *Server) handleClearHistory(c *fiber.Ctx) error {
 	if s.db == nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Database not available"})
+		return c.Status(500).JSON(fiber.Map{"error": "no database available"})
 	}
 
 	if err := s.db.ClearAllHistory(); err != nil {
@@ -467,13 +459,12 @@ func (s *Server) handleClearHistory(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-// handleRefetchFromHistory re-resolves a history record's content from its
-// source URL. Mirrors internal/app's App.RefetchFromHistory.
+// handleRefetchFromHistory mirrors internal/app's App.RefetchFromHistory.
 func (s *Server) handleRefetchFromHistory(c *fiber.Ctx) error {
 	tidalContentID := c.Params("id")
 
 	if s.db == nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Database not available"})
+		return c.Status(500).JSON(fiber.Map{"error": "no database available"})
 	}
 
 	record, err := s.db.GetDownloadRecord(tidalContentID)
@@ -503,7 +494,6 @@ func (s *Server) handleRefetchFromHistory(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-// Files handlers
 func (s *Server) handleListFiles(c *fiber.Ctx) error {
 	folder := s.config.DownloadFolder
 	if folder == "" {
@@ -521,7 +511,7 @@ func (s *Server) handleListFiles(c *fiber.Ctx) error {
 func (s *Server) handleDeleteFile(c *fiber.Ctx) error {
 	path := c.Query("path")
 	if path == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Path required"})
+		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
 	}
 
 	if err := os.Remove(path); err != nil {
@@ -534,7 +524,7 @@ func (s *Server) handleDeleteFile(c *fiber.Ctx) error {
 func (s *Server) handleGetMetadata(c *fiber.Ctx) error {
 	path := c.Query("path")
 	if path == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Path required"})
+		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
 	}
 
 	meta, err := core.ReadFLACMetadata(path)
@@ -548,7 +538,7 @@ func (s *Server) handleGetMetadata(c *fiber.Ctx) error {
 func (s *Server) handleGetCoverArt(c *fiber.Ctx) error {
 	path := c.Query("path")
 	if path == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Path required"})
+		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
 	}
 
 	base64Data, mimeType, err := core.GetCoverArtBase64(path)
@@ -589,7 +579,6 @@ func (s *Server) handleRenameFiles(c *fiber.Ctx) error {
 	return c.JSON(results)
 }
 
-// Conversion handlers
 func (s *Server) handleIsConverterAvailable(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"available": core.IsConverterAvailable()})
 }
@@ -640,14 +629,13 @@ func (s *Server) handleConvertFiles(c *fiber.Ctx) error {
 	return c.JSON(conv.ConvertMultiple(req.Files, opts))
 }
 
-// Lyrics handlers
 func (s *Server) handleFetchLyrics(c *fiber.Ctx) error {
 	title := c.Query("title")
 	artist := c.Query("artist")
 	duration, _ := strconv.Atoi(c.Query("duration", "0"))
 
 	if title == "" || artist == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Title and artist required"})
+		return c.Status(400).JSON(fiber.Map{"error": "both title and artist are required"})
 	}
 
 	lyrics, err := s.lyricsClient.SearchLyrics(title, artist, duration)
@@ -666,7 +654,7 @@ func (s *Server) handleFetchLyricsForFile(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	if req.FilePath == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "File path required"})
+		return c.Status(400).JSON(fiber.Map{"error": "a file path is required"})
 	}
 
 	lyrics, err := s.fetchLyricsForFile(req.FilePath)
@@ -677,8 +665,7 @@ func (s *Server) handleFetchLyricsForFile(c *fiber.Ctx) error {
 	return c.JSON(lyrics)
 }
 
-// fetchLyricsForFile reads a FLAC file's metadata and looks up matching
-// lyrics. Mirrors internal/app's App.FetchLyricsForFile.
+// fetchLyricsForFile mirrors internal/app's App.FetchLyricsForFile.
 func (s *Server) fetchLyricsForFile(filePath string) (*core.Lyrics, error) {
 	meta, err := core.ReadFLACMetadata(filePath)
 	if err != nil {
@@ -713,7 +700,7 @@ func (s *Server) handleFetchAndEmbedLyrics(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	if req.FilePath == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "File path required"})
+		return c.Status(400).JSON(fiber.Map{"error": "a file path is required"})
 	}
 
 	lyrics, err := s.fetchAndEmbedLyrics(req.FilePath)
@@ -724,9 +711,8 @@ func (s *Server) handleFetchAndEmbedLyrics(c *fiber.Ctx) error {
 	return c.JSON(lyrics)
 }
 
-// fetchAndEmbedLyrics fetches lyrics for a file and embeds them, optionally
-// saving a sidecar .lrc/.txt file when enabled in config. Mirrors
-// internal/app's App.FetchAndEmbedLyrics.
+// fetchAndEmbedLyrics also writes a sidecar .lrc/.txt file when config has
+// that enabled. Mirrors internal/app's App.FetchAndEmbedLyrics.
 func (s *Server) fetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 	lyrics, err := s.fetchLyricsForFile(filePath)
 	if err != nil {
@@ -739,7 +725,7 @@ func (s *Server) fetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 	}
 
 	if s.config != nil && s.config.SaveLyricsFile {
-		core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain) //nolint:errcheck // best-effort sidecar file, embedding already succeeded
+		core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain) //nolint:errcheck // sidecar write is best-effort; the embed already succeeded
 	}
 
 	return lyrics, nil
@@ -775,7 +761,6 @@ func (s *Server) handleFetchAndEmbedMultiple(c *fiber.Ctx) error {
 	return c.JSON(results)
 }
 
-// Qobuz handlers
 func (s *Server) handleUpdateQobuzCredentials(c *fiber.Ctx) error {
 	var req struct {
 		AppID     string `json:"appId"`
@@ -788,7 +773,6 @@ func (s *Server) handleUpdateQobuzCredentials(c *fiber.Ctx) error {
 
 	s.qobuzSource.SetCredentials(req.AppID, req.AppSecret, req.AuthToken)
 
-	// Save to config
 	s.config.QobuzAppID = req.AppID
 	s.config.QobuzAppSecret = req.AppSecret
 	s.config.QobuzAuthToken = req.AuthToken
@@ -803,7 +787,6 @@ func (s *Server) handleIsQobuzConfigured(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"configured": s.qobuzSource.IsAvailable()})
 }
 
-// Folder handlers
 func (s *Server) handleGetDownloadFolder(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"folder": s.config.DownloadFolder})
 }
@@ -824,13 +807,12 @@ func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-// System handlers
 func (s *Server) handleGetVersion(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"version": "1.0.0"})
 }
 
 func (s *Server) handleGetLogs(c *fiber.Ctx) error {
-	// Implement log retrieval
+	// TODO: wire this up to real log retrieval
 	return c.JSON([]core.LogEntry{})
 }
 
@@ -839,7 +821,6 @@ func (s *Server) handleClearLogs(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetConnectionStatus(c *fiber.Ctx) error {
-	// Check ffmpeg availability
 	_, ffmpegErr := exec.LookPath("ffmpeg")
 	return c.JSON(fiber.Map{
 		"tidal":  s.tidalSource.IsAvailable(),

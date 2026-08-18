@@ -7,18 +7,15 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// =============================================================================
-// Analyzer Methods (exposed to frontend)
-// =============================================================================
-
-// enrichWithAudioFeatures adds BPM/musical key to an analysis result via
-// aubiotrack/keyfinder-cli, embeds them into the file's tags, and (best-effort)
-// fills in album/tracknumber/discnumber/year/genre/cover via a Deezer ISRC
-// lookup -- for files an untrusted source (Soulseek/Bandcamp/Amazon) delivered
-// with incomplete tags before the download-time retag existed, or that only
-// got title/artist/isrc from it (see needsRetag in flacidal-core). Every step
-// here is best-effort: a missing optional binary, no ISRC to match on, or no
-// Deezer match just leaves that part alone rather than failing the analysis.
+// enrichWithAudioFeatures fills in BPM and musical key on an analysis result
+// using aubiotrack/keyfinder-cli, writes them into the file's tags, and, on a
+// best-effort basis, backfills album/tracknumber/discnumber/year/genre/cover
+// via a Deezer ISRC lookup. This covers files that an untrusted source
+// (Soulseek/Bandcamp/Amazon) delivered with incomplete tags before the
+// download-time retag existed, or that only picked up title/artist/isrc from
+// it (see needsRetag in flacidal-core). Nothing here is required to succeed:
+// a missing optional binary, an absent ISRC, or no Deezer match simply skips
+// that piece instead of failing the whole analysis.
 func enrichWithAudioFeatures(result *core.AnalysisResult) {
 	if bpm, err := core.DetectBPM(result.FilePath); err == nil {
 		result.BPM = bpm
@@ -32,7 +29,6 @@ func enrichWithAudioFeatures(result *core.AnalysisResult) {
 	core.RetagFromDeezer([]string{result.FilePath})
 }
 
-// AnalyzeFile analyzes a single FLAC file for quality/authenticity
 func (a *App) AnalyzeFile(filePath string) (*core.AnalysisResult, error) {
 	result, err := core.AnalyzeFLAC(filePath)
 	if err != nil {
@@ -41,18 +37,16 @@ func (a *App) AnalyzeFile(filePath string) (*core.AnalysisResult, error) {
 	enrichWithAudioFeatures(result)
 
 	if a.logBuffer != nil {
-		a.logBuffer.Info(fmt.Sprintf("Analyzed: %s - %s", result.FileName, result.VerdictLabel))
+		a.logBuffer.Info(fmt.Sprintf("Analysis done: %s - %s", result.FileName, result.VerdictLabel))
 	}
 
 	return result, nil
 }
 
-// SelectFolderForAnalysis opens a directory dialog and returns paths of FLAC
-// files within it (recursively), for scanning an existing library for
-// upscaled/fake-lossless files after the fact.
+// Useful for scanning an existing library for upscaled or fake-lossless files after the fact.
 func (a *App) SelectFolderForAnalysis() ([]string, error) {
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select folder to scan for upscaled files",
+		Title: "Choose a folder to scan for upscaled files",
 	})
 	if err != nil || dir == "" {
 		return nil, err
@@ -68,7 +62,6 @@ func (a *App) SelectFolderForAnalysis() ([]string, error) {
 	return paths, nil
 }
 
-// AnalyzeMultiple analyzes multiple files
 func (a *App) AnalyzeMultiple(filePaths []string) []core.AnalysisResult {
 	results := core.AnalyzeMultiple(filePaths)
 	for i := range results {
@@ -87,13 +80,13 @@ func (a *App) AnalyzeMultiple(filePaths []string) []core.AnalysisResult {
 				upscaled++
 			}
 		}
-		a.logBuffer.Info(fmt.Sprintf("Analyzed %d files: %d lossless, %d upscaled", len(results), lossless, upscaled))
+		a.logBuffer.Info(fmt.Sprintf("Analysis done on %d files: %d lossless, %d upscaled", len(results), lossless, upscaled))
 	}
 
 	return results
 }
 
-// QuickAnalyze performs a fast analysis based on file size heuristics
+// A size heuristic, not full decoding — faster but less rigorous than AnalyzeFile.
 func (a *App) QuickAnalyze(filePath string) (*core.AnalysisResult, error) {
 	return core.QuickAnalyze(filePath)
 }

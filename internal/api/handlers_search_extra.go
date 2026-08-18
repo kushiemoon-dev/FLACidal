@@ -8,12 +8,10 @@ import (
 	"flacidal/internal/app"
 )
 
-// handleSearchTidalAlbums implements GET /api/content/search/albums.
-// Mirrors internal/app's App.SearchTidalAlbums.
 func (s *Server) handleSearchTidalAlbums(c *fiber.Ctx) error {
 	query := c.Query("q")
 	if query == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Query parameter 'q' is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "the 'q' query parameter is required"})
 	}
 	if s.tidalSource == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "tidal source not initialized"})
@@ -32,12 +30,10 @@ func (s *Server) handleSearchTidalAlbums(c *fiber.Ctx) error {
 	return c.JSON(albums)
 }
 
-// handleSearchTidalArtists implements GET /api/content/search/artists.
-// Mirrors internal/app's App.SearchTidalArtists.
 func (s *Server) handleSearchTidalArtists(c *fiber.Ctx) error {
 	query := c.Query("q")
 	if query == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Query parameter 'q' is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "the 'q' query parameter is required"})
 	}
 	if s.tidalSource == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "tidal source not initialized"})
@@ -56,8 +52,6 @@ func (s *Server) handleSearchTidalArtists(c *fiber.Ctx) error {
 	return c.JSON(artists)
 }
 
-// handleSearchDeezer implements GET /api/content/search/deezer.
-// Mirrors internal/app's App.SearchDeezer via the shared app.SearchDeezerTracks.
 func (s *Server) handleSearchDeezer(c *fiber.Ctx) error {
 	query := c.Query("q")
 

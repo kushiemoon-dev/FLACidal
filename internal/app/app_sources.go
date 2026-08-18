@@ -16,16 +16,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// =============================================================================
-// Source Health & Soulseek Methods (exposed to frontend)
-// =============================================================================
-
-// GetSourceHealth runs an on-demand capability probe for each registered source.
-// Returns per-source status: online, degraded, dead, or untested.
-// Called from the Settings Status tab on user request only — never polled.
-// GetSourceHealth returns pool state for all sources without making any network
-// requests. States reflect real failures observed during actual downloads, not
-// synthetic probes — avoids the WebKitGTK signal-handler conflict on Linux.
+// GetSourceHealth reports one of: online, degraded, dead, or untested, per
+// source. It only runs when the user opens the Settings Status tab (never
+// polled) and reads pool state without issuing network requests — reported
+// states come from real failures seen during actual downloads rather than
+// synthetic probes, which sidesteps the WebKitGTK signal-handler conflict on
+// Linux.
 func (a *App) GetSourceHealth() []core.SourceHealth {
 	var results []core.SourceHealth
 
@@ -80,7 +76,6 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 	return results
 }
 
-// poolSnapshotStatus maps an endpoint pool snapshot to a SourceHealth status string.
 func poolSnapshotStatus(snaps []core.EndpointStat) string {
 	if len(snaps) == 0 {
 		return "untested"
@@ -101,8 +96,6 @@ func poolSnapshotStatus(snaps []core.EndpointStat) string {
 	}
 }
 
-// InstallSldl downloads and installs the pinned sldl (sockseek) binary, emitting progress events.
-// After install, re-initializes the Soulseek source so IsAvailable() flips without a restart.
 func (a *App) InstallSldl() error {
 	progressCh := make(chan core.SldlInstallProgress, 10)
 
@@ -119,13 +112,13 @@ func (a *App) InstallSldl() error {
 		return err
 	}
 
-	// Remove quarantine attribute on macOS and ensure executable bit
+	// Strip the quarantine attribute on macOS and make sure the executable bit is set
 	sldlPath := core.GetSldlPath()
 	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
 	}
 
-	// Re-initialize Soulseek source so IsAvailable() flips without restart
+	// Rebuild the Soulseek source so IsAvailable() picks up the change without a restart
 	if a.config != nil {
 		username := a.config.SoulseekUsername
 		password := a.config.SoulseekPassword
@@ -133,17 +126,16 @@ func (a *App) InstallSldl() error {
 		a.soulseekSource.SetLogger(a.logBuffer)
 		if a.config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 			a.sourceManager.RegisterSource(a.soulseekSource)
-			a.logBuffer.Info("Soulseek source registered after sldl install")
+			a.logBuffer.Info("Soulseek source registered following the sldl install")
 		}
 	}
 
 	if a.logBuffer != nil {
-		a.logBuffer.Info("sldl installed successfully to " + sldlPath)
+		a.logBuffer.Info("sldl installed to " + sldlPath)
 	}
 	return nil
 }
 
-// GetSldlStatus checks if the sldl binary is installed and returns its version
 func (a *App) GetSldlStatus() map[string]interface{} {
 	sldlPath := ""
 	if a.config != nil {
@@ -152,10 +144,10 @@ func (a *App) GetSldlStatus() map[string]interface{} {
 	return SldlStatus(sldlPath)
 }
 
-// SldlStatus checks if the sldl binary is installed and returns its version.
-// Shared by the desktop (Wails) and HTTP server APIs (same sharing pattern as
-// ConvertTidalSearchResults / SearchDeezerTracks in app_search.go). binaryPath
-// may be empty, in which case the platform default path is used.
+// SldlStatus is shared by the desktop (Wails) and HTTP server APIs, the same
+// sharing pattern ConvertTidalSearchResults / SearchDeezerTracks use in
+// app_search.go. binaryPath can be left empty, in which case the platform
+// default path is used.
 func SldlStatus(binaryPath string) map[string]interface{} {
 	sldlPath := binaryPath
 	if sldlPath == "" {
@@ -185,9 +177,9 @@ func SldlStatus(binaryPath string) map[string]interface{} {
 	}
 }
 
-// TestSoulseekConnection verifies Soulseek credentials by running a quick search via sldl.
-// Success is determined by detecting an explicit "Logged in" message in verbose output,
-// which is emitted before any search results and is independent of firewall/inbound connectivity.
+// TestSoulseekConnection judges success by spotting an explicit "Logged in"
+// message in the verbose sldl output, which appears before any search
+// results and doesn't depend on firewall/inbound connectivity.
 func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
 	sldlPath := ""
 	if a.config != nil {
@@ -206,13 +198,12 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 	return TestSoulseekLogin(sldlPath, username, password, logf)
 }
 
-// TestSoulseekLogin is the shared implementation of TestSoulseekConnection,
-// used by both the desktop (Wails) and HTTP server APIs (same sharing
-// pattern as ConvertTidalSearchResults / SearchDeezerTracks in
-// app_search.go). binaryPath may be empty, in which case the platform
-// default path is used. logf receives best-effort diagnostic lines ("info"
-// or "warn" level) — pass nil to skip logging (the password is never
-// logged either way).
+// TestSoulseekLogin backs TestSoulseekConnection and is shared by both the
+// desktop (Wails) and HTTP server APIs — the same sharing pattern
+// ConvertTidalSearchResults / SearchDeezerTracks use in app_search.go.
+// binaryPath can be left empty, in which case the platform default path is
+// used. logf gets best-effort diagnostic lines at "info" or "warn" level;
+// pass nil to skip logging entirely (the password is never logged either way).
 func TestSoulseekLogin(binaryPath, username, password string, logf func(level, msg string)) map[string]interface{} {
 	sldlPath := binaryPath
 	if sldlPath == "" {
@@ -231,12 +222,13 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// -v (verbose) makes sldl print "Logged in <user>" on a dedicated line immediately
-	// after authentication succeeds — independently of whether search results arrive via
-	// inbound P2P connections. Without -v the only success signal was result lines ([...]),
-	// which require inbound connectivity and are blocked by the default Windows/macOS firewall.
+	// -v (verbose) has sldl print "Logged in <user>" on its own line right after
+	// authentication succeeds, regardless of whether search results come back over
+	// inbound P2P connections. Without -v the only success signal was the result
+	// lines ([...]), which need inbound connectivity that's blocked by the default
+	// Windows/macOS firewall.
 	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		log("warn", fmt.Sprintf("sldl binary may not be executable: %v", err))
+		log("warn", fmt.Sprintf("sldl binary might not be runnable: %v", err))
 	}
 	cmd := exec.CommandContext(ctx, sldlPath,
 		"test",
@@ -250,7 +242,7 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 	out, execErr := cmd.CombinedOutput()
 	rawOutput := strings.ToLower(string(out))
 
-	// Surface diagnostics in the in-app terminal (password is never logged)
+	// The password itself is never logged, even in these diagnostics.
 	log("info", fmt.Sprintf("Soulseek: testing connection for user %q", username))
 	if execErr != nil {
 		log("warn", fmt.Sprintf("Soulseek: sldl process error: %v", execErr))
@@ -263,7 +255,7 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 		return map[string]interface{}{"success": false, "message": "Connection timed out"}
 	}
 
-	// sldl produced no output — process failed to start (Gatekeeper/AV/permissions)
+	// No output at all means the process never really started (Gatekeeper/AV/permissions)
 	if strings.TrimSpace(rawOutput) == "" && execErr != nil {
 		hint := "ensure sldl is not blocked by antivirus or SmartScreen"
 		if goruntime.GOOS == "darwin" {
@@ -275,13 +267,13 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 		return map[string]interface{}{"success": false, "message": "sldl produced no output — verify the binary is valid"}
 	}
 
-	// .NET runtime not installed (framework-dependent build downloaded instead of self-contained)
+	// The .NET runtime isn't installed (a framework-dependent build got downloaded instead of a self-contained one)
 	if strings.Contains(rawOutput, "must install") && strings.Contains(rawOutput, ".net") {
 		return map[string]interface{}{"success": false, "message": ".NET runtime missing — download the self-contained sldl build from github.com/fiso64/slsk-batchdl/releases"}
 	}
 
-	// Auth failures — check before the success path so a rejected login is never
-	// misreported as a network error.
+	// Check auth failures before the success path, so a rejected login never
+	// gets misreported as a network error.
 	authErrors := []string{
 		"wrong password", "invalid password", "incorrect password",
 		"login failed", "failed to log in", "cannot login", "could not log in",
@@ -293,12 +285,11 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 		}
 	}
 
-	// Explicit login success emitted by sldl -v: "Logged in <username>"
+	// sldl -v emits an explicit "Logged in <username>" line on success
 	if strings.Contains(rawOutput, "logged in ") {
 		return map[string]interface{}{"success": true, "message": "Logged in"}
 	}
 
-	// Network / connectivity failures
 	networkErrors := []string{
 		"could not connect", "connection refused", "unable to connect",
 		"no such host", "network is unreachable", "name resolution",
@@ -313,16 +304,10 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 	return map[string]interface{}{"success": false, "message": "Connection failed — check network or credentials"}
 }
 
-// =============================================================================
-// Source Manager Methods (exposed to frontend)
-// =============================================================================
-
-// GetAvailableSources returns info about all registered music sources
 func (a *App) GetAvailableSources() []core.SourceInfo {
 	return a.sourceManager.GetSourcesInfo()
 }
 
-// GetPreferredSource returns the currently preferred source name
 func (a *App) GetPreferredSource() string {
 	source, ok := a.sourceManager.GetPreferredSource()
 	if ok {
@@ -331,7 +316,6 @@ func (a *App) GetPreferredSource() string {
 	return "tidal"
 }
 
-// SetPreferredSource sets the preferred source
 func (a *App) SetPreferredSource(sourceName string) {
 	a.sourceManager.SetPreferredSource(sourceName)
 	if a.logBuffer != nil {
@@ -339,7 +323,6 @@ func (a *App) SetPreferredSource(sourceName string) {
 	}
 }
 
-// DetectSourceFromURL identifies which source can handle a URL
 func (a *App) DetectSourceFromURL(rawURL string) map[string]interface{} {
 	result := map[string]interface{}{
 		"detected":    false,
@@ -370,13 +353,13 @@ func (a *App) DetectSourceFromURL(rawURL string) map[string]interface{} {
 	return result
 }
 
-// FetchContentFromURL fetches content info from any supported source URL
-// PickOdesliCandidate returns the first of links' URLs that a source
-// registered on sm can parse, preferring Tidal then Deezer. Amazon is
-// deliberately excluded: AmazonSource.ParseURL always errors (it's
-// download/ISRC-search only, never URL-routable), so it could never be
-// picked here anyway. Exported so internal/api's own SourceManager-backed
-// server can share this selection logic instead of duplicating it.
+// PickOdesliCandidate picks the first URL among links that a source
+// registered on sm is able to parse, favoring Tidal ahead of Deezer. Amazon
+// is deliberately left out: AmazonSource.ParseURL always errors (it only
+// supports download/ISRC search, never URL routing), so it could never be
+// chosen here regardless. This is exported so internal/api's own
+// SourceManager-backed server can reuse this selection logic rather than
+// duplicating it.
 func PickOdesliCandidate(sm *core.SourceManager, links *core.OdesliLinks) (string, bool) {
 	for _, candidate := range []string{links.Tidal, links.Deezer} {
 		if candidate == "" {
@@ -389,15 +372,15 @@ func PickOdesliCandidate(sm *core.SourceManager, links *core.OdesliLinks) (strin
 	return "", false
 }
 
-// ResolveViaOdesli looks up rawURL on Odesli/song.link for input FLACidal has
-// no native parser for (Spotify already has one — this covers Apple Music,
-// YouTube Music, Deezer short links, etc.) and returns the first resolved
-// link a source registered on sm can actually parse. Skips the Odesli call
-// entirely when no source is registered, since nothing could consume the
-// result anyway.
+// ResolveViaOdesli looks rawURL up on Odesli/song.link for inputs FLACidal
+// has no native parser for — Spotify already has one, so this covers Apple
+// Music, YouTube Music, Deezer short links, and similar — and returns the
+// first resolved link that a source registered on sm can actually parse. The
+// Odesli call is skipped entirely when no source is registered, since
+// nothing would be able to consume the result anyway.
 func ResolveViaOdesli(sm *core.SourceManager, rawURL string) (string, error) {
 	if len(sm.GetSourcesInfo()) == 0 {
-		return "", fmt.Errorf("no source found for URL: %s", rawURL)
+		return "", fmt.Errorf("no source registered that can handle URL: %s", rawURL)
 	}
 	links, err := core.ResolveOdesliLinks(rawURL)
 	if err != nil {
@@ -406,7 +389,7 @@ func ResolveViaOdesli(sm *core.SourceManager, rawURL string) (string, error) {
 	if candidate, ok := PickOdesliCandidate(sm, links); ok {
 		return candidate, nil
 	}
-	return "", fmt.Errorf("odesli resolved %s but no supported source could parse the result", rawURL)
+	return "", fmt.Errorf("odesli resolved %s, but none of the registered sources could parse the result", rawURL)
 }
 
 func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error) {
@@ -442,9 +425,7 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 		result["resolvedVia"] = "odesli"
 	}
 
-	// Helper to convert SourceTrack to frontend-compatible format
 	convertTrack := func(t core.SourceTrack) map[string]interface{} {
-		// Convert ID to int if possible, otherwise use string
 		trackID, _ := strconv.Atoi(t.ID)
 		artists := t.Artist
 		if len(t.Artists) > 0 {
@@ -538,8 +519,6 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 	return result, nil
 }
 
-// ExpandDiscographyURL detects a Spotify discography URL and returns all album URLs for that artist.
-// Returns an error if the URL is not a valid Spotify discography URL.
 func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
 	info := core.ParseDiscographyURL(rawURL)
 	if info == nil {
@@ -558,9 +537,6 @@ func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
 	return urls, nil
 }
 
-// QueueDiscographyAlbums resolves a list of Spotify album URLs to Tidal albums and queues them.
-// For each URL it fetches Spotify metadata (title + artist), searches Tidal, then queues the
-// best-matching album via the TidalHifi proxy. Returns the count of successfully queued albums.
 func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, fmt.Errorf("download manager not initialized")
@@ -589,7 +565,7 @@ func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string
 		albumName, artistName, err := a.spotifySearch.GetAlbumMetadata(spotifyAlbumID)
 		if err != nil {
 			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: skipping %s — Spotify metadata failed: %v", spotifyAlbumID, err))
+				a.logBuffer.Warn(fmt.Sprintf("Discography: skipping %s, Spotify metadata lookup failed: %v", spotifyAlbumID, err))
 			}
 			continue
 		}
@@ -598,7 +574,7 @@ func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string
 		tidalAlbums, err := tidalClient.SearchAlbums(query, 5)
 		if err != nil || len(tidalAlbums) == 0 {
 			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: no Tidal match for %q by %s", albumName, artistName))
+				a.logBuffer.Warn(fmt.Sprintf("Discography: found no Tidal match for %q by %s", albumName, artistName))
 			}
 			continue
 		}
@@ -609,7 +585,7 @@ func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string
 		album, err := a.downloader.GetAlbumFromProxy(albumIDStr)
 		if err != nil {
 			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: could not fetch Tidal album %s: %v", albumIDStr, err))
+				a.logBuffer.Warn(fmt.Sprintf("Discography: unable to fetch Tidal album %s: %v", albumIDStr, err))
 			}
 			continue
 		}
@@ -630,7 +606,6 @@ func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string
 	return queued, nil
 }
 
-// GetSourceTrack fetches a track from a specific source
 func (a *App) GetSourceTrack(sourceName, trackID string) (*core.SourceTrack, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
@@ -639,7 +614,6 @@ func (a *App) GetSourceTrack(sourceName, trackID string) (*core.SourceTrack, err
 	return source.GetTrack(trackID)
 }
 
-// GetSourceAlbum fetches an album from a specific source
 func (a *App) GetSourceAlbum(sourceName, albumID string) (*core.SourceAlbum, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
@@ -648,7 +622,6 @@ func (a *App) GetSourceAlbum(sourceName, albumID string) (*core.SourceAlbum, err
 	return source.GetAlbum(albumID)
 }
 
-// GetSourcePlaylist fetches a playlist from a specific source
 func (a *App) GetSourcePlaylist(sourceName, playlistID string) (*core.SourcePlaylist, error) {
 	source, ok := a.sourceManager.GetSource(sourceName)
 	if !ok {
@@ -657,7 +630,6 @@ func (a *App) GetSourcePlaylist(sourceName, playlistID string) (*core.SourcePlay
 	return source.GetPlaylist(playlistID)
 }
 
-// UpdateQobuzCredentials updates Qobuz credentials
 func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 	if a.qobuzSource == nil {
 		a.qobuzSource = core.NewQobuzSource(appID, appSecret)
@@ -667,7 +639,6 @@ func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 	if a.config == nil {
 		a.config = &core.Config{}
 	}
-	// Update config
 	a.config.QobuzAppID = appID
 	a.config.QobuzAppSecret = appSecret
 	a.config.QobuzAuthToken = authToken
@@ -688,7 +659,6 @@ func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 	return nil
 }
 
-// IsQobuzConfigured checks if Qobuz is properly configured
 func (a *App) IsQobuzConfigured() bool {
 	return a.qobuzSource != nil && a.qobuzSource.IsAvailable()
 }

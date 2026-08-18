@@ -27,7 +27,7 @@ describe('OpenExternalURL', () => {
     vi.unstubAllGlobals()
   })
 
-  it('Wails mode: delegates to BrowserOpenURL', async () => {
+  it('Wails mode: hands off to BrowserOpenURL', async () => {
     setWailsRuntime()
     const { OpenExternalURL } = await import('./runtime')
     OpenExternalURL('https://example.com')
@@ -35,7 +35,7 @@ describe('OpenExternalURL', () => {
     expect(wailsRuntimeMock.BrowserOpenURL).toHaveBeenCalledWith('https://example.com')
   })
 
-  it('browser mode: opens a new tab via window.open', async () => {
+  it('browser mode: opens a new tab through window.open', async () => {
     clearWailsRuntime()
     const openSpy = vi.fn()
     vi.stubGlobal('open', openSpy)
@@ -57,7 +57,7 @@ describe('onNativeFileDrop', () => {
     clearWailsRuntime()
   })
 
-  it('Wails mode: wraps OnFileDrop and returns a cleanup that calls OnFileDropOff', async () => {
+  it('Wails mode: wraps OnFileDrop and returns a cleanup that invokes OnFileDropOff', async () => {
     setWailsRuntime()
     const { onNativeFileDrop } = await import('./runtime')
     const cb = vi.fn()
@@ -71,7 +71,7 @@ describe('onNativeFileDrop', () => {
     expect(wailsRuntimeMock.OnFileDropOff).toHaveBeenCalledOnce()
   })
 
-  it('browser mode: never touches window.runtime and returns a no-op cleanup', async () => {
+  it('browser mode: leaves window.runtime untouched and returns a no-op cleanup', async () => {
     clearWailsRuntime()
     const { onNativeFileDrop } = await import('./runtime')
     const cb = vi.fn()

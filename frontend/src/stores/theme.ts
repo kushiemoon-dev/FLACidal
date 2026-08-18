@@ -2,7 +2,6 @@ import { writable } from 'svelte/store';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
-// Helper to convert hex to RGB
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
@@ -14,7 +13,6 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
     : null;
 }
 
-// Helper to lighten a color
 function lightenColor(hex: string, percent: number): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return hex;
@@ -40,10 +38,8 @@ function createThemeStore() {
     }
   }
 
-  // Listen for system theme changes
   if (typeof window !== 'undefined') {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      // Only react if current theme is 'system'
       const currentTheme = document.documentElement.getAttribute('data-theme-mode');
       if (currentTheme === 'system') {
         document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
@@ -57,7 +53,7 @@ function createThemeStore() {
     setTheme: (theme: ThemeMode) => {
       set(theme);
       applyTheme(theme);
-      // Store the mode for system theme listener
+      // Record the mode so the system-theme listener can check it later
       document.documentElement.setAttribute('data-theme-mode', theme);
     },
 
@@ -72,10 +68,8 @@ function createThemeStore() {
 
 export const themeStore = createThemeStore();
 
-// Accent color store
 export const accentColor = writable<string>('#f472b6');
 
-// Preset accent colors
 export const accentPresets = [
   { name: 'Pink', color: '#f472b6' },
   { name: 'Purple', color: '#a855f7' },
@@ -95,7 +89,6 @@ export const fontPresets = [
 const fontFamily = writable<string>(fontPresets[0].value);
 
 export function applyFontFamily(font: string): void {
-  // Inject Google Fonts link for any font not already present in the document
   const nameMatch = font.match(/'([^']+)'/) ?? font.match(/^([^,]+)/);
   if (nameMatch) {
     const fontName = nameMatch[1].trim();
@@ -118,7 +111,6 @@ export function initializeFontFamily(font: string): void {
   }
 }
 
-// Apply accent color to CSS variables
 export function applyAccentColor(color: string) {
   const root = document.documentElement;
   const rgb = hexToRgb(color);
@@ -130,7 +122,6 @@ export function applyAccentColor(color: string) {
   }
 }
 
-// Initialize accent color from config
 export function initializeAccentColor(color: string) {
   const validColor = color || '#f472b6';
   accentColor.set(validColor);

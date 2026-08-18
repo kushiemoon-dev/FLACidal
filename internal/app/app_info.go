@@ -8,16 +8,10 @@ import (
 	"time"
 )
 
-// =============================================================================
-// App Info
-// =============================================================================
-
-// GetAppVersion returns application version
 func (a *App) GetAppVersion() string {
 	return a.version
 }
 
-// UpdateInfo represents available update information
 type UpdateInfo struct {
 	HasUpdate  bool   `json:"hasUpdate"`
 	Version    string `json:"version"`
@@ -25,7 +19,6 @@ type UpdateInfo struct {
 	ReleaseURL string `json:"releaseUrl"`
 }
 
-// CheckForUpdate checks GitHub for a newer release
 func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", "https://api.github.com/repos/kushiemoon-dev/flacidal/releases/latest", nil)

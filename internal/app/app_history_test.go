@@ -6,22 +6,18 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Database Methods" section of app.go
-// (GetCacheStats, GetDownloadHistory, GetRecentAlbums, GetDownloadHistoryFiltered,
-// DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory, GetMatchFailures).
+// These rely on a real *core.Database backed by a temp-dir SQLite file, via
+// core.SetDataDir(t.TempDir()) — the same seam FLACidal-Core's own
+// database_test.go relies on — so nothing under a real ~/.flacidal gets touched.
 //
-// These use a real *core.Database backed by a temp-dir SQLite file via
-// core.SetDataDir(t.TempDir()) — the same test seam FLACidal-Core's own
-// database_test.go uses — so no real user data under ~/.flacidal is touched.
-//
-// Bug note (not fixed): RefetchFromHistory's "known content type" success path
-// calls a.FetchTidalContent(url), whose per-type branches (e.g. the "track"
-// case calling a.downloader.GetTrackAsTidalTrack) dereference a.downloader /
-// a.tidalClient without a nil-guard. Not reachable in production (startup()
-// always initializes those fields), but inconsistent with the nil-guard
-// pattern used by sibling methods like SearchTidal/DownloadTrack. Only the
-// "not found" and "unknown content type" branches (which return before
-// reaching FetchTidalContent) are exercised here.
+// Known gap (left as-is): on RefetchFromHistory's "known content type" success
+// path, a.FetchTidalContent(url) is called, and its per-type branches (e.g. the
+// "track" case, via a.downloader.GetTrackAsTidalTrack) dereference
+// a.downloader / a.tidalClient with no nil-guard. This can't happen in
+// production since startup() always sets those fields, but it's inconsistent
+// with the nil-guard pattern sibling methods like SearchTidal/DownloadTrack
+// follow. Only the "not found" and "unknown content type" branches — which
+// return before reaching FetchTidalContent — are covered here.
 
 func newTestApp(t *testing.T) *App {
 	t.Helper()
@@ -90,8 +86,8 @@ func TestGetRecentAlbums(t *testing.T) {
 		a := newTestApp(t)
 		records := []core.DownloadRecord{
 			{TidalContentID: "1", TidalContentName: "Daft Punk — Discovery", ContentType: "album", TracksTotal: 14},
-			{TidalContentID: "1", TidalContentName: "Daft Punk — Discovery", ContentType: "album", TracksTotal: 14}, // duplicate content ID
-			{TidalContentID: "2", TidalContentName: "Homework", ContentType: "album", TracksTotal: 16},              // no "Artist — Title" separator
+			{TidalContentID: "1", TidalContentName: "Daft Punk — Discovery", ContentType: "album", TracksTotal: 14}, // same content ID again
+			{TidalContentID: "2", TidalContentName: "Homework", ContentType: "album", TracksTotal: 16},              // lacks the "Artist — Title" separator
 			{TidalContentID: "3", TidalContentName: "Justice — Cross", ContentType: "album", TracksTotal: 10},
 		}
 		for _, r := range records {
@@ -118,9 +114,9 @@ func TestGetRecentAlbums(t *testing.T) {
 			seen[cid] = true
 		}
 
-		// Records were saved in the same transaction-less loop so LastDownloadAt
-		// timestamps are set by SQLite's time.Now() at save time; just check the
-		// "Artist — Title" split parsed correctly for content_id "3".
+		// The records were saved in a plain, non-transactional loop, so their
+		// LastDownloadAt values come from SQLite's time.Now() at save time; here
+		// we just verify the "Artist — Title" split parsed correctly for content_id "3".
 		for _, entry := range got {
 			if entry["content_id"] == "3" {
 				if entry["artist"] != "Justice" || entry["title"] != "Cross" {
@@ -151,8 +147,8 @@ func TestGetDownloadHistoryFiltered(t *testing.T) {
 			t.Fatalf("setup: %v", err)
 		}
 
-		// limit given as the wrong type (string, not float64 as JSON numbers
-		// decode to) — current behavior silently ignores it rather than erroring.
+		// "limit" is passed as a string rather than the float64 JSON numbers
+		// decode to; the current implementation quietly ignores it instead of erroring.
 		got, err := a.GetDownloadHistoryFiltered(map[string]interface{}{
 			"contentType": "album",
 			"limit":       "10", // wrong type on purpose

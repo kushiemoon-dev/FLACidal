@@ -10,10 +10,9 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// newTestServer builds a minimal Server wired with an in-memory config, ready
-// to exercise handlers via s.app.Test(). Dependencies that individual tests
-// don't need (DB, download manager, sources...) are left nil; handlers under
-// test must not require them, or the test provides them explicitly.
+// Fields a given test has no use for (DB, download manager, sources, ...) are
+// left as nil; a handler under test either has to tolerate that or the test
+// supplies them.
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	return NewServer(ServerConfig{
@@ -24,8 +23,6 @@ func newTestServer(t *testing.T) *Server {
 	})
 }
 
-// doRequest performs an HTTP request against the test server and decodes the
-// JSON response body into v (if v is non-nil). Returns the raw response.
 func doRequest(t *testing.T, s *Server, method, path string, body interface{}, v interface{}) *http.Response {
 	t.Helper()
 

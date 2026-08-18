@@ -6,8 +6,6 @@ import (
 	"flacidal/internal/app"
 )
 
-// handleGetSldlStatus implements GET /api/sources/soulseek/status.
-// Mirrors internal/app's App.GetSldlStatus via the shared app.SldlStatus.
 func (s *Server) handleGetSldlStatus(c *fiber.Ctx) error {
 	binaryPath := ""
 	if s.config != nil {
@@ -16,11 +14,9 @@ func (s *Server) handleGetSldlStatus(c *fiber.Ctx) error {
 	return c.JSON(app.SldlStatus(binaryPath))
 }
 
-// handleTestSoulseekConnection implements POST /api/sources/soulseek/test.
-// Mirrors internal/app's App.TestSoulseekConnection via the shared
-// app.TestSoulseekLogin. No server-side log buffer is wired up in headless
-// mode (see GetLogs/ClearLogs known gap in lib/api.ts), so diagnostics are
-// not surfaced anywhere here — only the JSON result matters.
+// Headless mode has no server-side log buffer wired up (a known gap tracked
+// alongside GetLogs/ClearLogs in lib/api.ts), so no diagnostics get surfaced
+// here — only the JSON result matters.
 func (s *Server) handleTestSoulseekConnection(c *fiber.Ctx) error {
 	var req struct {
 		Username string `json:"username"`

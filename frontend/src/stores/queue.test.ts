@@ -17,7 +17,7 @@ describe('queueStore', () => {
   })
 
   describe('addItem', () => {
-    it('should add an item to the queue', () => {
+    it('adds an item to the queue', () => {
       const item: QueueItem = {
         trackId: 12345,
         title: 'One More Time',
@@ -33,7 +33,7 @@ describe('queueStore', () => {
       expect(items[0].title).toBe('One More Time')
     })
 
-    it('should add multiple items', () => {
+    it('adds multiple items', () => {
       const item1: QueueItem = {
         trackId: 1,
         title: 'Track 1',
@@ -54,7 +54,7 @@ describe('queueStore', () => {
       expect(items).toHaveLength(2)
     })
 
-    it('should replace item with same trackId', () => {
+    it('replaces an item that shares the same trackId', () => {
       const item1: QueueItem = {
         trackId: 1,
         title: 'Original Title',
@@ -78,7 +78,7 @@ describe('queueStore', () => {
   })
 
   describe('updateItem', () => {
-    it('should update an existing item', () => {
+    it('updates an existing item', () => {
       const item: QueueItem = {
         trackId: 1,
         title: 'Track',
@@ -93,7 +93,7 @@ describe('queueStore', () => {
       expect(items[0].status).toBe('downloading')
     })
 
-    it('should not crash when updating non-existent item', () => {
+    it('does not crash when updating an item that does not exist', () => {
       queueStore.updateItem(999, { status: 'completed' })
       const items = get(queueItems)
       expect(items).toHaveLength(0)
@@ -101,7 +101,7 @@ describe('queueStore', () => {
   })
 
   describe('removeItem', () => {
-    it('should remove an item', () => {
+    it('removes an item', () => {
       const item: QueueItem = {
         trackId: 1,
         title: 'Track',
@@ -118,7 +118,7 @@ describe('queueStore', () => {
   })
 
   describe('clearCompleted', () => {
-    it('should clear only completed items', () => {
+    it('clears only the completed items', () => {
       const items: QueueItem[] = [
         { trackId: 1, title: 'T1', artist: 'A1', status: 'completed' },
         { trackId: 2, title: 'T2', artist: 'A2', status: 'pending' },
@@ -135,7 +135,7 @@ describe('queueStore', () => {
   })
 
   describe('clearFailed', () => {
-    it('should clear only error items', () => {
+    it('clears only the items in error state', () => {
       const items: QueueItem[] = [
         { trackId: 1, title: 'T1', artist: 'A1', status: 'error', error: 'Failed' },
         { trackId: 2, title: 'T2', artist: 'A2', status: 'completed' },
@@ -152,7 +152,7 @@ describe('queueStore', () => {
   })
 
   describe('clearAll', () => {
-    it('should clear all items', () => {
+    it('clears every item', () => {
       const items: QueueItem[] = [
         { trackId: 1, title: 'T1', artist: 'A1', status: 'completed' },
         { trackId: 2, title: 'T2', artist: 'A2', status: 'pending' },
@@ -173,7 +173,7 @@ describe('queueStats', () => {
     queueStore.clearAll()
   })
 
-  it('should calculate correct stats', () => {
+  it('computes the correct stats', () => {
     const items: QueueItem[] = [
       { trackId: 1, title: 'T1', artist: 'A1', status: 'pending' },
       { trackId: 2, title: 'T2', artist: 'A2', status: 'queued' },
@@ -195,7 +195,7 @@ describe('queueStats', () => {
     expect(stats.cancelled).toBe(1)
   })
 
-  it('should return zeros for empty queue', () => {
+  it('returns all zeros for an empty queue', () => {
     const stats = get(queueStats)
 
     expect(stats.total).toBe(0)
@@ -208,12 +208,12 @@ describe('queueStats', () => {
 })
 
 describe('downloadFolder', () => {
-  it('should have default empty string', () => {
+  it('defaults to an empty string', () => {
     const folder = get(downloadFolder)
     expect(folder).toBe('')
   })
 
-  it('should be updatable', () => {
+  it('can be updated', () => {
     downloadFolder.set('/music/downloads')
     expect(get(downloadFolder)).toBe('/music/downloads')
     downloadFolder.set('')
@@ -221,12 +221,12 @@ describe('downloadFolder', () => {
 })
 
 describe('queuePaused', () => {
-  it('should have default false', () => {
+  it('defaults to false', () => {
     const paused = get(queuePaused)
     expect(paused).toBe(false)
   })
 
-  it('should be updatable', () => {
+  it('accepts updates', () => {
     queuePaused.set(true)
     expect(get(queuePaused)).toBe(true)
     queuePaused.set(false)
@@ -234,12 +234,12 @@ describe('queuePaused', () => {
 })
 
 describe('currentContent', () => {
-  it('should have default null', () => {
+  it('defaults to null', () => {
     const content = get(currentContent)
     expect(content).toBeNull()
   })
 
-  it('should be updatable with TidalContent', () => {
+  it('accepts an updated TidalContent value', () => {
     const content: TidalContent = {
       type: 'album',
       id: 'album-123',

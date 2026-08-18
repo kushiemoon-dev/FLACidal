@@ -10,9 +10,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// handleQueueArtistAlbum implements POST /api/downloads/queue/album.
-// Fetches a Tidal album's tracks and queues them all for download under an
-// {Artist}/{Album} folder structure. Mirrors internal/app's App.QueueArtistAlbum.
 func (s *Server) handleQueueArtistAlbum(c *fiber.Ctx) error {
 	var req struct {
 		AlbumID    string `json:"albumId"`

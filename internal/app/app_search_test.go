@@ -2,13 +2,13 @@ package app
 
 import "testing"
 
-// Characterization tests for the "Search Methods" section of app.go.
+// Behavioral snapshot tests covering the search methods section of app.go.
 //
-// NOT tested here (documented, not fixed):
+// Deliberately left uncovered here:
 //   - SearchTidal / SearchTidalAlbums / SearchTidalArtists success paths, and
-//     SearchDeezer's non-empty-query path: all make live network calls
-//     (Tidal proxy, Deezer public API) with no injectable HTTP seam. Only
-//     nil-guard / early-return branches are exercised.
+//     SearchDeezer's non-empty-query path: each makes a live network call
+//     (Tidal proxy, Deezer public API) with no injectable HTTP seam. Only the
+//     nil-guard / early-return branches are covered.
 
 func TestSearchTidal_NilDownloader(t *testing.T) {
 	a := &App{}

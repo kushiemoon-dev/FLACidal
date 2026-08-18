@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// handleGetTrackHistory returns the per-track download log with pagination.
 func (s *Server) handleGetTrackHistory(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "50"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
@@ -31,7 +30,6 @@ func (s *Server) handleGetTrackHistory(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"entries": entries, "total": total})
 }
 
-// RegisterHistoryRoutes registers the per-track history route on the given router group.
 func RegisterHistoryRoutes(api fiber.Router, s *Server) {
 	api.Get("/track-history", s.handleGetTrackHistory)
 }

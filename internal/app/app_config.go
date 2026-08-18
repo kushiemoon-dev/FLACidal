@@ -11,16 +11,10 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// =============================================================================
-// Config Methods (exposed to frontend)
-// =============================================================================
-
-// GetConfig returns current configuration
 func (a *App) GetConfig() *core.Config {
 	return a.config
 }
 
-// SaveConfig saves configuration
 func (a *App) SaveConfig(config core.Config) error {
 	a.config = &config
 	if a.downloadManager != nil {
@@ -51,7 +45,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		opts.SaveLyricsFile = config.SaveLyricsFile
 		opts.SaveFolderCover = config.SaveFolderCover
 		a.downloader.SetOptions(opts)
-		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		// An override always wins, otherwise priority entries go ahead of the public pool.
 		if len(config.TidalHifiEndpoints) > 0 {
 			a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		} else {
@@ -68,8 +62,8 @@ func (a *App) SaveConfig(config core.Config) error {
 		}
 	}
 	if a.tidalSource != nil {
-		// Mirror the downloader's endpoints onto the source-manager's Tidal
-		// instance (used for playlist/album/track fetch) — see Startup wiring.
+		// Copy the downloader's endpoint list onto the source manager's Tidal
+		// instance too, since it's the one used for playlist/album/track fetch — see Startup for the equivalent wiring.
 		if len(config.TidalHifiEndpoints) > 0 {
 			a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 		} else {
@@ -86,7 +80,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		}
 	}
 	if a.qobuzSource != nil {
-		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		// An override always wins, otherwise priority entries go ahead of the public pool.
 		if len(config.QobuzEndpoints) > 0 {
 			a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
 		} else {
@@ -103,7 +97,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		}
 	}
 	if a.amazonSource != nil {
-		// Re-apply endpoints live without restart: override wins outright, else priority prepends to the public pool.
+		// Refresh endpoints on the fly, no restart required: an override always wins, otherwise priority entries go ahead of the public pool.
 		if len(config.AmazonProxyEndpoints) > 0 {
 			a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
 		} else {
@@ -118,29 +112,28 @@ func (a *App) SaveConfig(config core.Config) error {
 	if a.downloadManager != nil {
 		a.downloadManager.SetSourceOrder(config.SourceOrder)
 	}
-	// Apply proxy changes immediately (no restart needed)
+	// Proxy changes take effect right away, no restart required
 	if a.tidalClient != nil {
 		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (Tidal API): " + err.Error())
+			a.logBuffer.Warn("Tidal API proxy misconfigured: " + err.Error())
 		}
 	}
 	if a.downloader != nil {
 		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (downloader): " + err.Error())
+			a.logBuffer.Warn("Downloader proxy misconfigured: " + err.Error())
 		}
 	}
 	if a.qobuzSource != nil {
 		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Proxy config error (Qobuz): " + err.Error())
+			a.logBuffer.Warn("Qobuz proxy misconfigured: " + err.Error())
 		}
 	}
-	// Re-initialize Soulseek source when credentials or enabled state change
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
 		sldlPath = DefaultSldlPath()
 	}
 	if err := EnsureSldlExecutable(sldlPath); err != nil && a.logBuffer != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary may not be executable: %v", err))
+		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
 	}
 	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
 	a.soulseekSource.SetLogger(a.logBuffer)
@@ -148,12 +141,12 @@ func (a *App) SaveConfig(config core.Config) error {
 		if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 			a.sourceManager.RegisterSource(a.soulseekSource)
 			if a.logBuffer != nil {
-				a.logBuffer.Info("Soulseek fallback source registered")
+				a.logBuffer.Info("Registered the Soulseek fallback source")
 			}
 		} else {
 			a.sourceManager.UnregisterSource("soulseek")
 			if config.SoulseekEnabled && a.logBuffer != nil {
-				a.logBuffer.Warn("Soulseek enabled but unavailable (check binary path / credentials)")
+				a.logBuffer.Warn("Soulseek is enabled but not usable — check its binary path and credentials")
 			}
 		}
 	}
@@ -161,7 +154,6 @@ func (a *App) SaveConfig(config core.Config) error {
 	return core.SaveConfig(&config)
 }
 
-// SetSourceOrder updates the download source priority order live and persists it
 func (a *App) SetSourceOrder(order []string) error {
 	validated, err := ValidateSourceOrder(order)
 	if err != nil {
@@ -180,17 +172,18 @@ func (a *App) SetSourceOrder(order []string) error {
 	return nil
 }
 
-// ValidateSourceOrder validates a submitted source order — rejecting the
-// whole call on any unknown or duplicate source, matching both
-// App.SetSourceOrder's and the REST handler's existing behavior (unlike
-// FLACidal-Core's rpc_sources.go, which filters and continues instead of
-// rejecting) — then re-injects "soulseek" as primary when the validated
-// order omits it, since an order missing it is a migration gap, not a
-// deliberate exclusion (mirrors FLACidal-Core/core.go's NewCore() migration
-// and rpc_sources.go's handleSetSourceOrder). An order already containing
-// "soulseek" anywhere is returned unchanged — only its absence triggers the
-// prepend. Shared by the desktop (Wails) and HTTP server APIs (same sharing
-// pattern as SldlStatus / TestSoulseekLogin above).
+// ValidateSourceOrder checks a submitted source order and rejects the entire
+// call if it contains anything unknown or duplicated — the same behavior
+// App.SetSourceOrder and the REST handler already rely on (this differs from
+// FLACidal-Core's rpc_sources.go, which silently filters instead of
+// rejecting). If the validated order is missing "soulseek", it gets
+// prepended as primary, since that's treated as a migration gap rather than
+// an intentional omission (mirroring the migration in
+// FLACidal-Core/core.go's NewCore() and rpc_sources.go's
+// handleSetSourceOrder). An order that already has "soulseek" somewhere in
+// it is passed through unmodified — the prepend only fires when it's
+// absent. This function backs both the desktop (Wails) and HTTP server
+// APIs, the same sharing pattern used above by SldlStatus / TestSoulseekLogin.
 func ValidateSourceOrder(order []string) ([]string, error) {
 	if len(order) == 0 {
 		return nil, fmt.Errorf("source order cannot be empty")
@@ -212,11 +205,9 @@ func ValidateSourceOrder(order []string) ([]string, error) {
 	return order, nil
 }
 
-// ResetToDefaults resets configuration to default values
 func (a *App) ResetToDefaults() (*core.Config, error) {
 	defaultCfg := core.GetDefaultConfig()
 
-	// Preserve download folder if set
 	if a.config != nil && a.config.DownloadFolder != "" {
 		defaultCfg.DownloadFolder = a.config.DownloadFolder
 	}
@@ -227,32 +218,28 @@ func (a *App) ResetToDefaults() (*core.Config, error) {
 	}
 
 	if a.logBuffer != nil {
-		a.logBuffer.Info("Configuration reset to defaults")
-		runtime.EventsEmit(a.ctx, "log", a.logBuffer.Info("Settings restored to defaults"))
+		a.logBuffer.Info("Settings reverted to defaults")
+		runtime.EventsEmit(a.ctx, "log", a.logBuffer.Info("Defaults restored"))
 	}
 
 	return defaultCfg, nil
 }
 
-// GetConnectionStatus returns service status
 func (a *App) GetConnectionStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"tidalReady":    true, // Always ready (uses internal credentials)
+		"tidalReady":    true, // built-in credentials mean this is always ready
 		"spotifySearch": a.spotifySearch != nil,
 	}
 }
 
-// EndpointStatus represents the status of an API endpoint
 type EndpointStatus struct {
 	Name      string `json:"name"`
 	URL       string `json:"url"`
-	Status    string `json:"status"`    // "online", "offline", "slow"
-	LatencyMs int64  `json:"latencyMs"` // Response time in milliseconds
+	Status    string `json:"status"`    // one of "online", "offline", "slow"
+	LatencyMs int64  `json:"latencyMs"` // round-trip time, in milliseconds
 }
 
-// CheckAPIStatus returns the current pool state of all proxy endpoints without
-// making any network requests. It reads from the in-memory EndpointPool snapshots
-// maintained by the downloader and source services.
+// Reads from in-memory EndpointPool snapshots — issues no network calls itself.
 func (a *App) CheckAPIStatus() []EndpointStatus {
 	var results []EndpointStatus
 
@@ -297,13 +284,11 @@ func endpointStatToStatus(sourceLabel string, ep core.EndpointStat) EndpointStat
 	}
 }
 
-// OpenConfigFolder opens the app config directory in the system file manager
 func (a *App) OpenConfigFolder() error {
 	configDir := core.GetDataDir()
 	return openFolder(configDir)
 }
 
-// openFolder opens a folder in the system file manager
 func openFolder(path string) error {
 	switch goruntime.GOOS {
 	case "darwin":

@@ -6,22 +6,22 @@ import (
 	"testing"
 )
 
-// Characterization tests for the "Lyrics Methods" section of app.go.
+// Behavioral snapshot tests covering the lyrics methods section of app.go.
 //
-// NOT tested here (documented, not fixed):
-//   - FetchLyrics: makes a live network call to LRCLIB with no injectable
-//     HTTP seam.
+// Deliberately left uncovered here:
+//   - FetchLyrics: issues a live network call to LRCLIB with no injectable
+//     HTTP seam available.
 //   - FetchLyricsForFile / FetchAndEmbedLyrics / FetchAndEmbedLyricsMultiple
-//     success paths: all reach the same LRCLIB network call once metadata
-//     reads succeed. Only their fail-fast "invalid file" branches (which
-//     return before any network call, since core.ReadFLACMetadata errors
-//     first) are exercised.
+//     success paths: each ends up at the same LRCLIB network call once the
+//     metadata read succeeds. Only their fail-fast "invalid file" branches —
+//     which return before any network call because core.ReadFLACMetadata
+//     errors out first — are covered here.
 
 func TestFetchLyricsForFile_InvalidFile(t *testing.T) {
 	a := &App{}
 	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("nope"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
+		t.Fatalf("test setup failed: %v", err)
 	}
 	if _, err := a.FetchLyricsForFile(path); err == nil {
 		t.Error("FetchLyricsForFile() on invalid FLAC content: want error, got nil")
@@ -29,10 +29,10 @@ func TestFetchLyricsForFile_InvalidFile(t *testing.T) {
 }
 
 func TestEmbedLyricsToFile_InvalidFile(t *testing.T) {
-	a := &App{} // nil logBuffer — the Error() call on failure is nil-guarded
+	a := &App{} // logBuffer left nil; the Error() call on failure guards against that
 	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("nope"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
+		t.Fatalf("test setup failed: %v", err)
 	}
 	if err := a.EmbedLyricsToFile(path, "plain lyrics", ""); err == nil {
 		t.Error("EmbedLyricsToFile() on invalid FLAC content: want error, got nil")
@@ -43,7 +43,7 @@ func TestFetchAndEmbedLyrics_InvalidFile(t *testing.T) {
 	a := &App{}
 	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("nope"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
+		t.Fatalf("test setup failed: %v", err)
 	}
 	if _, err := a.FetchAndEmbedLyrics(path); err == nil {
 		t.Error("FetchAndEmbedLyrics() on invalid FLAC content: want error, got nil")
@@ -55,7 +55,7 @@ func TestFetchAndEmbedLyricsMultiple_InvalidFiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("nope"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
+		t.Fatalf("test setup failed: %v", err)
 	}
 
 	got := a.FetchAndEmbedLyricsMultiple([]string{path})

@@ -11,11 +11,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// =============================================================================
-// Search Methods (exposed to frontend)
-// =============================================================================
-
-// SearchTidal searches for tracks on Tidal
 func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 	if a.downloader == nil {
 		return nil, fmt.Errorf("downloader not initialized")
@@ -29,14 +24,12 @@ func (a *App) SearchTidal(query string) ([]core.TidalTrack, error) {
 	return ConvertTidalSearchResults(results), nil
 }
 
-// ConvertTidalSearchResults converts raw Tidal HiFi search results into the
-// TidalTrack shape used by both the desktop (Wails) and HTTP server APIs.
-// Shared so the two frontends stay in sync on artist-joining and cover-URL
-// formatting instead of drifting apart.
+// ConvertTidalSearchResults is shared by both the desktop (Wails) and HTTP
+// server APIs, keeping their artist-joining and cover-URL formatting from
+// drifting apart.
 func ConvertTidalSearchResults(results []core.TidalHifiTrackResponse) []core.TidalTrack {
 	tracks := make([]core.TidalTrack, len(results))
 	for i, r := range results {
-		// Build artist string
 		var artists []string
 		for _, art := range r.Artists {
 			artists = append(artists, art.Name)
@@ -53,7 +46,6 @@ func ConvertTidalSearchResults(results []core.TidalHifiTrackResponse) []core.Tid
 			}
 		}
 
-		// Build cover URL
 		coverURL := ""
 		if r.Album.Cover != "" {
 			coverURL = fmt.Sprintf("https://resources.tidal.com/images/%s/320x320.jpg",
@@ -76,7 +68,6 @@ func ConvertTidalSearchResults(results []core.TidalHifiTrackResponse) []core.Tid
 	return tracks
 }
 
-// SearchTidalAlbums searches for albums on Tidal
 func (a *App) SearchTidalAlbums(query string) ([]core.TidalAlbum, error) {
 	if a.tidalSource == nil {
 		return nil, fmt.Errorf("tidal source not initialized")
@@ -84,7 +75,6 @@ func (a *App) SearchTidalAlbums(query string) ([]core.TidalAlbum, error) {
 	return a.tidalSource.SearchAlbums(query, 20)
 }
 
-// SearchTidalArtists searches for artists on Tidal
 func (a *App) SearchTidalArtists(query string) ([]core.TidalArtist, error) {
 	if a.tidalSource == nil {
 		return nil, fmt.Errorf("tidal source not initialized")
@@ -92,15 +82,16 @@ func (a *App) SearchTidalArtists(query string) ([]core.TidalArtist, error) {
 	return a.tidalSource.SearchArtists(query, 20)
 }
 
-// SearchDeezer searches tracks on the public Deezer API (no auth required).
-// Returns up to 30 tracks with ISRC so the orchestrator can find the FLAC.
+// SearchDeezer hits the public Deezer API (no authentication needed). Each
+// returned track carries an ISRC, which the orchestrator uses to locate the
+// matching FLAC.
 func (a *App) SearchDeezer(query string) ([]map[string]interface{}, error) {
 	return SearchDeezerTracks(query)
 }
 
-// SearchDeezerTracks is the shared Deezer search implementation used by both
-// the desktop (Wails) and HTTP server APIs — kept in sync the same way
-// ConvertTidalSearchResults is shared above.
+// SearchDeezerTracks backs the Deezer search and is shared by both the
+// desktop (Wails) and HTTP server APIs, staying in sync the same way
+// ConvertTidalSearchResults does above.
 func SearchDeezerTracks(query string) ([]map[string]interface{}, error) {
 	if query == "" {
 		return []map[string]interface{}{}, nil
@@ -108,12 +99,12 @@ func SearchDeezerTracks(query string) ([]map[string]interface{}, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", "https://api.deezer.com/search?q="+url.QueryEscape(query)+"&limit=30", nil)
 	if err != nil {
-		return nil, fmt.Errorf("deezer search: %w", err)
+		return nil, fmt.Errorf("Deezer search failed: %w", err)
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; FLACidal/4.6)")
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("deezer search: %w", err)
+		return nil, fmt.Errorf("Deezer search failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -134,7 +125,7 @@ func SearchDeezerTracks(query string) ([]map[string]interface{}, error) {
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("deezer search: %w", err)
+		return nil, fmt.Errorf("Deezer search failed: %w", err)
 	}
 
 	tracks := make([]map[string]interface{}, 0, len(result.Data))

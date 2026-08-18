@@ -8,8 +8,6 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Tests for POST /api/downloads/queue/album.
-
 func TestHandleQueueArtistAlbum_MissingOutputDir(t *testing.T) {
 	s := newTestServer(t)
 

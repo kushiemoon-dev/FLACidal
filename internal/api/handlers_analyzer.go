@@ -11,14 +11,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// analyzeRequest accepts either a JSON body {"path": "/abs/path.flac"}
-// or a multipart file upload (field name: "file", saved to /tmp).
 type analyzeRequest struct {
 	Path string `json:"path"`
 }
 
-// handleAnalyzeFileImpl implements POST /api/analyze.
-// Accepts {"path":"/abs/path.flac"} or multipart upload (field "file").
 func (s *Server) handleAnalyzeFileImpl(c *fiber.Ctx) error {
 	filePath, tempPath, err := resolveAnalyzePath(c)
 	if err != nil {
@@ -36,8 +32,6 @@ func (s *Server) handleAnalyzeFileImpl(c *fiber.Ctx) error {
 	return c.JSON(buildAnalyzeResponse(result))
 }
 
-// handleAnalyzeMultipleImpl implements POST /api/analyze/multiple.
-// Accepts {"paths": ["/abs/path1.flac", "/abs/path2.flac"]}.
 func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 	var req struct {
 		Paths []string `json:"paths"`
@@ -46,7 +40,7 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	if len(req.Paths) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "paths array is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "at least one path is required in the paths array"})
 	}
 
 	results := core.AnalyzeMultiple(req.Paths)
@@ -59,8 +53,6 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 	return c.JSON(responses)
 }
 
-// handleQuickAnalyzeImpl implements POST /api/analyze/quick.
-// Accepts {"path": "/abs/path.flac"}.
 func (s *Server) handleQuickAnalyzeImpl(c *fiber.Ctx) error {
 	filePath, tempPath, err := resolveAnalyzePath(c)
 	if err != nil {
@@ -78,8 +70,7 @@ func (s *Server) handleQuickAnalyzeImpl(c *fiber.Ctx) error {
 	return c.JSON(buildAnalyzeResponse(result))
 }
 
-// RegisterAnalyzerRoutes wires the real analyzer handlers onto an existing
-// Fiber router group. Call this from setupRoutes() instead of the 501 stubs:
+// Call RegisterAnalyzerRoutes from setupRoutes() in place of the 501 stubs:
 //
 //	RegisterAnalyzerRoutes(api, s)
 func RegisterAnalyzerRoutes(router fiber.Router, s *Server) {
@@ -88,21 +79,17 @@ func RegisterAnalyzerRoutes(router fiber.Router, s *Server) {
 	router.Post("/analyze/quick", s.handleQuickAnalyzeImpl)
 }
 
-// --- helpers ----------------------------------------------------------------
-
-// supportedAnalyzeExtensions are the audio formats /api/analyze accepts.
-// AnalyzeAudioFile (core) gives FLAC full fake-lossless detection and every
-// other format here a real ffprobe/spectral read with no lossless verdict.
+// core.AnalyzeAudioFile runs full fake-lossless detection for FLAC; every
+// other extension here only gets an ffprobe/spectral read with no lossless verdict.
 var supportedAnalyzeExtensions = map[string]bool{
 	".flac": true, ".mp3": true, ".m4a": true, ".mp4": true, ".m4b": true,
 	".aac": true, ".wav": true, ".aiff": true, ".aif": true, ".ogg": true,
 	".opus": true, ".ape": true, ".wv": true, ".mpc": true,
 }
 
-// resolveAnalyzePath returns the absolute file path to analyse.
-// For multipart uploads the file is written to /tmp; the caller must remove it.
+// When a multipart upload was used, the caller is responsible for deleting
+// the temp file that gets written to /tmp.
 func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
-	// Try multipart first
 	file, uploadErr := c.FormFile("file")
 	if uploadErr == nil {
 		ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -111,15 +98,14 @@ func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 		}
 		tmp := fmt.Sprintf("/tmp/flacidal-analyze-%s", file.Filename)
 		if saveErr := c.SaveFile(file, tmp); saveErr != nil {
-			return "", "", fmt.Errorf("failed to save uploaded file: %w", saveErr)
+			return "", "", fmt.Errorf("could not save uploaded file: %w", saveErr)
 		}
 		return tmp, tmp, nil
 	}
 
-	// Fall back to JSON body {"path": "..."}
 	var req analyzeRequest
 	if parseErr := c.BodyParser(&req); parseErr != nil {
-		return "", "", fmt.Errorf("provide either a multipart 'file' field or JSON {\"path\": \"...\"}")
+		return "", "", fmt.Errorf("send either a multipart 'file' field or a JSON {\"path\": \"...\"} body")
 	}
 	if req.Path == "" {
 		return "", "", fmt.Errorf("path is required")
@@ -130,14 +116,13 @@ func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 	return req.Path, "", nil
 }
 
-// buildAnalyzeResponse converts core.AnalysisResult → AnalyzeResponse fiber.Map.
 func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 	msg := r.Details
 	if msg == "" {
 		if r.IsTrueLossless {
-			msg = "Authentic lossless"
+			msg = "Genuinely lossless"
 		} else {
-			msg = fmt.Sprintf("Upscaled lossy detected — spectral cutoff: %d Hz", r.SpectrumCutoff)
+			msg = fmt.Sprintf("Detected as upscaled lossy — spectral cutoff at %d Hz", r.SpectrumCutoff)
 		}
 	}
 
@@ -147,9 +132,9 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 	}
 
 	return fiber.Map{
-		// Only a real upscale-detection verdict means "upscaled" -- a lossy
-		// format's own verdict is "not_applicable" (no fake-lossless claim to
-		// make), which isn't the same as IsTrueLossless being false.
+		// "isUpscaled" is only true for an actual upscale-detection verdict; a
+		// lossy format reports "not_applicable" instead, since it never makes a
+		// fake-lossless claim to begin with — distinct from IsTrueLossless == false.
 		"isUpscaled":     r.Verdict == "upscaled" || r.Verdict == "likely_upscaled",
 		"spectralCutoff": r.SpectrumCutoff,
 		"format":         format,
@@ -164,5 +149,5 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 }
 
 func cleanupTemp(path string) {
-	os.Remove(path) //nolint:errcheck — best-effort cleanup of temp uploaded file
+	os.Remove(path) //nolint:errcheck — deleting the temp upload is best-effort only
 }

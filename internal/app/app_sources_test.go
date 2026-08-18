@@ -8,26 +8,27 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Characterization tests for the "Source Manager Methods" section of app.go,
-// plus GetSourceHealth/poolSnapshotStatus/InstallSldl/GetSldlStatus/
-// TestSoulseekConnection, which share app.go's "Converter Methods" comment
-// header in the original file despite being about source health/Soulseek
-// (see app_converter_test.go for the actual FFmpeg/conversion methods).
+// Behavioral snapshot tests covering the source manager methods section of
+// app.go, plus GetSourceHealth/poolSnapshotStatus/InstallSldl/GetSldlStatus/
+// TestSoulseekConnection, which live under app.go's "Converter Methods"
+// comment header in the original file despite being about source
+// health/Soulseek (see app_converter_test.go for the actual FFmpeg/conversion
+// methods).
 //
-// NOT tested here (documented, not fixed):
-//   - InstallSldl: downloads a real sldl binary over the network and emits
-//     progress via runtime.EventsEmit, requiring a real Wails runtime context.
-//   - TestSoulseekConnection's "binary present" branches: spawn a real sldl
-//     process with a 30s timeout. Only the "binary not found" early return
-//     (before any process is spawned) is exercised.
+// Deliberately left uncovered here:
+//   - InstallSldl: pulls a real sldl binary over the network and reports
+//     progress through runtime.EventsEmit, which needs an actual Wails runtime context.
+//   - TestSoulseekConnection's "binary present" branches: these spawn a real
+//     sldl process with a 30s timeout. Only the "binary not found" early
+//     return, before any process is spawned, is covered.
 //   - FetchContentFromURL / GetSourceTrack / GetSourceAlbum / GetSourcePlaylist
-//     success paths, ExpandDiscographyURL / QueueDiscographyAlbums success
-//     paths: all require live network access to a registered source. Only
-//     nil-guard and "not found"/"not detected" branches are exercised.
-//   - ResolveViaOdesli's success path (a real Odesli/song.link HTTP call):
-//     same live-network exclusion. PickOdesliCandidate covers its pure
-//     selection logic instead, and ResolveViaOdesli's no-sources-registered
-//     short-circuit is covered directly.
+//     success paths, along with ExpandDiscographyURL / QueueDiscographyAlbums
+//     success paths: each needs live network access to a registered source.
+//     Only the nil-guard and "not found"/"not detected" branches are covered.
+//   - ResolveViaOdesli's success path, a real Odesli/song.link HTTP call:
+//     excluded for the same live-network reason. PickOdesliCandidate covers
+//     its pure selection logic instead, and ResolveViaOdesli's
+//     no-sources-registered short-circuit is covered directly.
 
 func TestGetSourceHealth(t *testing.T) {
 	t.Run("all nil", func(t *testing.T) {
@@ -49,9 +50,9 @@ func TestGetSourceHealth(t *testing.T) {
 		if got[0].Name != "soulseek" || got[0].Status != "dead" {
 			t.Errorf("GetSourceHealth() soulseek entry = %+v, want Status=dead", got[0])
 		}
-		// Current behavior: the credentials check runs before the binary-missing
-		// check, so an empty username/password reports "credentials not
-		// configured" even though the binary is also missing.
+		// As implemented, the credentials check happens before the check for a
+		// missing binary, so a blank username/password still reports
+		// "credentials not configured" even though the binary is missing too.
 		if got[0].Reason != "credentials not configured" {
 			t.Errorf("GetSourceHealth() soulseek reason = %q, want %q (current priority order)", got[0].Reason, "credentials not configured")
 		}
@@ -125,7 +126,7 @@ func TestGetPreferredSource_DefaultsToTidal(t *testing.T) {
 }
 
 func TestSetPreferredSource(t *testing.T) {
-	a := &App{sourceManager: core.NewSourceManager()} // nil logBuffer is nil-guarded
+	a := &App{sourceManager: core.NewSourceManager()} // logBuffer stays nil; the code guards against that
 	a.SetPreferredSource("qobuz")
 	got, ok := a.sourceManager.GetPreferredSource()
 	if ok {
@@ -149,8 +150,8 @@ func TestFetchContentFromURL_NoSourcesRegistered(t *testing.T) {
 }
 
 func TestResolveViaOdesli_NoSourcesRegistered(t *testing.T) {
-	// Must short-circuit before any network call — no registered source
-	// could consume the result anyway.
+	// This should short-circuit before making any network call, since no
+	// registered source would be able to use the result anyway.
 	a := &App{sourceManager: core.NewSourceManager()}
 	if _, err := ResolveViaOdesli(a.sourceManager, "https://music.apple.com/us/album/x/123"); err == nil {
 		t.Error("ResolveViaOdesli() with no registered sources: want error, got nil")
@@ -284,12 +285,13 @@ func TestUpdateQobuzCredentials_NilQobuzSourceSelfInitializes(t *testing.T) {
 }
 
 func TestIsQobuzConfigured(t *testing.T) {
-	// Note: QobuzSource.IsAvailable() short-circuits true when appID+appSecret+
-	// userAuthToken are all set; otherwise it falls back to endpoint-pool
-	// liveness (true by default on a freshly constructed pool, regardless of
-	// credentials). So only the fully-configured case is deterministic here —
-	// asserting "no credentials -> false" would depend on that pool's default
-	// liveness state, not on credentials, and would be a flaky characterization.
+	// Note: QobuzSource.IsAvailable() returns true immediately once appID,
+	// appSecret, and userAuthToken are all set; otherwise it defers to
+	// endpoint-pool liveness, which defaults to true on a freshly built pool
+	// regardless of credentials. That means only the fully-configured case
+	// behaves deterministically here — asserting "no credentials -> false"
+	// would hinge on the pool's default liveness rather than credentials, making
+	// it a flaky check.
 	t.Run("fully configured (appID+secret+authToken)", func(t *testing.T) {
 		qs := core.NewQobuzSource("app-id", "app-secret")
 		qs.SetCredentials("app-id", "app-secret", "auth-token")

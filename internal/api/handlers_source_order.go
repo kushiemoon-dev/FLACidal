@@ -8,12 +8,10 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// handleSetSourceOrder implements POST /api/sources/order.
-// Mirrors internal/app's App.SetSourceOrder via the shared
-// app.ValidateSourceOrder, except it has no equivalent of
-// a.orchestrator.SetPriority — the Server struct has no orchestrator field
-// (that's a Wails-app-only concern for live in-flight request routing), so
-// only the persisted config + download manager priority are updated here.
+// Unlike internal/app's App.SetSourceOrder, this has nothing equivalent to
+// a.orchestrator.SetPriority since Server carries no orchestrator field —
+// that's specific to the Wails app's live in-flight request routing. Only
+// the persisted config and the download manager's priority get updated here.
 func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 	var req struct {
 		Order []string `json:"order"`
