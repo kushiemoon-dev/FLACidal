@@ -70,6 +70,7 @@ coverage.html
 docs/plans/
 docs/superpowers/
 .agents/
+.claude/
 task_plan.md
 task_plan_phase*.md
 findings.md
