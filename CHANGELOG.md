@@ -1,5 +1,24 @@
 # Changelog
 
+## v4.16.0 — 2026-08-21
+
+### New features
+- **Dolby Atmos in the quality selector** — the UI-side counterpart to flacidal-core's Atmos support; `ATMOS` was already a valid value for `Config.downloadQuality`, just missing its `<option>`.
+- **ReplayGain toggle in Settings** — wires `Config.enableReplayGain` through `GetConfig`/`SaveConfig`/`ResetToDefaults`.
+- **BPM and musical key in the Audio Quality Analyzer** — best-effort via the optional `aubiotrack`/`keyfinder-cli` binaries (zero value if either is missing), shown as new columns in the results table and now persisted into the file's tags via `EmbedAudioFeatures`, not just shown in the UI and lost when the page closes. Detected keys are converted to Camelot notation so they match what auto-tagged Tidal downloads already show, instead of the Analyzer saying "Dm" for the same key Tidal tags as "7A".
+- **Scan an existing folder for fake-lossless FLAC files** — the Analyzer's "select folder" path used to be a stub that silently fell back to single-file picking. Reuses the same recursive FLAC listing as folder conversion, so a library can be checked retroactively for files an untrusted source delivered as fake lossless before the download-time gate existed.
+- **Deezer retag from the Quality Analyzer** — Scan Folder and single-file analysis now also fill in album/tracknumber/discnumber/year/genre/cover from Deezer, not just BPM/key, in the same pass.
+- **The analyzer accepts non-FLAC files** — both the multipart upload and the `{"path": ...}` JSON variant used to only handle `.flac`; both now go through flacidal-core's format-agnostic analyzer, which still gives FLAC its full fake-lossless spectral check and gives every other supported format (mp3/m4a/wav/ogg/opus/...) real sample-rate/spectral data without a false lossless verdict.
+
+### Fixes
+- **Self-hosted Tidal endpoints didn't apply to playlist/album/track browsing** — that path runs through a separate `TidalHifiService` instance than the downloader, which never received the custom/priority endpoints configured in Settings, so browsing stayed on the public pool even with a self-host set up. The instances are now kept in sync.
+- **Download history stayed empty** — `DownloadManager.SetJobCompleteCallback` existed to persist a history entry after every job, but nothing ever registered it, making failed tracks impossible to diagnose after the fact. Wired on startup.
+- **Single-track downloads and retries lost album metadata** — `QueueSingleDownload`/`RetryDownload` already fetched the full Tidal track before queueing but only pulled ISRC/title/artist out of it, so the retag step never saw album/tracknumber/discnumber/year/cover. Now passes the whole track through.
+
+### Internal
+- Bumped `flacidal-core` to v0.19.0 — installed extensions can now actually be used as a download source (previously listable but inert), song.link scraping kicks in when Odesli's API rate-limits, and several crash-safety fixes (atomic tag writes, staged downloads, oversized-cover rejection, streaming ISRC scans). See flacidal-core's own changelog for detail.
+- Go bumped to 1.26.5, `.golangci.yml` migrated to v2 format, GitHub Actions pinned to commit SHA, a stale `postcss` bumped for an osv-scanner CVE flag.
+
 ## v4.15.2 — 2026-07-25
 
 ### Fixes
