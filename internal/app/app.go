@@ -147,14 +147,7 @@ func (a *App) Startup(ctx context.Context) {
 		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoints: %d configured (override)", len(config.TidalHifiEndpoints)))
 	} else {
 		base := core.GetTidalEndpoints()
-		priority := config.TidalPriorityEndpoints
-		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-			priority = []string{config.TidalCustomEndpoint} // kept for compatibility with the older single-endpoint field
-		}
-		if len(priority) > 0 {
-			a.downloader.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Tidal HiFi priority pool: %d self-hosted + %d public", len(priority), len(base)))
-		}
+		a.downloader.SetEndpoints(base)
 	}
 	quality := config.DownloadQuality
 	if quality == "" {
@@ -300,13 +293,7 @@ func (a *App) Startup(ctx context.Context) {
 		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 	} else {
 		base := core.GetTidalEndpoints()
-		priority := config.TidalPriorityEndpoints
-		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-			priority = []string{config.TidalCustomEndpoint}
-		}
-		if len(priority) > 0 {
-			a.tidalSource.GetService().SetEndpoints(append(priority, base...))
-		}
+		a.tidalSource.GetService().SetEndpoints(base)
 	}
 	a.sourceManager.RegisterSource(a.tidalSource)
 	a.logBuffer.Info("Registered the Tidal source")
@@ -323,14 +310,7 @@ func (a *App) Startup(ctx context.Context) {
 		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoints: %d configured (override)", len(config.QobuzEndpoints)))
 	} else {
 		base := core.DefaultQobuzEndpoints()
-		priority := config.QobuzPriorityEndpoints
-		if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
-			priority = []string{config.QobuzCustomEndpoint} // kept for compatibility with the older single-endpoint field
-		}
-		if len(priority) > 0 {
-			a.qobuzSource.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Qobuz priority pool: %d self-hosted + %d public", len(priority), len(base)))
-		}
+		a.qobuzSource.SetEndpoints(base)
 	}
 	if config.QobuzAuthToken != "" {
 		a.qobuzSource.SetCredentials(config.QobuzAppID, config.QobuzAppSecret, config.QobuzAuthToken)
@@ -355,10 +335,9 @@ func (a *App) Startup(ctx context.Context) {
 	if len(config.AmazonProxyEndpoints) > 0 {
 		a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Amazon endpoints: %d configured (override)", len(config.AmazonProxyEndpoints)))
-	} else if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
+	} else {
 		base := core.GetEndpoints("amazon")
-		a.amazonSource.SetEndpoints(append(priority, base...))
-		a.logBuffer.Info(fmt.Sprintf("Amazon priority pool: %d self-hosted + %d public", len(priority), len(base)))
+		a.amazonSource.SetEndpoints(base)
 	}
 	a.sourceManager.RegisterSource(a.amazonSource)
 	a.logBuffer.Info("Amazon Music fallback source ready")
