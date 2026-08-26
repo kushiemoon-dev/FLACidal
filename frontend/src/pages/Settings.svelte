@@ -1414,6 +1414,11 @@
                     class:slow={src.status === 'degraded' || src.status === 'untested'}>
                     {src.status}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
                   </span>
+                  {#if src.tier1}
+                    <span class="status-badge status-badge-sm" class:ok={src.tier1.healthy} class:error={!src.tier1.healthy}>
+                      Self-host: {src.tier1.healthy ? 'healthy' : 'unhealthy'}
+                    </span>
+                  {/if}
                   {#if src.reason}
                     <span style="font-size:0.7rem;color:var(--color-text-tertiary);max-width:260px;text-align:right">{src.reason}</span>
                   {/if}
