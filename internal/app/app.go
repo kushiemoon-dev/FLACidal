@@ -141,7 +141,7 @@ func (a *App) Startup(ctx context.Context) {
 			a.logBuffer.Warn("Downloader proxy misconfigured: " + err.Error())
 		}
 	}
-	// TidalHifiEndpoints fully replaces the gist-sourced list; TidalCustomEndpoint is prepended to it instead.
+	// TidalHifiEndpoints fully replaces the default endpoints.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoints: %d configured (override)", len(config.TidalHifiEndpoints)))
@@ -285,10 +285,6 @@ func (a *App) Startup(ctx context.Context) {
 
 	a.tidalSource = core.NewTidalSource()
 	a.tidalSource.SetAvailable(config.TidalEnabled)
-	// Copy the downloader's custom/priority endpoints here too, so playlist,
-	// album, and track fetches (handled by this separate TidalHifiService
-	// instance) also route through the self-hosted proxy rather than falling
-	// back to the public pool.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 	} else {
