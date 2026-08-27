@@ -1,5 +1,19 @@
 # Changelog
 
+## v4.17.0 — 2026-08-27
+
+### Fixes
+- **Self-hosted priority endpoints (Tidal/Qobuz/Amazon) were configured but never actually used** (#13) — the setting existed in Settings and got saved, but nothing in the desktop app or the headless server (`cmd/server`) ever wired it into the endpoint pool. A self-hosted instance just sat there doing nothing: every request still went through the public community pool, which is what was actually getting rate-limited and blacklisted, and the source got reported as fully dead even though your own instance was fine the whole time. Root cause lived in flacidal-core (see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md) for the pool internals) — self-hosted endpoints are now tried first, with the public pool only as fallback if self-host is actually down.
+- **Status page could still show a source as "dead" while its self-host instance was healthy** — a blacklisted-but-not-dead endpoint counted as "up" for the self-host badge but "down" for the overall status, so the two could contradict each other on the same row. The overall status now defers to self-host health when it's the one keeping a source alive.
+- **A source with no valid endpoints configured at all (e.g. a rejected self-host URL) was misreported as "upstream is down"** instead of "nothing configured" — mattered most for Amazon, whose pool has no fallback-to-defaults if every configured URL gets rejected by the security filter (must be `https://`, or `http://` on loopback/private addresses only).
+- Double `soulseek: soulseek:` prefix in fallback error messages, and a couple of cases where a Soulseek failure could get misattributed.
+
+### Known limitation
+A self-hosted endpoint that accepts a connection and then never responds (hangs, no error) isn't currently detected as unhealthy — only real failures (5xx, 401/403, connection refused, DNS failure) are. If your self-host instance is up but broken in a way that just hangs requests, it'll keep getting tried and slow things down rather than falling back. A real crash or an HTTP error response is handled correctly.
+
+### Internal
+- Bumped `flacidal-core` to v0.20.0 — see its changelog for the pool/tier internals.
+
 ## v4.16.0 — 2026-08-21
 
 ### New features
