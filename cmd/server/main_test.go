@@ -8,6 +8,30 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
+func TestApplyPriorityEndpoints(t *testing.T) {
+	t.Run("empty urls: setPriority is not called", func(t *testing.T) {
+		called := false
+		applyPriorityEndpoints("test", func(urls []string) int {
+			called = true
+			return len(urls)
+		}, nil)
+		if called {
+			t.Error("applyPriorityEndpoints() should not call setPriority when urls is empty")
+		}
+	})
+
+	t.Run("non-empty urls: setPriority is called with the same list", func(t *testing.T) {
+		var got []string
+		applyPriorityEndpoints("test", func(urls []string) int {
+			got = urls
+			return len(urls)
+		}, []string{"https://a.example", "https://b.example"})
+		if len(got) != 2 {
+			t.Errorf("applyPriorityEndpoints() called setPriority with %d urls, want 2", len(got))
+		}
+	})
+}
+
 func TestRegisterSoulseekSource(t *testing.T) {
 	t.Run("disabled: never registered", func(t *testing.T) {
 		sm := core.NewSourceManager()
