@@ -1404,15 +1404,21 @@
       {#if sourceHealth.length > 0}
         <div class="api-status-list">
           {#each sourceHealth as src}
+            <!-- status only counts live/probation endpoints, while tier1.healthy counts
+                 anything not dead, so a merely blacklisted self-hosted endpoint would
+                 otherwise render as "dead" right next to "Self-host: healthy". A working
+                 self-hosted endpoint means the source is degraded, never fully dead. -->
+            {@const displayStatus = src.tier1?.healthy && src.status === 'dead' ? 'degraded' : src.status}
             <div class="api-status-item" class:api-status-item-expanded={src.endpoints?.length > 0}>
               <div class="api-status-row">
                 <span class="api-name">{src.displayName}</span>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
                   <span class="status-badge"
-                    class:ok={src.status === 'online'}
-                    class:error={src.status === 'dead'}
-                    class:slow={src.status === 'degraded' || src.status === 'untested'}>
-                    {src.status}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
+                    class:ok={displayStatus === 'online'}
+                    class:error={displayStatus === 'dead'}
+                    class:slow={displayStatus === 'degraded' || displayStatus === 'untested'}
+                    title={displayStatus !== src.status ? 'Public endpoints are all down, but your self-hosted endpoints are still serving this source' : null}>
+                    {displayStatus}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
                   </span>
                   {#if src.tier1}
                     <span class="status-badge status-badge-sm" class:ok={src.tier1.healthy} class:error={!src.tier1.healthy}>
