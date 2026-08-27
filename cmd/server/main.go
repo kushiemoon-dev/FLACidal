@@ -49,12 +49,16 @@ func main() {
 
 	downloader := core.NewTidalHifiService()
 
-	// Priority (self-hosted) endpoint wiring. This binary never calls
-	// SetEndpoints on any of these sources (it runs on their hardcoded
+	// Priority (self-hosted) endpoint wiring. The downloader, tidalSource's
+	// service, and Qobuz's proxy pool never get a base SetEndpoints/
+	// SetProxyEndpoints call in this file (they run on their hardcoded
 	// package-default base pools — a separate, pre-existing gap, not fixed
 	// here), so there's no SetEndpoints-then-SetPriorityEndpoints ordering
-	// risk to worry about below: SetEndpoints wipes all tiers if it runs
-	// after SetPriorityEndpoints, but it's simply never called in this file.
+	// risk for those three: SetEndpoints wipes all tiers if it runs after
+	// SetPriorityEndpoints, but it's simply never called against any of
+	// them. (Qobuz's catalog list IS given a SetEndpoints call below, but
+	// that list has no SetPriorityEndpoints counterpart to race against —
+	// see the note at that call site.)
 	tidalPriority := core.ResolvePriorityEndpoints(config.TidalPriorityEndpoints, config.TidalCustomEndpoint)
 	applyPriorityEndpoints("Tidal HiFi (downloader)", downloader.SetPriorityEndpoints, tidalPriority)
 
@@ -87,6 +91,9 @@ func main() {
 	// backing array through append's slice aliasing.
 	if len(qobuzPriority) > 0 {
 		catalogEndpoints := append(append([]string{}, qobuzPriority...), core.DefaultQobuzEndpoints()...)
+		// No ordering hazard here: q.endpoints (the catalog list) has no
+		// SetPriorityEndpoints counterpart, so this SetEndpoints call can't
+		// wipe or race against a tier1 set on the same target.
 		qobuzSource.SetEndpoints(catalogEndpoints)
 		log.Printf("Qobuz catalog endpoints: %d self-hosted configured ahead of the public defaults", len(qobuzPriority))
 	}
