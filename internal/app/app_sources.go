@@ -80,11 +80,21 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 		} else {
 			reason = "sldl not installed"
 		}
+		// A non-empty reason here always means a local configuration problem
+		// (missing credentials or a missing sldl binary), never a network
+		// failure — this branch issues no request at all — so it is exactly
+		// what FailureKindConfig describes, and it lets the UI name what is
+		// missing via Reason instead of blaming an upstream outage.
+		failureKind := core.FailureKindNone
+		if reason != "" {
+			failureKind = core.FailureKindConfig
+		}
 		results = append(results, core.SourceHealth{
 			Name:        "soulseek",
 			DisplayName: "Soulseek",
 			Status:      status,
 			Reason:      reason,
+			FailureKind: failureKind,
 		})
 	}
 
@@ -119,8 +129,11 @@ func poolSnapshotStatus(snaps []core.EndpointStat) string {
 // every entry in the full snapshot (both tiers) is dead — the same
 // no-live-endpoint condition Core's own live probes (probeQobuz, probeAmazon,
 // ProbeTidalService) use, just computed from a snapshot instead of a fresh
-// check. nextRevivalETASecs is only invoked in that case, since RetryETASecs
-// is meaningless otherwise.
+// check. An empty snaps means no endpoint is configured at all rather than
+// every endpoint being down, so it reports FailureKindNone — matching the
+// "untested" that poolSnapshotStatus returns for the same input into the
+// neighbouring Status field. nextRevivalETASecs is only invoked when
+// FailureKindUpstream is reported, since RetryETASecs is meaningless otherwise.
 func poolSnapshotTier1Status(snaps, tier1Snaps []core.EndpointStat, nextRevivalETASecs func() int) (*core.Tier1Status, core.FailureKind, int) {
 	var tier1 *core.Tier1Status
 	tier1Healthy := false
@@ -146,7 +159,7 @@ func poolSnapshotTier1Status(snaps, tier1Snaps []core.EndpointStat, nextRevivalE
 		}
 	}
 
-	if !tier1Healthy && allDead {
+	if !tier1Healthy && allDead && len(snaps) > 0 {
 		return tier1, core.FailureKindUpstream, nextRevivalETASecs()
 	}
 	return tier1, core.FailureKindNone, 0
