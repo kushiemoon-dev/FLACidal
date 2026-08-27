@@ -27,31 +27,46 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 
 	if a.downloader != nil {
 		snaps := a.downloader.PoolSnapshot()
+		tier1Snaps := a.downloader.Tier1PoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.downloader.NextRevivalETASecs)
 		results = append(results, core.SourceHealth{
-			Name:        "tidal",
-			DisplayName: "Tidal HiFi",
-			Status:      poolSnapshotStatus(snaps),
-			Endpoints:   snaps,
+			Name:         "tidal",
+			DisplayName:  "Tidal HiFi",
+			Status:       poolSnapshotStatus(snaps),
+			Endpoints:    snaps,
+			Tier1:        tier1,
+			FailureKind:  failureKind,
+			RetryETASecs: retryETASecs,
 		})
 	}
 
 	if a.qobuzSource != nil {
 		snaps := a.qobuzSource.ProxyPoolSnapshot()
+		tier1Snaps := a.qobuzSource.Tier1ProxyPoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.qobuzSource.ProxyNextRevivalETASecs)
 		results = append(results, core.SourceHealth{
-			Name:        "qobuz",
-			DisplayName: "Qobuz",
-			Status:      poolSnapshotStatus(snaps),
-			Endpoints:   snaps,
+			Name:         "qobuz",
+			DisplayName:  "Qobuz",
+			Status:       poolSnapshotStatus(snaps),
+			Endpoints:    snaps,
+			Tier1:        tier1,
+			FailureKind:  failureKind,
+			RetryETASecs: retryETASecs,
 		})
 	}
 
 	if a.amazonSource != nil {
 		snaps := a.amazonSource.PoolSnapshot()
+		tier1Snaps := a.amazonSource.Tier1PoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.amazonSource.NextRevivalETASecs)
 		results = append(results, core.SourceHealth{
-			Name:        "amazon",
-			DisplayName: "Amazon Music",
-			Status:      poolSnapshotStatus(snaps),
-			Endpoints:   snaps,
+			Name:         "amazon",
+			DisplayName:  "Amazon Music",
+			Status:       poolSnapshotStatus(snaps),
+			Endpoints:    snaps,
+			Tier1:        tier1,
+			FailureKind:  failureKind,
+			RetryETASecs: retryETASecs,
 		})
 	}
 
@@ -94,6 +109,47 @@ func poolSnapshotStatus(snaps []core.EndpointStat) string {
 	default:
 		return "online"
 	}
+}
+
+// poolSnapshotTier1Status derives a source's Tier1 status, FailureKind, and
+// RetryETASecs purely from already-fetched pool snapshots — no network
+// calls, matching this file's no-live-probe constraint (see GetSourceHealth's
+// doc comment). tier1Snaps empty means Tier1 stays nil (not configured).
+// FailureKindUpstream is only reported once no tier1 entry is healthy AND
+// every entry in the full snapshot (both tiers) is dead — the same
+// no-live-endpoint condition Core's own live probes (probeQobuz, probeAmazon,
+// ProbeTidalService) use, just computed from a snapshot instead of a fresh
+// check. nextRevivalETASecs is only invoked in that case, since RetryETASecs
+// is meaningless otherwise.
+func poolSnapshotTier1Status(snaps, tier1Snaps []core.EndpointStat, nextRevivalETASecs func() int) (*core.Tier1Status, core.FailureKind, int) {
+	var tier1 *core.Tier1Status
+	tier1Healthy := false
+	if len(tier1Snaps) > 0 {
+		for _, ep := range tier1Snaps {
+			if ep.State != "dead" {
+				tier1Healthy = true
+				break
+			}
+		}
+		tier1 = &core.Tier1Status{
+			Configured: true,
+			Healthy:    tier1Healthy,
+			Endpoints:  tier1Snaps,
+		}
+	}
+
+	allDead := true
+	for _, ep := range snaps {
+		if ep.State != "dead" {
+			allDead = false
+			break
+		}
+	}
+
+	if !tier1Healthy && allDead {
+		return tier1, core.FailureKindUpstream, nextRevivalETASecs()
+	}
+	return tier1, core.FailureKindNone, 0
 }
 
 func (a *App) InstallSldl() error {
