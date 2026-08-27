@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
@@ -56,6 +57,12 @@ func TestGetSourceHealth(t *testing.T) {
 		if got[0].Reason != "credentials not configured" {
 			t.Errorf("GetSourceHealth() soulseek reason = %q, want %q (current priority order)", got[0].Reason, "credentials not configured")
 		}
+		// A reason means the source is dead over local configuration, not over a
+		// network probe, so the UI can name what is missing rather than showing
+		// an upstream-outage message.
+		if got[0].FailureKind != core.FailureKindConfig {
+			t.Errorf("GetSourceHealth() soulseek failureKind = %q, want %q", got[0].FailureKind, core.FailureKindConfig)
+		}
 	})
 }
 
@@ -77,6 +84,67 @@ func TestPoolSnapshotStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPoolSnapshotTier1Status(t *testing.T) {
+	const etaSentinel = 42
+	tests := []struct {
+		name            string
+		snaps           []core.EndpointStat
+		tier1Snaps      []core.EndpointStat
+		wantTier1       *core.Tier1Status
+		wantFailureKind core.FailureKind
+		wantRetryETA    int
+	}{
+		// An empty pool means "nothing is configured", not "upstream is down".
+		// AmazonSource.SetEndpoints has no fallback to package defaults, so a
+		// user whose configured endpoints are all rejected by
+		// filterSecureEndpoints (e.g. a LAN hostname like http://nas.home:9000)
+		// really does end up with an empty pool here.
+		{"empty", nil, nil, nil, core.FailureKindNone, 0},
+		{"all dead, no tier1", []core.EndpointStat{{State: "dead"}, {State: "dead"}}, nil, nil, core.FailureKindUpstream, etaSentinel},
+		{
+			"tier1 healthy despite every entry dead in the public pool",
+			[]core.EndpointStat{{State: "dead"}, {State: "blacklisted"}},
+			[]core.EndpointStat{{State: "blacklisted"}},
+			&core.Tier1Status{Configured: true, Healthy: true, Endpoints: []core.EndpointStat{{State: "blacklisted"}}},
+			core.FailureKindNone,
+			0,
+		},
+		{
+			"tier1 configured but every tier1 entry dead, public pool still has a live entry",
+			[]core.EndpointStat{{State: "live"}, {State: "dead"}},
+			[]core.EndpointStat{{State: "dead"}},
+			&core.Tier1Status{Configured: true, Healthy: false, Endpoints: []core.EndpointStat{{State: "dead"}}},
+			core.FailureKindNone,
+			0,
+		},
+		{"mixed, no tier1", []core.EndpointStat{{State: "live"}, {State: "dead"}}, nil, nil, core.FailureKindNone, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotTier1, gotKind, gotETA := poolSnapshotTier1Status(tt.snaps, tt.tier1Snaps, func() int { return etaSentinel })
+			if !reflect.DeepEqual(gotTier1, tt.wantTier1) {
+				t.Errorf("poolSnapshotTier1Status(%v, %v) tier1 = %+v, want %+v", tt.snaps, tt.tier1Snaps, gotTier1, tt.wantTier1)
+			}
+			if gotKind != tt.wantFailureKind {
+				t.Errorf("poolSnapshotTier1Status(%v, %v) failureKind = %q, want %q", tt.snaps, tt.tier1Snaps, gotKind, tt.wantFailureKind)
+			}
+			if gotETA != tt.wantRetryETA {
+				t.Errorf("poolSnapshotTier1Status(%v, %v) retryETASecs = %d, want %d", tt.snaps, tt.tier1Snaps, gotETA, tt.wantRetryETA)
+			}
+		})
+	}
+
+	// The two functions feed neighbouring fields of the same SourceHealth, so an
+	// empty snapshot must not be "untested" on one and an upstream outage on the
+	// other.
+	t.Run("empty snapshot agrees with poolSnapshotStatus", func(t *testing.T) {
+		_, gotKind, _ := poolSnapshotTier1Status(nil, nil, func() int { return etaSentinel })
+		if got := poolSnapshotStatus(nil); got == "untested" && gotKind == core.FailureKindUpstream {
+			t.Errorf("empty snapshot reports Status=%q alongside FailureKind=%q, which contradict each other", got, gotKind)
+		}
+	})
 }
 
 func TestGetSldlStatus(t *testing.T) {
