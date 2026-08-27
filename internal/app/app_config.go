@@ -22,6 +22,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
 		a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
 	}
+	tidalPriority := core.ResolvePriorityEndpoints(config.TidalPriorityEndpoints, config.TidalCustomEndpoint)
 	if a.downloader != nil {
 		opts := a.downloader.GetOptions()
 		opts.AutoQualityFallback = config.AutoQualityFallback
@@ -45,21 +46,16 @@ func (a *App) SaveConfig(config core.Config) error {
 		opts.SaveLyricsFile = config.SaveLyricsFile
 		opts.SaveFolderCover = config.SaveFolderCover
 		a.downloader.SetOptions(opts)
-		// An override always wins, otherwise priority entries go ahead of the public pool.
+		// An override always wins for the base pool; priority endpoints are layered
+		// on top separately below via SetPriorityEndpoints, regardless of whether an
+		// override is set — see Startup for the equivalent wiring.
 		if len(config.TidalHifiEndpoints) > 0 {
 			a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		} else {
 			base := core.GetTidalEndpoints()
-			priority := config.TidalPriorityEndpoints
-			if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-				priority = []string{config.TidalCustomEndpoint}
-			}
-			if len(priority) > 0 {
-				a.downloader.SetEndpoints(append(priority, base...))
-			} else {
-				a.downloader.SetEndpoints(base)
-			}
+			a.downloader.SetEndpoints(base)
 		}
+		applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (downloader)", a.downloader.SetPriorityEndpoints, tidalPriority)
 	}
 	if a.tidalSource != nil {
 		// Copy the downloader's endpoint list onto the source manager's Tidal
@@ -68,46 +64,51 @@ func (a *App) SaveConfig(config core.Config) error {
 			a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 		} else {
 			base := core.GetTidalEndpoints()
-			priority := config.TidalPriorityEndpoints
-			if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-				priority = []string{config.TidalCustomEndpoint}
-			}
-			if len(priority) > 0 {
-				a.tidalSource.GetService().SetEndpoints(append(priority, base...))
-			} else {
-				a.tidalSource.GetService().SetEndpoints(base)
-			}
+			a.tidalSource.GetService().SetEndpoints(base)
 		}
+		applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (source)", a.tidalSource.GetService().SetPriorityEndpoints, tidalPriority)
 	}
 	if a.qobuzSource != nil {
-		// An override always wins, otherwise priority entries go ahead of the public pool.
+		// An override always wins for the catalog base pool; priority entries are
+		// layered on top separately below, regardless of whether an override is
+		// set — see Startup for the equivalent wiring.
 		if len(config.QobuzEndpoints) > 0 {
 			a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
 		} else {
 			base := core.DefaultQobuzEndpoints()
-			priority := config.QobuzPriorityEndpoints
-			if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
-				priority = []string{config.QobuzCustomEndpoint}
+			a.qobuzSource.SetEndpoints(base)
+		}
+		qobuzPriority := core.ResolvePriorityEndpoints(config.QobuzPriorityEndpoints, config.QobuzCustomEndpoint)
+		applyPriorityEndpoints(a.logBuffer, "Qobuz proxy", a.qobuzSource.SetProxyPriorityEndpoints, qobuzPriority)
+		// The proxy pool above is only half of Qobuz: catalog calls (track/album/
+		// playlist/search) go through the separate, tier-less q.endpoints list set
+		// above instead, so priority entries are prepended ahead of that same
+		// catalog base here too, mirroring Startup's identical treatment. The
+		// copy-before-append avoids mutating config.QobuzPriorityEndpoints's backing
+		// array through append's slice aliasing (ResolvePriorityEndpoints can return
+		// that slice by reference).
+		if len(qobuzPriority) > 0 {
+			catalogBase := config.QobuzEndpoints
+			if len(catalogBase) == 0 {
+				catalogBase = core.DefaultQobuzEndpoints()
 			}
-			if len(priority) > 0 {
-				a.qobuzSource.SetEndpoints(append(priority, base...))
-			} else {
-				a.qobuzSource.SetEndpoints(base)
-			}
+			catalogEndpoints := append(append([]string{}, qobuzPriority...), catalogBase...)
+			a.qobuzSource.SetEndpoints(catalogEndpoints)
 		}
 	}
 	if a.amazonSource != nil {
-		// Refresh endpoints on the fly, no restart required: an override always wins, otherwise priority entries go ahead of the public pool.
+		// Refresh endpoints on the fly, no restart required: an override always wins
+		// for the base pool; priority entries are layered on top separately below,
+		// regardless of whether an override is set — see Startup for the equivalent wiring.
 		if len(config.AmazonProxyEndpoints) > 0 {
 			a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
 		} else {
 			base := core.GetEndpoints("amazon")
-			if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
-				a.amazonSource.SetEndpoints(append(priority, base...))
-			} else {
-				a.amazonSource.SetEndpoints(base)
-			}
+			a.amazonSource.SetEndpoints(base)
 		}
+		// No legacy AmazonCustomEndpoint field exists, so config.AmazonPriorityEndpoints
+		// is used directly without ResolvePriorityEndpoints.
+		applyPriorityEndpoints(a.logBuffer, "Amazon", a.amazonSource.SetPriorityEndpoints, config.AmazonPriorityEndpoints)
 	}
 	if a.downloadManager != nil {
 		a.downloadManager.SetSourceOrder(config.SourceOrder)
