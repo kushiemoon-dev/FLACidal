@@ -138,11 +138,9 @@ func (a *App) RefreshTidalEndpoints() ([]string, error) {
 	}
 	// Push the refreshed endpoints to the downloader, unless the user has set a full override
 	if len(a.config.TidalHifiEndpoints) == 0 {
-		if a.config.TidalCustomEndpoint != "" {
-			a.downloader.SetEndpoints(append([]string{a.config.TidalCustomEndpoint}, endpoints...))
-		} else {
-			a.downloader.SetEndpoints(endpoints)
-		}
+		a.downloader.SetEndpoints(endpoints)
+		tidalPriority := core.ResolvePriorityEndpoints(a.config.TidalPriorityEndpoints, a.config.TidalCustomEndpoint)
+		applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (downloader)", a.downloader.SetPriorityEndpoints, tidalPriority)
 		a.logBuffer.Info(fmt.Sprintf("Tidal endpoints refreshed: %d loaded", len(endpoints)))
 	}
 	return endpoints, nil

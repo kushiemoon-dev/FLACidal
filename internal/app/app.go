@@ -90,6 +90,24 @@ func resolveAndPersistSourceOrder(config *core.Config, warnf func(string)) []str
 	return config.SourceOrder
 }
 
+// applyPriorityEndpoints hands a configured self-host list to a source's
+// exported SetPriorityEndpoints-style wrapper (setPriority) and logs how many
+// survived filtering — the underlying Core call silently drops anything that
+// isn't https://, or http:// on a loopback/private address, which from the
+// outside is indistinguishable from the setting being ignored altogether.
+// Mirrors cmd/server/main.go's applyPriorityEndpoints helper.
+func applyPriorityEndpoints(logBuffer *core.LogBuffer, label string, setPriority func([]string) int, urls []string) {
+	if len(urls) == 0 {
+		return
+	}
+	accepted := setPriority(urls)
+	if rejected := len(urls) - accepted; rejected > 0 {
+		logBuffer.Warn(fmt.Sprintf("%s priority endpoints: %d configured, %d rejected (needs https://, or http:// on a loopback/private address)", label, accepted, rejected))
+		return
+	}
+	logBuffer.Info(fmt.Sprintf("%s priority endpoints: %d configured (self-hosted, tried first)", label, accepted))
+}
+
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
@@ -141,21 +159,16 @@ func (a *App) Startup(ctx context.Context) {
 			a.logBuffer.Warn("Downloader proxy misconfigured: " + err.Error())
 		}
 	}
-	// TidalHifiEndpoints fully replaces the gist-sourced list; TidalCustomEndpoint is prepended to it instead.
+	// TidalHifiEndpoints fully replaces the default endpoints.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoints: %d configured (override)", len(config.TidalHifiEndpoints)))
 	} else {
 		base := core.GetTidalEndpoints()
-		priority := config.TidalPriorityEndpoints
-		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-			priority = []string{config.TidalCustomEndpoint} // kept for compatibility with the older single-endpoint field
-		}
-		if len(priority) > 0 {
-			a.downloader.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Tidal HiFi priority pool: %d self-hosted + %d public", len(priority), len(base)))
-		}
+		a.downloader.SetEndpoints(base)
 	}
+	tidalPriority := core.ResolvePriorityEndpoints(config.TidalPriorityEndpoints, config.TidalCustomEndpoint)
+	applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (downloader)", a.downloader.SetPriorityEndpoints, tidalPriority)
 	quality := config.DownloadQuality
 	if quality == "" {
 		quality = "LOSSLESS"
@@ -292,22 +305,16 @@ func (a *App) Startup(ctx context.Context) {
 
 	a.tidalSource = core.NewTidalSource()
 	a.tidalSource.SetAvailable(config.TidalEnabled)
-	// Copy the downloader's custom/priority endpoints here too, so playlist,
-	// album, and track fetches (handled by this separate TidalHifiService
-	// instance) also route through the self-hosted proxy rather than falling
-	// back to the public pool.
 	if len(config.TidalHifiEndpoints) > 0 {
 		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 	} else {
 		base := core.GetTidalEndpoints()
-		priority := config.TidalPriorityEndpoints
-		if len(priority) == 0 && config.TidalCustomEndpoint != "" {
-			priority = []string{config.TidalCustomEndpoint}
-		}
-		if len(priority) > 0 {
-			a.tidalSource.GetService().SetEndpoints(append(priority, base...))
-		}
+		a.tidalSource.GetService().SetEndpoints(base)
 	}
+	// TidalSource owns a second, independent TidalHifiService (its own
+	// endpoint pool) behind every album/playlist/track fetch — it needs the
+	// identical priority list computed above, same as Core's own wiring does.
+	applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (source)", a.tidalSource.GetService().SetPriorityEndpoints, tidalPriority)
 	a.sourceManager.RegisterSource(a.tidalSource)
 	a.logBuffer.Info("Registered the Tidal source")
 
@@ -323,14 +330,26 @@ func (a *App) Startup(ctx context.Context) {
 		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoints: %d configured (override)", len(config.QobuzEndpoints)))
 	} else {
 		base := core.DefaultQobuzEndpoints()
-		priority := config.QobuzPriorityEndpoints
-		if len(priority) == 0 && config.QobuzCustomEndpoint != "" {
-			priority = []string{config.QobuzCustomEndpoint} // kept for compatibility with the older single-endpoint field
+		a.qobuzSource.SetEndpoints(base)
+	}
+	qobuzPriority := core.ResolvePriorityEndpoints(config.QobuzPriorityEndpoints, config.QobuzCustomEndpoint)
+	applyPriorityEndpoints(a.logBuffer, "Qobuz proxy", a.qobuzSource.SetProxyPriorityEndpoints, qobuzPriority)
+	// The proxy pool above is only half of Qobuz: catalog calls (track/album/
+	// playlist/search) go through the separate, tier-less q.endpoints list
+	// set above instead, so priority entries are prepended ahead of that same
+	// catalog base here too, mirroring Core's own qobuzSource.SetEndpoints
+	// call and cmd/server/main.go's identical treatment. The copy-before-append
+	// avoids mutating config.QobuzPriorityEndpoints's backing array through
+	// append's slice aliasing (ResolvePriorityEndpoints can return that slice
+	// by reference).
+	if len(qobuzPriority) > 0 {
+		catalogBase := config.QobuzEndpoints
+		if len(catalogBase) == 0 {
+			catalogBase = core.DefaultQobuzEndpoints()
 		}
-		if len(priority) > 0 {
-			a.qobuzSource.SetEndpoints(append(priority, base...))
-			a.logBuffer.Info(fmt.Sprintf("Qobuz priority pool: %d self-hosted + %d public", len(priority), len(base)))
-		}
+		catalogEndpoints := append(append([]string{}, qobuzPriority...), catalogBase...)
+		a.qobuzSource.SetEndpoints(catalogEndpoints)
+		a.logBuffer.Info(fmt.Sprintf("Qobuz catalog endpoints: %d self-hosted configured ahead of the public defaults", len(qobuzPriority)))
 	}
 	if config.QobuzAuthToken != "" {
 		a.qobuzSource.SetCredentials(config.QobuzAppID, config.QobuzAppSecret, config.QobuzAuthToken)
@@ -355,11 +374,13 @@ func (a *App) Startup(ctx context.Context) {
 	if len(config.AmazonProxyEndpoints) > 0 {
 		a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
 		a.logBuffer.Info(fmt.Sprintf("Amazon endpoints: %d configured (override)", len(config.AmazonProxyEndpoints)))
-	} else if priority := config.AmazonPriorityEndpoints; len(priority) > 0 {
+	} else {
 		base := core.GetEndpoints("amazon")
-		a.amazonSource.SetEndpoints(append(priority, base...))
-		a.logBuffer.Info(fmt.Sprintf("Amazon priority pool: %d self-hosted + %d public", len(priority), len(base)))
+		a.amazonSource.SetEndpoints(base)
 	}
+	// No legacy AmazonCustomEndpoint field exists, so config.AmazonPriorityEndpoints
+	// is used directly without ResolvePriorityEndpoints.
+	applyPriorityEndpoints(a.logBuffer, "Amazon", a.amazonSource.SetPriorityEndpoints, config.AmazonPriorityEndpoints)
 	a.sourceManager.RegisterSource(a.amazonSource)
 	a.logBuffer.Info("Amazon Music fallback source ready")
 

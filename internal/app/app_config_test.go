@@ -63,10 +63,16 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 	a := &App{
 		sourceManager: core.NewSourceManager(),
 		amazonSource:  core.NewAmazonSource(),
+		// SaveConfig now logs through applyPriorityEndpoints whenever priority
+		// endpoints are configured (see Startup), so a logBuffer is required here
+		// the same way Startup always has one before SaveConfig can ever run.
+		logBuffer: core.NewLogBuffer(500),
 	}
 	baseCfg := core.Config{SoulseekBinaryPath: sldlPath}
 
-	// With only a priority endpoint set (no override), the self-hosted entry goes ahead of the public pool.
+	// With only a priority endpoint set (no override), it's promoted to tier1 via
+	// SetPriorityEndpoints, which the pool always places ahead of the base (tier2)
+	// pool set separately via SetEndpoints — see Startup for the equivalent wiring.
 	cfg := baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	if err := a.SaveConfig(cfg); err != nil {
@@ -77,7 +83,9 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 		t.Fatalf("priority endpoint not prepended, got %+v", snap)
 	}
 
-	// With an override set, it wins completely and the priority field is ignored.
+	// An override replaces only the base (tier2) pool; the priority endpoint is
+	// still layered on top via SetPriorityEndpoints regardless of the override,
+	// same as Startup — so both entries are present, with priority still first.
 	cfg = baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	cfg.AmazonProxyEndpoints = []string{"https://override.example"}
@@ -85,8 +93,8 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 	snap = a.amazonSource.PoolSnapshot()
-	if len(snap) != 1 || snap[0].URL != "https://override.example" {
-		t.Fatalf("override endpoints not applied exclusively, got %+v", snap)
+	if len(snap) != 2 || snap[0].URL != "https://my-amazon-proxy.example" || snap[1].URL != "https://override.example" {
+		t.Fatalf("expected priority endpoint layered ahead of the override, got %+v", snap)
 	}
 }
 
