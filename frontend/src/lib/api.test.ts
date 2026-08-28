@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // wailsjs/go/app/App.js is generated code that calls into window.go.app.App.*
-// under the hood, so it's mocked directly here — that way the Wails-mode
+// under the hood, so it's mocked directly here, that way the Wails-mode
 // tests never touch a real window.go.
 const wailsMock = {
   GetAppVersion: vi.fn(),

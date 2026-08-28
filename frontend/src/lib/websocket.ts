@@ -2,13 +2,13 @@
 //
 // Wails mode: EventsOn/EventsOff wrap the native runtime one-to-one
 // (../../wailsjs/runtime/runtime.js), so App.svelte/Terminal.svelte/
-// Settings.svelte keep behaving exactly as before — only the import path
+// Settings.svelte keep behaving exactly as before, only the import path
 // changes.
 //
 // Browser mode: connects to the headless server's /ws WebSocket hub
 // (internal/api/server.go), which broadcasts download-progress events as
 // {"type":"download-progress","trackId":N,"status":"...","result":{...}}
-// (see cmd/server/main.go's DownloadManager.SetProgressCallback — this is
+// (see cmd/server/main.go's DownloadManager.SetProgressCallback, this is
 // the only event type the hub currently emits). Messages get unwrapped and
 // redispatched to 'download-progress' listeners using the exact payload
 // shape Wails emits ({trackId, status, result}), so App.svelte's handler
@@ -17,7 +17,7 @@
 // Known gap: 'queue-paused', 'endpoint-cooldown', 'log',
 // 'ffmpeg-install-progress', and 'sldl-install-progress' have no
 // server-side broadcaster in headless mode yet (those are Wails-app-only
-// features — see migration report). Subscribing to them in browser mode is
+// features, see migration report). Subscribing to them in browser mode is
 // harmless (no error), but the callback will just never fire.
 
 import { EventsOn as WailsEventsOn, EventsOff as WailsEventsOff } from '../../wailsjs/runtime/runtime.js'

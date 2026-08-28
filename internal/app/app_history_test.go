@@ -7,8 +7,8 @@ import (
 )
 
 // These rely on a real *core.Database backed by a temp-dir SQLite file, via
-// core.SetDataDir(t.TempDir()) — the same seam FLACidal-Core's own
-// database_test.go relies on — so nothing under a real ~/.flacidal gets touched.
+// core.SetDataDir(t.TempDir()), the same seam FLACidal-Core's own
+// database_test.go relies on, so nothing under a real ~/.flacidal gets touched.
 //
 // Known gap (left as-is): on RefetchFromHistory's "known content type" success
 // path, a.FetchTidalContent(url) is called, and its per-type branches (e.g. the
@@ -16,8 +16,8 @@ import (
 // a.downloader / a.tidalClient with no nil-guard. This can't happen in
 // production since startup() always sets those fields, but it's inconsistent
 // with the nil-guard pattern sibling methods like SearchTidal/DownloadTrack
-// follow. Only the "not found" and "unknown content type" branches — which
-// return before reaching FetchTidalContent — are covered here.
+// follow. Only the "not found" and "unknown content type" branches, which
+// return before reaching FetchTidalContent, are covered here.
 
 func newTestApp(t *testing.T) *App {
 	t.Helper()
@@ -109,7 +109,7 @@ func TestGetRecentAlbums(t *testing.T) {
 		for _, entry := range got {
 			cid := entry["content_id"].(string)
 			if seen[cid] {
-				t.Errorf("GetRecentAlbums() returned duplicate content_id %q — dedup not applied", cid)
+				t.Errorf("GetRecentAlbums() returned duplicate content_id %q, dedup not applied", cid)
 			}
 			seen[cid] = true
 		}

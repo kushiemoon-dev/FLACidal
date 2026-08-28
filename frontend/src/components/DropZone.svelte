@@ -15,7 +15,7 @@
   // Neither drag-and-drop nor the native file/folder picker can produce a
   // real result in a plain browser (see lib/runtime.ts's onNativeFileDrop
   // and lib/api.ts's OpenFLACFilesDialog/SelectDownloadFolder/
-  // SelectFolderForConversion docs) — show that honestly instead of
+  // SelectFolderForConversion docs), show that honestly instead of
   // rendering controls that silently do nothing when clicked.
   const nativeFileAccessAvailable = isWailsRuntime();
 
@@ -78,7 +78,7 @@
   {:else}
     <AlertTriangle size={40} strokeWidth={1.5} color="var(--color-warning, #f59e0b)" />
     <p class="drop-text">File selection isn't available in browser mode</p>
-    <p class="supported-formats">Drag-and-drop and the file picker need the FLACidal desktop app — a browser page can't hand this server real filesystem paths.</p>
+    <p class="supported-formats">Drag-and-drop and the file picker need the FLACidal desktop app, a browser page can't hand this server real filesystem paths.</p>
   {/if}
 </div>
 

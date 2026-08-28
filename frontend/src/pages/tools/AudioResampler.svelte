@@ -61,7 +61,7 @@
   let unsubscribeFileDrop: () => void;
 
   onMount(() => {
-    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
     unsubscribeFileDrop = onNativeFileDrop((_x: number, _y: number, paths: string[]) => {
       const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
       if (flacPaths.length > 0) {

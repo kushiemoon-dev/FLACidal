@@ -7,7 +7,7 @@ import (
 )
 
 func TestAnalyzeFile_InvalidFile(t *testing.T) {
-	a := &App{} // logBuffer left nil — Info() is only reached on the success path
+	a := &App{} // logBuffer left nil, Info() is only reached on the success path
 	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("nope"), 0644); err != nil {
 		t.Fatalf("test setup failed: %v", err)

@@ -4,7 +4,7 @@ import { injectWailsMocks } from './mocks/wails'
 /**
  * Heads up: App.svelte nests page content inside `{#key activePage} <div transition:fade>`,
  * so both the outgoing and incoming pages stay in the DOM for the 150ms fade window.
- * That means a handful of Settings labels show up twice for a moment — always reach
+ * That means a handful of Settings labels show up twice for a moment, always reach
  * for `.first()` and give the transition time to finish before asserting.
  */
 async function gotoSettings(page: any) {

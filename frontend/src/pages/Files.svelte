@@ -122,7 +122,7 @@
   }
 
   // Browser mode: suppress the drop overlay entirely rather than show a
-  // "drop here" affordance that leads nowhere — dropped files never reach
+  // "drop here" affordance that leads nowhere, dropped files never reach
   // onNativeFileDrop in browser mode (see lib/runtime.ts).
   function handleDragEnter(e: DragEvent) {
     if (!isWailsRuntime()) return;
@@ -177,7 +177,7 @@
     converterAvailable = await IsConverterAvailable();
 
     // Register Wails OS-level file drop handler.
-    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
     unsubscribeFileDrop = onNativeFileDrop((x, y, paths) => {
       dragCounter = 0;
       isDragOver = false;

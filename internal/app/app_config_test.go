@@ -72,7 +72,7 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 
 	// With only a priority endpoint set (no override), it's promoted to tier1 via
 	// SetPriorityEndpoints, which the pool always places ahead of the base (tier2)
-	// pool set separately via SetEndpoints — see Startup for the equivalent wiring.
+	// pool set separately via SetEndpoints, see Startup for the equivalent wiring.
 	cfg := baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	if err := a.SaveConfig(cfg); err != nil {
@@ -85,7 +85,7 @@ func TestSaveConfig_AmazonEndpointPriority(t *testing.T) {
 
 	// An override replaces only the base (tier2) pool; the priority endpoint is
 	// still layered on top via SetPriorityEndpoints regardless of the override,
-	// same as Startup — so both entries are present, with priority still first.
+	// same as Startup, so both entries are present, with priority still first.
 	cfg = baseCfg
 	cfg.AmazonPriorityEndpoints = []string{"https://my-amazon-proxy.example"}
 	cfg.AmazonProxyEndpoints = []string{"https://override.example"}

@@ -39,7 +39,7 @@ test.describe('AudioQualityAnalyzer interactions', () => {
     await page.locator('.flyout-item', { hasText: 'Audio Quality Analyzer' }).click()
 
     // Kick off analysis directly through the Wails binding, since the native file
-    // dialog can't be driven from a browser context — we call the bound function
+    // dialog can't be driven from a browser context, we call the bound function
     // ourselves and check that the UI reflects the results.
     await page.evaluate(async () => {
       // @ts-ignore

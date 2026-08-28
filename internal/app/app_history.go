@@ -41,7 +41,7 @@ func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 }
 
 // RecentAlbums backs GetRecentAlbums and is shared by both the desktop
-// (Wails) and HTTP server APIs — the same sharing pattern used by
+// (Wails) and HTTP server APIs, the same sharing pattern used by
 // ConvertTidalSearchResults / SearchDeezerTracks in app_search.go.
 func RecentAlbums(db *core.Database, limit int) ([]map[string]interface{}, error) {
 	records, err := db.GetAllDownloadRecords()

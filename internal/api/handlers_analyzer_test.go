@@ -23,12 +23,12 @@ func TestSupportedAnalyzeExtensions(t *testing.T) {
 // TestHandleAnalyzeFile_JSONPath_MP3ReturnsNotApplicable guards against a
 // regression where analyzing an MP3 by path (say, a Soulseek download) used
 // to fail outright with "not a valid FLAC file". It should instead succeed
-// with a "not_applicable" verdict — a lossy format never claims fake-lossless
-// — while still returning the same spectral/sample-rate data as any other file.
+// with a "not_applicable" verdict, a lossy format never claims fake-lossless
+//, while still returning the same spectral/sample-rate data as any other file.
 func TestHandleAnalyzeFile_JSONPath_MP3ReturnsNotApplicable(t *testing.T) {
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
-		t.Skip("no ffmpeg on PATH — skipping this real-file analyzer test")
+		t.Skip("no ffmpeg on PATH, skipping this real-file analyzer test")
 	}
 	mp3Path := filepath.Join(t.TempDir(), "track.mp3")
 	args := []string{"-f", "lavfi", "-i", "sine=frequency=440:duration=1:sample_rate=44100", "-y", mp3Path}

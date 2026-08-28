@@ -10,7 +10,7 @@ import (
 // Behavioral snapshot tests covering app.go's package-level helpers and lifecycle hooks.
 //
 // Deliberately left uncovered here:
-//   - startup(ctx): the full bootstrap sequence — it opens the real
+//   - startup(ctx): the full bootstrap sequence, it opens the real
 //     config/database, makes a live network call via core.InitTidalEndpoints,
 //     and starts goroutines bound to runtime.EventsEmit(ctx, ...). Without an
 //     actual Wails runtime context, any runtime.* call panics via log.Fatalf

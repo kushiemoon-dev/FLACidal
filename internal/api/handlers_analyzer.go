@@ -122,7 +122,7 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 		if r.IsTrueLossless {
 			msg = "Genuinely lossless"
 		} else {
-			msg = fmt.Sprintf("Detected as upscaled lossy — spectral cutoff at %d Hz", r.SpectrumCutoff)
+			msg = fmt.Sprintf("Detected as upscaled lossy, spectral cutoff at %d Hz", r.SpectrumCutoff)
 		}
 	}
 
@@ -134,7 +134,7 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 	return fiber.Map{
 		// "isUpscaled" is only true for an actual upscale-detection verdict; a
 		// lossy format reports "not_applicable" instead, since it never makes a
-		// fake-lossless claim to begin with — distinct from IsTrueLossless == false.
+		// fake-lossless claim to begin with, distinct from IsTrueLossless == false.
 		"isUpscaled":     r.Verdict == "upscaled" || r.Verdict == "likely_upscaled",
 		"spectralCutoff": r.SpectrumCutoff,
 		"format":         format,
@@ -149,5 +149,5 @@ func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {
 }
 
 func cleanupTemp(path string) {
-	os.Remove(path) //nolint:errcheck — deleting the temp upload is best-effort only
+	os.Remove(path) //nolint:errcheck, deleting the temp upload is best-effort only
 }

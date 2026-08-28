@@ -74,7 +74,7 @@ func EnsureSldlExecutable(path string) error {
 
 // resolveAndPersistSourceOrder returns config.SourceOrder, computing it with
 // core.DefaultSourceOrder and writing the result back to config whenever it
-// was blank — this way App.GetConfig() (and by extension Settings.svelte)
+// was blank, this way App.GetConfig() (and by extension Settings.svelte)
 // later reflects the order the orchestrator actually applies, rather than
 // leaving that resolution stuck in a local variable that never hits disk.
 // warnf is given a best-effort diagnostic when the persist step fails; pass
@@ -92,7 +92,7 @@ func resolveAndPersistSourceOrder(config *core.Config, warnf func(string)) []str
 
 // applyPriorityEndpoints hands a configured self-host list to a source's
 // exported SetPriorityEndpoints-style wrapper (setPriority) and logs how many
-// survived filtering — the underlying Core call silently drops anything that
+// survived filtering, the underlying Core call silently drops anything that
 // isn't https://, or http:// on a loopback/private address, which from the
 // outside is indistinguishable from the setting being ignored altogether.
 // Mirrors cmd/server/main.go's applyPriorityEndpoints helper.
@@ -134,7 +134,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.db = db
 
-	// Relies on built-in credentials — no user configuration is needed.
+	// Relies on built-in credentials, no user configuration is needed.
 	a.tidalClient = core.NewTidalClientDefault()
 	a.tidalClient.SetCountryCode(config.CountryCode)
 	if config.ProxyURL != "" {
@@ -146,7 +146,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.logBuffer.Info("Tidal client is ready")
 
-	// Client Credentials — no login needed.
+	// Client Credentials, no login needed.
 	a.spotifySearch = core.NewSpotifyClientForSearch()
 
 	a.matcher = core.NewMatcher(a.spotifySearch, a.db)
@@ -242,14 +242,14 @@ func (a *App) Startup(ctx context.Context) {
 				if result != nil {
 					a.logBuffer.Success(fmt.Sprintf("Download complete: %s (quality: %s)", result.FilePath, result.Quality))
 					if result.QualityMismatch {
-						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch — asked for %s, received %s",
+						a.logBuffer.Warn(fmt.Sprintf("Quality mismatch, asked for %s, received %s",
 							result.RequestedQuality, result.Quality))
 					}
 					if result.Analysis != nil {
 						if result.Analysis.IsTrueLossless {
-							a.logBuffer.Info(fmt.Sprintf("Analysis: %s — confirmed true lossless", result.Analysis.VerdictLabel))
+							a.logBuffer.Info(fmt.Sprintf("Analysis: %s, confirmed true lossless", result.Analysis.VerdictLabel))
 						} else {
-							a.logBuffer.Warn(fmt.Sprintf("Analysis: %s — possibly upscaled from a lossy source", result.Analysis.VerdictLabel))
+							a.logBuffer.Warn(fmt.Sprintf("Analysis: %s, possibly upscaled from a lossy source", result.Analysis.VerdictLabel))
 						}
 					}
 				}
@@ -259,7 +259,7 @@ func (a *App) Startup(ctx context.Context) {
 				}
 				if a.config.AutoStopOnCooldown && !a.downloader.HasHealthyEndpoints() {
 					if a.downloadManager.PauseQueue() {
-						a.logBuffer.Warn("Every Tidal endpoint is cooling down — queue paused")
+						a.logBuffer.Warn("Every Tidal endpoint is cooling down, queue paused")
 						minCooldown := 0
 						for _, stat := range a.downloader.PoolSnapshot() {
 							if stat.CooldownSecs > 0 && (minCooldown == 0 || stat.CooldownSecs < minCooldown) {
@@ -295,7 +295,7 @@ func (a *App) Startup(ctx context.Context) {
 			}
 		}
 
-		// Blocks briefly if the buffer is full — trivial next to download time.
+		// Blocks briefly if the buffer is full, trivial next to download time.
 		eventCh <- progressEvent{trackID: trackID, status: status, result: result}
 	})
 	a.downloadManager.Start()
@@ -312,7 +312,7 @@ func (a *App) Startup(ctx context.Context) {
 		a.tidalSource.GetService().SetEndpoints(base)
 	}
 	// TidalSource owns a second, independent TidalHifiService (its own
-	// endpoint pool) behind every album/playlist/track fetch — it needs the
+	// endpoint pool) behind every album/playlist/track fetch, it needs the
 	// identical priority list computed above, same as Core's own wiring does.
 	applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (source)", a.tidalSource.GetService().SetPriorityEndpoints, tidalPriority)
 	a.sourceManager.RegisterSource(a.tidalSource)

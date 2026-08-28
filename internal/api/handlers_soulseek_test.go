@@ -10,7 +10,7 @@ import (
 
 // Out of scope, by design: both handlers shell out to a local sldl binary
 // that CI doesn't have, so only the "not found" / "not installed" branches
-// get exercised — the same limitation internal/app's own TestGetSldlStatus
+// get exercised, the same limitation internal/app's own TestGetSldlStatus
 // and TestTestSoulseekConnection characterization tests share.
 
 func TestHandleGetSldlStatus_NotInstalled(t *testing.T) {

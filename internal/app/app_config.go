@@ -48,7 +48,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		a.downloader.SetOptions(opts)
 		// An override always wins for the base pool; priority endpoints are layered
 		// on top separately below via SetPriorityEndpoints, regardless of whether an
-		// override is set — see Startup for the equivalent wiring.
+		// override is set, see Startup for the equivalent wiring.
 		if len(config.TidalHifiEndpoints) > 0 {
 			a.downloader.SetEndpoints(config.TidalHifiEndpoints)
 		} else {
@@ -59,7 +59,7 @@ func (a *App) SaveConfig(config core.Config) error {
 	}
 	if a.tidalSource != nil {
 		// Copy the downloader's endpoint list onto the source manager's Tidal
-		// instance too, since it's the one used for playlist/album/track fetch — see Startup for the equivalent wiring.
+		// instance too, since it's the one used for playlist/album/track fetch, see Startup for the equivalent wiring.
 		if len(config.TidalHifiEndpoints) > 0 {
 			a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
 		} else {
@@ -71,7 +71,7 @@ func (a *App) SaveConfig(config core.Config) error {
 	if a.qobuzSource != nil {
 		// An override always wins for the catalog base pool; priority entries are
 		// layered on top separately below, regardless of whether an override is
-		// set — see Startup for the equivalent wiring.
+		// set, see Startup for the equivalent wiring.
 		if len(config.QobuzEndpoints) > 0 {
 			a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
 		} else {
@@ -99,7 +99,7 @@ func (a *App) SaveConfig(config core.Config) error {
 	if a.amazonSource != nil {
 		// Refresh endpoints on the fly, no restart required: an override always wins
 		// for the base pool; priority entries are layered on top separately below,
-		// regardless of whether an override is set — see Startup for the equivalent wiring.
+		// regardless of whether an override is set, see Startup for the equivalent wiring.
 		if len(config.AmazonProxyEndpoints) > 0 {
 			a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
 		} else {
@@ -147,7 +147,7 @@ func (a *App) SaveConfig(config core.Config) error {
 		} else {
 			a.sourceManager.UnregisterSource("soulseek")
 			if config.SoulseekEnabled && a.logBuffer != nil {
-				a.logBuffer.Warn("Soulseek is enabled but not usable — check its binary path and credentials")
+				a.logBuffer.Warn("Soulseek is enabled but not usable, check its binary path and credentials")
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func (a *App) SetSourceOrder(order []string) error {
 }
 
 // ValidateSourceOrder checks a submitted source order and rejects the entire
-// call if it contains anything unknown or duplicated — the same behavior
+// call if it contains anything unknown or duplicated, the same behavior
 // App.SetSourceOrder and the REST handler already rely on (this differs from
 // FLACidal-Core's rpc_sources.go, which silently filters instead of
 // rejecting). If the validated order is missing "soulseek", it gets
@@ -182,7 +182,7 @@ func (a *App) SetSourceOrder(order []string) error {
 // an intentional omission (mirroring the migration in
 // FLACidal-Core/core.go's NewCore() and rpc_sources.go's
 // handleSetSourceOrder). An order that already has "soulseek" somewhere in
-// it is passed through unmodified — the prepend only fires when it's
+// it is passed through unmodified, the prepend only fires when it's
 // absent. This function backs both the desktop (Wails) and HTTP server
 // APIs, the same sharing pattern used above by SldlStatus / TestSoulseekLogin.
 func ValidateSourceOrder(order []string) ([]string, error) {
@@ -240,7 +240,7 @@ type EndpointStatus struct {
 	LatencyMs int64  `json:"latencyMs"` // round-trip time, in milliseconds
 }
 
-// Reads from in-memory EndpointPool snapshots — issues no network calls itself.
+// Reads from in-memory EndpointPool snapshots, issues no network calls itself.
 func (a *App) CheckAPIStatus() []EndpointStatus {
 	var results []EndpointStatus
 

@@ -86,7 +86,7 @@ func (a *App) AnalyzeMultiple(filePaths []string) []core.AnalysisResult {
 	return results
 }
 
-// A size heuristic, not full decoding — faster but less rigorous than AnalyzeFile.
+// A size heuristic, not full decoding, faster but less rigorous than AnalyzeFile.
 func (a *App) QuickAnalyze(filePath string) (*core.AnalysisResult, error) {
 	return core.QuickAnalyze(filePath)
 }

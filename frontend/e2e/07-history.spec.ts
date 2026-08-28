@@ -3,7 +3,7 @@ import { injectWailsMocks } from './mocks/wails'
 
 /**
  * As with the other pages, App.svelte's `{#key activePage}` + transition:fade
- * leaves two DOM copies around during the 150ms fade — stick to `.first()` and
+ * leaves two DOM copies around during the 150ms fade, stick to `.first()` and
  * give the transition a moment to finish.
  */
 test.describe('History screen', () => {

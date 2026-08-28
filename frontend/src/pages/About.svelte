@@ -28,7 +28,7 @@
     {
       name: 'FLACidal Mobile',
       repo: 'kushiemoon-dev/FLACidal-Mobile',
-      description: 'FLACidal on the go — download lossless FLAC from your phone',
+      description: 'FLACidal on the go, download lossless FLAC from your phone',
       logo: flacidalLogo,
       color: '#f472b6',
       tag: 'flutter',
@@ -38,7 +38,7 @@
     {
       name: 'YouFLAC',
       repo: 'kushiemoon-dev/YouFLAC',
-      description: 'YouTube video + lossless FLAC audio — create high-quality music videos',
+      description: 'YouTube video + lossless FLAC audio, create high-quality music videos',
       logo: youflacLogo,
       color: '#ef4444',
       tag: 'go',
@@ -91,7 +91,7 @@
           };
         }
       } catch {
-        // silently fail — stats stay at 0
+        // silently fail, stats stay at 0
       }
     }
   });
@@ -230,7 +230,7 @@
     font-weight: 600;
   }
 
-  /* Projects grid — compact 3 columns */
+  /* Projects grid, compact 3 columns */
   .projects-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -338,7 +338,7 @@
     color: var(--color-accent);
   }
 
-  /* Support card — centered */
+  /* Support card, centered */
   .support-card {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);

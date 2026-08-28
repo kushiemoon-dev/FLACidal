@@ -17,7 +17,7 @@ import (
 //     fields, is covered here.
 //
 // Known gap (left as-is): FetchTidalContent's `default:` case
-// (`unsupported content type`) can't actually be reached — core.ParseTidalURL
+// (`unsupported content type`) can't actually be reached, core.ParseTidalURL
 // only ever returns "playlist", "track", "album", "artist", "mix", or a
 // non-nil error, so contentType never hits the switch's default arm.
 func TestSetTidalCredentials(t *testing.T) {

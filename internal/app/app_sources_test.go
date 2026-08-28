@@ -357,7 +357,7 @@ func TestIsQobuzConfigured(t *testing.T) {
 	// appSecret, and userAuthToken are all set; otherwise it defers to
 	// endpoint-pool liveness, which defaults to true on a freshly built pool
 	// regardless of credentials. That means only the fully-configured case
-	// behaves deterministically here — asserting "no credentials -> false"
+	// behaves deterministically here, asserting "no credentials -> false"
 	// would hinge on the pool's default liveness rather than credentials, making
 	// it a flaky check.
 	t.Run("fully configured (appID+secret+authToken)", func(t *testing.T) {

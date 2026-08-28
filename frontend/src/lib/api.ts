@@ -8,7 +8,7 @@
 //
 // isWailsRuntime() lets each exported function choose the correct transport
 // at call time, always handing back data in the same shape no matter which
-// backend served it — so none of the 18 consuming components need to know
+// backend served it, so none of the 18 consuming components need to know
 // or care which mode is active. Always import from this module rather than
 // reaching into 'wailsjs/go/app/App.js' directly.
 
@@ -16,7 +16,7 @@ import * as Wails from '../../wailsjs/go/app/App.js'
 
 let cachedIsWails: boolean | null = null
 
-// Cached after the first check — a later change to window.go won't flip the result.
+// Cached after the first check, a later change to window.go won't flip the result.
 export function isWailsRuntime(): boolean {
   if (cachedIsWails === null) {
     const w = window as any
@@ -67,7 +67,7 @@ function qs(params: Record<string, string | number | boolean | undefined>): stri
 // Existing Wails call sites already rely on `any` and optional chaining
 // rather than the generated wailsjs classes, so these interfaces are kept
 // deliberately loose (with an extra `[key: string]: any`) rather than
-// mirroring every backend struct field one-for-one — they only cover the
+// mirroring every backend struct field one-for-one, they only cover the
 // fields components actually consume (confirmed by auditing the call sites).
 
 export interface AnalysisResult {
@@ -142,7 +142,7 @@ export async function AnalyzeMultiple(paths: string[]): Promise<AnalysisResult[]
   const raw = await apiPost<any[]>('/analyze/multiple', { paths })
   // The REST endpoint returns a different shape (isUpscaled/spectralCutoff/
   // message) than core.AnalysisResult (isTrueLossless/spectrumCutoff/
-  // details) on purpose — normalize it here so callers see one shape
+  // details) on purpose, normalize it here so callers see one shape
   // regardless of backend.
   // Known gap: the REST endpoint returns neither filePath nor
   // expectedCutoff. filePath gets rebuilt from the order of the request's
@@ -173,7 +173,7 @@ export async function CancelDownload(trackId: number): Promise<void> {
 // changed the paused state, whereas the REST endpoints just return a fixed
 // paused:true/false no matter what the prior state was. Nothing currently
 // reads that return value (call sites update their local store
-// optimistically instead), so this is harmless for now — noting it here in
+// optimistically instead), so this is harmless for now, noting it here in
 // case a future caller starts depending on it.
 export async function PauseDownloads(): Promise<boolean> {
   if (isWailsRuntime()) {
@@ -211,7 +211,7 @@ export async function RetryAllFailed(): Promise<number> {
  * Wails: shows the native "Save As" dialog and hands back the chosen path.
  * Browser: there's no native dialog, so the file is fetched and handed off
  * to the browser's own download mechanism (a throwaway `<a download>` click).
- * Resolves to '' in browser mode — there's no server-side path to report,
+ * Resolves to '' in browser mode, there's no server-side path to report,
  * matching what Wails itself returns when the dialog is cancelled.
  */
 export async function ExportFailedDownloads(format: 'txt' | 'csv'): Promise<string> {
@@ -427,8 +427,8 @@ export async function GetDownloadFolder(): Promise<string> {
 }
 
 // Known gap: /api/logs and /api/logs/clear on the headless server are
-// currently stubs — there's no server-side log buffer wired up yet the way
-// the Wails app's logBuffer is — so GetLogs() always resolves to [] in
+// currently stubs, there's no server-side log buffer wired up yet the way
+// the Wails app's logBuffer is, so GetLogs() always resolves to [] in
 // browser mode and ClearLogs() does nothing.
 
 export async function GetLogs(): Promise<LogEntry[]> {
@@ -489,8 +489,8 @@ export async function FetchAndEmbedLyricsMultiple(filePaths: string[]): Promise<
 
 // These four Wails calls pop open a native OS dialog (file picker, folder
 // picker) or the system file manager. A browser sandbox never has access to
-// real filesystem paths — an <input type="file"> only ever hands back a
-// filename, never an absolute path — nor to the local file manager, and the
+// real filesystem paths, an <input type="file"> only ever hands back a
+// filename, never an absolute path, nor to the local file manager, and the
 // server might not even share a machine with the browser. There's simply no
 // truthful way to implement these in browser mode.
 //
@@ -502,7 +502,7 @@ export async function OpenFLACFilesDialog(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.OpenFLACFilesDialog()
   }
-  console.warn('OpenFLACFilesDialog: unavailable in browser mode — a browser file picker cannot hand back a server-side file path')
+  console.warn('OpenFLACFilesDialog: unavailable in browser mode, a browser file picker cannot hand back a server-side file path')
   return []
 }
 
@@ -510,7 +510,7 @@ export async function SelectDownloadFolder(): Promise<string> {
   if (isWailsRuntime()) {
     return Wails.SelectDownloadFolder()
   }
-  console.warn('SelectDownloadFolder: unavailable in browser mode — browsers have no native folder picker')
+  console.warn('SelectDownloadFolder: unavailable in browser mode, browsers have no native folder picker')
   return ''
 }
 
@@ -518,7 +518,7 @@ export async function SelectFolderForConversion(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.SelectFolderForConversion()
   }
-  console.warn('SelectFolderForConversion: unavailable in browser mode — same limitation as OpenFLACFilesDialog')
+  console.warn('SelectFolderForConversion: unavailable in browser mode, same limitation as OpenFLACFilesDialog')
   return []
 }
 
@@ -526,7 +526,7 @@ export async function SelectFolderForAnalysis(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.SelectFolderForAnalysis()
   }
-  console.warn('SelectFolderForAnalysis: unavailable in browser mode — same limitation as OpenFLACFilesDialog')
+  console.warn('SelectFolderForAnalysis: unavailable in browser mode, same limitation as OpenFLACFilesDialog')
   return []
 }
 
@@ -534,7 +534,7 @@ export async function OpenDownloadFolder(path: string): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.OpenDownloadFolder(path)
   }
-  console.warn('OpenDownloadFolder: unavailable in browser mode — a web page cannot reach the local file manager')
+  console.warn('OpenDownloadFolder: unavailable in browser mode, a web page cannot reach the local file manager')
 }
 
 export async function SetDownloadFolder(folder: string): Promise<void> {
@@ -545,7 +545,7 @@ export async function SetDownloadFolder(folder: string): Promise<void> {
 }
 
 /**
- * Known gap: the REST handler, unlike Wails, only saves the config — it
+ * Known gap: the REST handler, unlike Wails, only saves the config, it
  * doesn't push live settings to the download manager, the downloader's
  * proxy/quality options, or restart the Soulseek source. In browser mode,
  * some settings may not take effect until the server restarts. See the
@@ -590,7 +590,7 @@ export async function OpenConfigFolder(): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.OpenConfigFolder()
   }
-  console.warn('OpenConfigFolder: unavailable in browser mode — a web page cannot reach the local file manager')
+  console.warn('OpenConfigFolder: unavailable in browser mode, a web page cannot reach the local file manager')
 }
 
 export async function DetectSourceFromURL(url: string): Promise<any> {
@@ -599,7 +599,7 @@ export async function DetectSourceFromURL(url: string): Promise<any> {
   }
   const result = await apiPost<any>('/sources/detect', { url })
   // Normalize: the REST failure branch omits contentType/id (Wails includes
-  // them as empty strings) — fill them in so callers can rely on both keys.
+  // them as empty strings), fill them in so callers can rely on both keys.
   return { contentType: '', id: '', ...result }
 }
 
@@ -640,7 +640,7 @@ export async function FetchTidalContent(url: string): Promise<any> {
 /**
  * Known gap: the REST check validates against any registered source rather
  * than Tidal specifically, and its success payload uses `contentType`
- * where Wails uses `type` — normalized here to match Wails' shape.
+ * where Wails uses `type`, normalized here to match Wails' shape.
  */
 export async function ValidateTidalURL(url: string): Promise<any> {
   if (isWailsRuntime()) {
@@ -669,7 +669,7 @@ export async function GetRecentAlbums(limit: number): Promise<any[]> {
 }
 
 /**
- * There's no REST route for this — it's a stateless, side-effect-free call
+ * There's no REST route for this, it's a stateless, side-effect-free call
  * to the public GitHub API, so browser mode calls it directly instead of
  * round-tripping through the server (the same approach About.svelte
  * already uses for repo stats).

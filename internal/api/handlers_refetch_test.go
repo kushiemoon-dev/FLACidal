@@ -9,7 +9,7 @@ import (
 )
 
 // Only the "no db", "not found", and "unknown content type" branches are
-// exercised here — the "known content type" success path goes through
+// exercised here, the "known content type" success path goes through
 // fetchContentByURL, which makes a real network call with no seam for
 // swapping in a fake HTTP client, the same constraint called out in
 // handlers_search_test.go.

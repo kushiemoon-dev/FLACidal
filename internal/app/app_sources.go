@@ -18,7 +18,7 @@ import (
 
 // GetSourceHealth reports one of: online, degraded, dead, or untested, per
 // source. It only runs when the user opens the Settings Status tab (never
-// polled) and reads pool state without issuing network requests — reported
+// polled) and reads pool state without issuing network requests, reported
 // states come from real failures seen during actual downloads rather than
 // synthetic probes, which sidesteps the WebKitGTK signal-handler conflict on
 // Linux.
@@ -82,7 +82,7 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 		}
 		// A non-empty reason here always means a local configuration problem
 		// (missing credentials or a missing sldl binary), never a network
-		// failure — this branch issues no request at all — so it is exactly
+		// failure, this branch issues no request at all, so it is exactly
 		// what FailureKindConfig describes, and it lets the UI name what is
 		// missing via Reason instead of blaming an upstream outage.
 		failureKind := core.FailureKindNone
@@ -122,15 +122,15 @@ func poolSnapshotStatus(snaps []core.EndpointStat) string {
 }
 
 // poolSnapshotTier1Status derives a source's Tier1 status, FailureKind, and
-// RetryETASecs purely from already-fetched pool snapshots — no network
+// RetryETASecs purely from already-fetched pool snapshots, no network
 // calls, matching this file's no-live-probe constraint (see GetSourceHealth's
 // doc comment). tier1Snaps empty means Tier1 stays nil (not configured).
 // FailureKindUpstream is only reported once no tier1 entry is healthy AND
-// every entry in the full snapshot (both tiers) is dead — the same
+// every entry in the full snapshot (both tiers) is dead, the same
 // no-live-endpoint condition Core's own live probes (probeQobuz, probeAmazon,
 // ProbeTidalService) use, just computed from a snapshot instead of a fresh
 // check. An empty snaps means no endpoint is configured at all rather than
-// every endpoint being down, so it reports FailureKindNone — matching the
+// every endpoint being down, so it reports FailureKindNone, matching the
 // "untested" that poolSnapshotStatus returns for the same input into the
 // neighbouring Status field. nextRevivalETASecs is only invoked when
 // FailureKindUpstream is reported, since RetryETASecs is meaningless otherwise.
@@ -268,7 +268,7 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 }
 
 // TestSoulseekLogin backs TestSoulseekConnection and is shared by both the
-// desktop (Wails) and HTTP server APIs — the same sharing pattern
+// desktop (Wails) and HTTP server APIs, the same sharing pattern
 // ConvertTidalSearchResults / SearchDeezerTracks use in app_search.go.
 // binaryPath can be left empty, in which case the platform default path is
 // used. logf gets best-effort diagnostic lines at "info" or "warn" level;
@@ -330,15 +330,15 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 		if goruntime.GOOS == "darwin" {
 			hint = "run: xattr -d com.apple.quarantine " + sldlPath
 		}
-		return map[string]interface{}{"success": false, "message": fmt.Sprintf("sldl failed to start — %s", hint)}
+		return map[string]interface{}{"success": false, "message": fmt.Sprintf("sldl failed to start, %s", hint)}
 	}
 	if strings.TrimSpace(rawOutput) == "" {
-		return map[string]interface{}{"success": false, "message": "sldl produced no output — verify the binary is valid"}
+		return map[string]interface{}{"success": false, "message": "sldl produced no output, verify the binary is valid"}
 	}
 
 	// The .NET runtime isn't installed (a framework-dependent build got downloaded instead of a self-contained one)
 	if strings.Contains(rawOutput, "must install") && strings.Contains(rawOutput, ".net") {
-		return map[string]interface{}{"success": false, "message": ".NET runtime missing — download the self-contained sldl build from github.com/fiso64/slsk-batchdl/releases"}
+		return map[string]interface{}{"success": false, "message": ".NET runtime missing, download the self-contained sldl build from github.com/fiso64/slsk-batchdl/releases"}
 	}
 
 	// Check auth failures before the success path, so a rejected login never
@@ -366,11 +366,11 @@ func TestSoulseekLogin(binaryPath, username, password string, logf func(level, m
 	}
 	for _, kw := range networkErrors {
 		if strings.Contains(rawOutput, kw) {
-			return map[string]interface{}{"success": false, "message": "Connection failed — check network"}
+			return map[string]interface{}{"success": false, "message": "Connection failed, check network"}
 		}
 	}
 
-	return map[string]interface{}{"success": false, "message": "Connection failed — check network or credentials"}
+	return map[string]interface{}{"success": false, "message": "Connection failed, check network or credentials"}
 }
 
 func (a *App) GetAvailableSources() []core.SourceInfo {
@@ -442,8 +442,8 @@ func PickOdesliCandidate(sm *core.SourceManager, links *core.OdesliLinks) (strin
 }
 
 // ResolveViaOdesli looks rawURL up on Odesli/song.link for inputs FLACidal
-// has no native parser for — Spotify already has one, so this covers Apple
-// Music, YouTube Music, Deezer short links, and similar — and returns the
+// has no native parser for, Spotify already has one, so this covers Apple
+// Music, YouTube Music, Deezer short links, and similar, and returns the
 // first resolved link that a source registered on sm can actually parse. The
 // Odesli call is skipped entirely when no source is registered, since
 // nothing would be able to consume the result anyway.

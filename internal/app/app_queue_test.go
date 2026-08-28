@@ -23,7 +23,7 @@ import (
 //     Only their nil-guard and empty-argument error branches are covered.
 //   - OpenDownloadFolder's success branch: calls runtime.BrowserOpenURL, which
 //     needs an actual Wails runtime context (see the note on runtime.EventsEmit
-//     in app_logging_test.go — same log.Fatalf risk). Only the folder=="" error
+//     in app_logging_test.go, same log.Fatalf risk). Only the folder=="" error
 //     branch is covered.
 //   - ExportFailedDownloads' non-empty-jobs branch: pops a real native save
 //     dialog through runtime.SaveFileDialog. Only the early "no failed jobs"

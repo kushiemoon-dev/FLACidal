@@ -52,12 +52,12 @@ func main() {
 	// Priority (self-hosted) endpoint wiring. The downloader, tidalSource's
 	// service, and Qobuz's proxy pool never get a base SetEndpoints/
 	// SetProxyEndpoints call in this file (they run on their hardcoded
-	// package-default base pools — a separate, pre-existing gap, not fixed
+	// package-default base pools, a separate, pre-existing gap, not fixed
 	// here), so there's no SetEndpoints-then-SetPriorityEndpoints ordering
 	// risk for those three: SetEndpoints wipes all tiers if it runs after
 	// SetPriorityEndpoints, but it's simply never called against any of
 	// them. (Qobuz's catalog list IS given a SetEndpoints call below, but
-	// that list has no SetPriorityEndpoints counterpart to race against —
+	// that list has no SetPriorityEndpoints counterpart to race against,
 	// see the note at that call site.)
 	tidalPriority := core.ResolvePriorityEndpoints(config.TidalPriorityEndpoints, config.TidalCustomEndpoint)
 	applyPriorityEndpoints("Tidal HiFi (downloader)", downloader.SetPriorityEndpoints, tidalPriority)
@@ -70,7 +70,7 @@ func main() {
 
 	tidalSource := core.NewTidalSource()
 	// TidalSource owns a second, independent TidalHifiService (its own
-	// endpoint pool) behind every album/playlist/track fetch — it needs the
+	// endpoint pool) behind every album/playlist/track fetch, it needs the
 	// identical priority list, same as Core's own wiring does.
 	applyPriorityEndpoints("Tidal HiFi (source)", tidalSource.GetService().SetPriorityEndpoints, tidalPriority)
 
@@ -157,7 +157,7 @@ func main() {
 
 // applyPriorityEndpoints hands a configured self-host list to a source's
 // exported SetPriorityEndpoints-style wrapper (setPriority) and logs how many
-// survived filtering — the underlying Core call silently drops anything that
+// survived filtering, the underlying Core call silently drops anything that
 // isn't https://, or http:// on a loopback/private address, which from the
 // outside is indistinguishable from the setting being ignored altogether.
 func applyPriorityEndpoints(label string, setPriority func([]string) int, urls []string) {
@@ -174,7 +174,7 @@ func applyPriorityEndpoints(label string, setPriority func([]string) int, urls [
 
 // registerSoulseekSource builds a Soulseek source and, when it's enabled and
 // reachable, registers it with sm. This mirrors the Soulseek-init step that
-// internal/app runs during Startup — this headless binary needs its own copy,
+// internal/app runs during Startup, this headless binary needs its own copy,
 // since otherwise sourceManager would never learn a Soulseek source exists and
 // couldn't fall back to it, even after handleSetSourceOrder is fixed.
 func registerSoulseekSource(sm *core.SourceManager, config *core.Config) {

@@ -5,7 +5,7 @@ import { injectWailsMocks } from './mocks/wails'
  * `pages/Analyzer.svelte` (which posts to /api/analyze) is a standalone page and
  * isn't wired into App.svelte's routing. What users actually reach is
  * `tools/AudioQualityAnalyzer.svelte`, which talks to the Wails binding
- * `AnalyzeMultiple` — that's the page exercised below.
+ * `AnalyzeMultiple`, that's the page exercised below.
  *
  * As elsewhere, App.svelte's `{#key activePage}` + transition:fade leaves two
  * copies in the DOM for the fade duration, so lean on `.first()`.

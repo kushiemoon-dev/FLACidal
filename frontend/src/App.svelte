@@ -86,7 +86,7 @@
     // Listen for endpoint cooldown (all Tidal endpoints dead, queue auto-paused)
     unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: any) => {
       queuePaused.set(true);
-      const msg = data?.result?.error || 'All Tidal endpoints in cooldown — queue paused';
+      const msg = data?.result?.error || 'All Tidal endpoints in cooldown, queue paused';
       toastStore.show(msg, 'error', 6000);
     });
 

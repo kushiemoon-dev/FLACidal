@@ -21,7 +21,7 @@ export function OpenExternalURL(url: string): void {
 /**
  * Browser mode does nothing and returns a no-op cleanup. A browser's HTML5
  * drop event only ever exposes File objects (name plus content), never an
- * absolute filesystem path — and none of this app's REST endpoints accept
+ * absolute filesystem path, and none of this app's REST endpoints accept
  * uploads for the batch operations that consume these paths (AnalyzeMultiple,
  * ConvertFiles, and FetchAndEmbedLyricsMultiple all take arrays of paths).
  * There's no honest way to support this in browser mode right now; callers

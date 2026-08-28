@@ -100,7 +100,7 @@
         charIndex++;
         placeholderText = currentUrl.slice(0, charIndex) + '|';
         if (charIndex >= currentUrl.length) {
-          // Fully typed — pause then delete
+          // Fully typed, pause then delete
           typewriterTimeout = setTimeout(() => { deleting = true; tick(); }, 2000);
           return;
         }
@@ -110,7 +110,7 @@
         charIndex--;
         placeholderText = currentUrl.slice(0, charIndex) + '|';
         if (charIndex <= 0) {
-          // Fully deleted — pause then move to next URL
+          // Fully deleted, pause then move to next URL
           deleting = false;
           urlIndex = (urlIndex + 1) % exampleUrls.length;
           typewriterTimeout = setTimeout(tick, 400);
@@ -154,7 +154,7 @@
     if (!previewAudio || !track.previewUrl) return;
 
     if (previewingTrackId === track.id) {
-      // Same track — toggle play/pause
+      // Same track, toggle play/pause
       if (previewPlaying) {
         previewAudio.pause();
         previewPlaying = false;
@@ -163,7 +163,7 @@
         previewPlaying = true;
       }
     } else {
-      // New track — swap source and play
+      // New track, swap source and play
       previewAudio.pause();
       previewAudio.src = track.previewUrl;
       previewingTrackId = track.id;
@@ -309,7 +309,7 @@
           artistId: result.artistId
         });
       } else {
-        // No native source detected the URL. Try the general resolver first —
+        // No native source detected the URL. Try the general resolver first,
         // it also covers Apple Music/YouTube Music/etc. via Odesli/song.link,
         // which the lightweight reactive detection above doesn't check (to
         // avoid firing a network call on every keystroke). Fall back to the
@@ -590,7 +590,7 @@
         <span class="version-badge">v{version}</span>
       {/if}
     </div>
-    <p class="subtitle">Lossless music from Tidal, Qobuz & Soulseek — cascades automatically, no account required</p>
+    <p class="subtitle">Lossless music from Tidal, Qobuz & Soulseek, cascades automatically, no account required</p>
   </header>
 
   <!-- URL Input -->
@@ -640,7 +640,7 @@
           </div>
         {/if}
         {#if detectedSource && !detectedSource.available}
-          <p class="unavailable-hint">{detectedSource.displayName} unavailable — use <strong>Universal</strong> search (Deezer) to download via Soulseek.</p>
+          <p class="unavailable-hint">{detectedSource.displayName} unavailable, use <strong>Universal</strong> search (Deezer) to download via Soulseek.</p>
         {/if}
       </div>
       <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">
@@ -736,7 +736,7 @@
     <h3>Recently Downloaded</h3>
     <div class="albums-grid">
       {#each recentAlbums as album}
-      <div class="album-card" title="{album.artist ? album.artist + ' — ' : ''}{album.title}"
+      <div class="album-card" title="{album.artist ? album.artist + ', ' : ''}{album.title}"
         role="button"
         tabindex="0"
         onclick={() => redownloadAlbum(album)}
@@ -1021,7 +1021,7 @@
         </svg>
       </div>
       <h3>Ready to Download</h3>
-      <p>Paste a link above — FLACidal tries each source automatically until one works</p>
+      <p>Paste a link above, FLACidal tries each source automatically until one works</p>
       <div class="source-chips">
         <span class="source-chip">Tidal HiFi</span>
         <span class="source-chip">Qobuz</span>

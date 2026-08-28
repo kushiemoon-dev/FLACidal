@@ -44,7 +44,7 @@
       toastStore.show(err?.message || 'Failed to load download folder', 'error');
     }
 
-    // Browser mode: no-op (see lib/runtime.ts) — drag-and-drop needs the desktop app.
+    // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
     unsubscribeFileDrop = onNativeFileDrop((_x: number, _y: number, paths: string[]) => {
       const audioFiles = paths.filter(p =>
         /\.(flac|mp3|wav|ogg|opus|aac|m4a|alac|wma|aiff)$/i.test(p)

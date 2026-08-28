@@ -7,7 +7,7 @@ import (
 )
 
 // Behavioral snapshot tests covering the converter methods section of app.go
-// (the FFmpeg/conversion methods only — see app_sources_test.go for
+// (the FFmpeg/conversion methods only, see app_sources_test.go for
 // GetSourceHealth/InstallSldl/GetSldlStatus/TestSoulseekConnection, which
 // live under app.go's "Converter Methods" comment header despite actually
 // being about source health/Soulseek rather than conversion).

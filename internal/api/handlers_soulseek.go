@@ -16,7 +16,7 @@ func (s *Server) handleGetSldlStatus(c *fiber.Ctx) error {
 
 // Headless mode has no server-side log buffer wired up (a known gap tracked
 // alongside GetLogs/ClearLogs in lib/api.ts), so no diagnostics get surfaced
-// here — only the JSON result matters.
+// here, only the JSON result matters.
 func (s *Server) handleTestSoulseekConnection(c *fiber.Ctx) error {
 	var req struct {
 		Username string `json:"username"`

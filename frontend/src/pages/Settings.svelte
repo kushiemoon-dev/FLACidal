@@ -165,7 +165,7 @@
     }
   }
 
-  // Filename-only templates — use the "Folder Structure" control below to organize
+  // Filename-only templates, use the "Folder Structure" control below to organize
   // into subfolders. A template here must never contain '/': it names one file,
   // and the download engine strips slashes from it (SanitizeFileName).
   const namingPresets = [
@@ -709,7 +709,7 @@
 
         <div class="soulseek-info-box">
           <p>Soulseek is a free P2P music network. FLACidal uses <code>sldl</code> in the background to find and download FLAC files when all streaming sources fail.</p>
-          <p>Already using <strong>Nicotine+</strong>? Enter the same credentials below — it's the same account.</p>
+          <p>Already using <strong>Nicotine+</strong>? Enter the same credentials below, it's the same account.</p>
           <p>No account yet? <a href="https://www.slsknet.org/news/node/1" target="_blank" rel="noopener">Create one free at slsknet.org</a> or through Nicotine+.</p>
           {#if sldlStatus}
             {#if sldlStatus.installed}
@@ -738,7 +738,7 @@
         <div class="setting-item">
           <div class="setting-info">
             <span class="setting-label">Enable Soulseek</span>
-            <span class="setting-desc">Last-resort FLAC source via P2P — independent of streaming proxies</span>
+            <span class="setting-desc">Last-resort FLAC source via P2P, independent of streaming proxies</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -790,7 +790,7 @@
           {#if soulseekLoginResult}
             <span class="soulseek-login-result" class:ok={soulseekLoginResult.success} class:fail={!soulseekLoginResult.success}>
               {soulseekLoginResult.success ? '✓' : '✗'} {soulseekLoginResult.message}
-              {#if soulseekLoginResult.success}<span class="save-hint"> — Save to confirm</span>{/if}
+              {#if soulseekLoginResult.success}<span class="save-hint">, Save to confirm</span>{/if}
             </span>
           {/if}
         </div>
@@ -891,7 +891,7 @@
               <option value="HI_RES">Hi-Res (24-bit/48kHz+)</option>
               <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
               <option value="HIGH">High (320kbps)</option>
-              <option value="ATMOS">Dolby Atmos (lossy, .m4a — Tidal only)</option>
+              <option value="ATMOS">Dolby Atmos (lossy, .m4a, Tidal only)</option>
             </select>
           </div>
         </div>
@@ -1545,14 +1545,14 @@
             <span class="version">Version {appVersion || '...'}</span>
           </div>
         </div>
-        <p class="app-desc">Lossless FLAC downloader — Tidal, Qobuz, Amazon, Bandcamp, Soulseek.</p>
+        <p class="app-desc">Lossless FLAC downloader, Tidal, Qobuz, Amazon, Bandcamp, Soulseek.</p>
         <div class="update-check">
           <button class="btn-secondary" onclick={checkUpdate} disabled={checkingUpdate}>
             {checkingUpdate ? 'Checking...' : 'Check for Updates'}
           </button>
           {#if updateInfo}
             {#if updateInfo.hasUpdate}
-              <span class="update-available">Update available: v{updateInfo.version} - <a href={updateInfo.releaseUrl} target="_blank" rel="noopener">View Release</a></span>
+              <span class="update-available">Update available: v{updateInfo.version}, <a href={updateInfo.releaseUrl} target="_blank" rel="noopener">View Release</a></span>
             {:else}
               <span class="update-current">You're up to date!</span>
             {/if}

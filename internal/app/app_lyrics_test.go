@@ -13,9 +13,9 @@ import (
 //     HTTP seam available.
 //   - FetchLyricsForFile / FetchAndEmbedLyrics / FetchAndEmbedLyricsMultiple
 //     success paths: each ends up at the same LRCLIB network call once the
-//     metadata read succeeds. Only their fail-fast "invalid file" branches —
+//     metadata read succeeds. Only their fail-fast "invalid file" branches,
 //     which return before any network call because core.ReadFLACMetadata
-//     errors out first — are covered here.
+//     errors out first, are covered here.
 
 func TestFetchLyricsForFile_InvalidFile(t *testing.T) {
 	a := &App{}

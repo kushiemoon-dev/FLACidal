@@ -312,7 +312,7 @@
               {/if}
               {#if item.status === 'completed' && item.attempts && item.attempts.length > 1}
                 {@const failed = item.attempts.slice(0, -1)}
-                <span class="cascade-badge" title="{failed.join(', ')} unavailable">via {item.source} — {failed.join('/')} unavailable</span>
+                <span class="cascade-badge" title="{failed.join(', ')} unavailable">via {item.source}, {failed.join('/')} unavailable</span>
               {/if}
               {#if item.status === 'completed' && item.analysis}
                 <span

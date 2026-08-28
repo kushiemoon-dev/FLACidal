@@ -9,7 +9,7 @@ import (
 )
 
 // Unlike internal/app's App.SetSourceOrder, this has nothing equivalent to
-// a.orchestrator.SetPriority since Server carries no orchestrator field —
+// a.orchestrator.SetPriority since Server carries no orchestrator field,
 // that's specific to the Wails app's live in-flight request routing. Only
 // the persisted config and the download manager's priority get updated here.
 func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
