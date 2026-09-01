@@ -52,16 +52,25 @@
 html{scroll-behavior:smooth}
 body{
   background:var(--bg);color:var(--ink);font-family:var(--sans);
-  line-height:1.5;-webkit-font-smoothing:antialiased;
+  line-height:1.5;-webkit-font-smoothing:antialiased;position:relative;
   background-image:radial-gradient(60rem 40rem at 75% -10%,rgba(216,180,254,.10),transparent),
                    radial-gradient(50rem 40rem at 0% 10%,rgba(229,160,13,.06),transparent);
 }
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0px,rgba(255,255,255,.025) 1px,transparent 1px,transparent 3px);
+  mix-blend-mode:overlay}
 .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
 a{color:inherit;text-decoration:none}
 section{padding:88px 0;border-top:1px solid var(--line)}
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--lilac)}
 h2{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.02em;margin:14px 0 10px}
 .lead{color:var(--muted);max-width:60ch;font-size:17px}
+
+/* Status ticker */
+.ticker{background:var(--violet);color:#0a0a0a;font-family:var(--mono);font-size:11px;
+  font-weight:700;letter-spacing:.05em;padding:6px 0;overflow:hidden;white-space:nowrap}
+.ticker span{display:inline-block;padding-left:100%;animation:tickerscroll 22s linear infinite}
+@keyframes tickerscroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 
 /* Header */
 header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
@@ -72,19 +81,29 @@ header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
 .nav .spacer{flex:1}
 .nav a.link{color:var(--muted);font-size:14px;font-weight:500}
 .nav a.link:hover{color:var(--ink)}
+.nav .live-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--live);
+  border:1px solid var(--live);padding:5px 9px}
+.rec-dot{width:6px;height:6px;border-radius:50%;background:var(--live);animation:recpulse 1.4s ease-in-out infinite}
+@keyframes recpulse{50%{opacity:.25}}
 .nav .gh{font-family:var(--mono);font-size:13px;border:1px solid var(--line);
-  padding:7px 12px;border-radius:8px;color:var(--ink)}
+  padding:7px 12px;border-radius:0;color:var(--ink)}
 .nav .gh:hover{border-color:var(--lilac)}
 @media(max-width:640px){.nav a.link{display:none}}
 
 /* Hero */
-.hero{padding:96px 0 80px;border-top:none}
-.hero h1{font-size:clamp(38px,7vw,68px);font-weight:800;letter-spacing:-.035em;line-height:1.02}
-.hero h1 .g{background:linear-gradient(100deg,var(--violet),var(--lilac));
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.hero p.sub{margin:22px 0 0;font-size:19px;color:var(--muted);max-width:56ch}
-.hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
-.btn{font-weight:700;font-size:15px;padding:13px 20px;border-radius:11px;
+.hero{padding:56px 0 80px;border-top:none}
+.hero-grid{display:grid;grid-template-columns:1.6fr .9fr 1fr;gap:1px;background:var(--line)}
+@media(max-width:760px){.hero-grid{grid-template-columns:1fr}}
+.hero-cell{background:var(--bg);padding:26px;display:flex;flex-direction:column;justify-content:center}
+.hero-main{padding:34px 30px 30px}
+.hero h1{font-family:var(--mono);text-transform:uppercase;font-size:clamp(28px,4.4vw,44px);
+  font-weight:800;letter-spacing:-.01em;line-height:1.02}
+.hero h1 .g{color:var(--lilac);text-shadow:2px 0 var(--violet),-2px 0 rgba(34,197,94,.25)}
+.hero p.sub{margin:20px 0 0;font-size:15px;color:var(--muted);max-width:50ch}
+.hero p.sub b{color:var(--ink)}
+.hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.btn{font-weight:700;font-size:15px;padding:13px 20px;border-radius:0;
   display:inline-flex;align-items:center;gap:9px;border:1px solid transparent;transition:.15s}
 .btn-primary{background:var(--violet);color:#0a0a0a}
 .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
@@ -95,33 +114,27 @@ header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
 .term-c{animation:blink 1.1s step-end infinite}
 @keyframes blink{50%{opacity:0}}
 
-/* Signal board — the signature */
-.board{margin-top:52px;background:var(--panel);border:1px solid var(--line);
-  border-radius:14px;overflow:hidden;font-family:var(--mono)}
-.board .bar{display:flex;align-items:center;gap:8px;padding:11px 15px;
-  border-bottom:1px solid var(--line);background:var(--panel-2);font-size:12px;color:var(--faint)}
-.board .bar b{color:var(--muted);font-weight:500;letter-spacing:.04em}
-.board .dot3{display:flex;gap:6px;margin-right:6px}
-.board .dot3 i{width:10px;height:10px;border-radius:50%;background:#333}
-.rows{padding:6px 0}
-.row{display:grid;grid-template-columns:14px 1fr auto;align-items:center;
-  gap:12px;padding:10px 16px;font-size:14px}
-.row .st{width:9px;height:9px;border-radius:50%}
-.st.live{background:var(--live);box-shadow:0 0 0 4px rgba(34,197,94,.14)}
-.st.warn{background:var(--warn);box-shadow:0 0 0 4px rgba(245,158,11,.14)}
-.st.dead{background:var(--dead)}
-.row .src{color:var(--ink)}
-.row .tag{font-size:12px;color:var(--faint)}
-.row.pin{background:linear-gradient(90deg,rgba(34,197,94,.08),transparent)}
-.row.pin .tag{color:var(--live)}
-.board.mini{margin-top:30px;max-width:420px}
-.board.mini .rows{padding:2px 0}
-.board.mini .row{padding:7px 14px;font-size:13px}
+.hero-endpoints{border:1px dashed var(--lilac)}
+.hero-status,.hero-endpoints{font-family:var(--mono)}
+.hw-title{display:flex;justify-content:space-between;align-items:center;font-size:10px;
+  color:var(--faint);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.hero-endpoints .hw-title{color:var(--lilac)}
+.hero-endpoints p{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 12px}
+.hero-endpoints .hw-tag{font-size:11px;color:var(--lilac);background:rgba(216,180,254,.08);
+  padding:6px 8px;display:inline-block}
+.hw-row{display:flex;align-items:center;font-size:12px;
+  padding:8px 0;border-top:1px solid var(--line)}
+.hw-row:first-of-type{border-top:none}
+.hw-dot{width:6px;height:6px;flex:none;display:inline-block;margin-right:8px}
+.hw-dot.live{background:var(--live)}
+.hw-dot.warn{background:var(--warn)}
+.hw-dot.dead{background:var(--dead)}
+.hw-live-tag{margin-left:auto;color:var(--live);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 
 /* Download */
 .os{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
 @media(max-width:720px){.os{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;transition:.15s}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:0;padding:22px;transition:.15s}
 .card:hover{border-color:var(--violet);transform:translateY(-2px)}
 .card .plat{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .card .plat .ico{flex-shrink:0;color:var(--lilac)}
@@ -129,39 +142,41 @@ header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
 .card .dl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--violet)}
 .card .dl::after{content:" →";color:var(--muted)}
 .alt{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:22px;text-align:center}
-.alt code{background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;color:var(--lilac)}
+.alt code{background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:0;color:var(--lilac)}
 
 /* Screenshots */
 .shots{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:34px}
 @media(max-width:720px){.shots{grid-template-columns:1fr}}
-figure{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+figure{background:var(--panel);border:1px solid var(--line);border-radius:0;overflow:hidden}
 figure img{width:100%;display:block;border-bottom:1px solid var(--line)}
 figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);padding:11px 15px}
 
 /* Soulseek */
 .slsk{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--violet);
-  border-radius:12px;padding:26px 28px;margin-top:30px}
+  border-radius:0;padding:26px 28px;margin-top:30px}
 .slsk h3{font-size:19px;font-weight:700;margin-bottom:6px}
 .slsk ol{margin:16px 0 0 18px;color:var(--muted)}
 .slsk li{margin:8px 0}
 .slsk code{font-family:var(--mono);font-size:13px;color:var(--lilac)}
-.strip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 0;margin-top:34px;font-family:var(--mono)}
+.strip{background:var(--panel);border:1px solid var(--line);border-radius:0;padding:6px 0;margin-top:34px;font-family:var(--mono)}
 .strip .ln{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:11px 20px;font-size:13px;color:var(--muted)}
 .strip .ln+.ln{border-top:1px solid var(--line)}
 .strip .ln b{color:var(--lilac);font-weight:700}
 
 footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);font-size:14px}
-.term-box{position:relative;border:1px solid var(--line);border-radius:3px;padding:10px 4px}
+.term-box{position:relative;border:1px solid var(--line);border-radius:0;padding:10px 4px}
 .tb-c{position:absolute;font-family:var(--mono);color:var(--faint);font-size:15px;line-height:1;background:var(--bg);padding:0 4px}
 .tb-tl{top:-8px;left:12px}.tb-tr{top:-8px;right:12px}.tb-bl{bottom:-8px;left:12px}.tb-br{bottom:-8px;right:12px}
 .fl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:0 16px}
 .fl a{color:var(--muted)}.fl a:hover{color:var(--ink)}
 .fl .spacer{flex:1}
-:focus-visible{outline:2px solid var(--lilac);outline-offset:2px;border-radius:4px}
+:focus-visible{outline:2px solid var(--lilac);outline-offset:2px;border-radius:0}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto}}
 </style>
 </head>
 <body>
+
+<div class="ticker" aria-hidden="true"><span>⚠ COMMUNITY PROXY POOL: MOSTLY DOWN RIGHT NOW &nbsp;·&nbsp; SELF-HOST YOUR OWN TIDAL/QOBUZ/AMAZON ENDPOINT TO SKIP THE QUEUE &nbsp;·&nbsp; SOULSEEK P2P NEVER DEPENDS ON ANY OF THIS &nbsp;·&nbsp; </span></div>
 
 <header>
   <div class="wrap nav">
@@ -182,6 +197,7 @@ footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);f
     <a class="link" href="#download">Download</a>
     <a class="link" href="#why">Why</a>
     <a class="link" href="#power">Power</a>
+    <span class="live-badge"><span class="rec-dot"></span>Live</span>
     <a class="gh" href="https://github.com/kushiemoon-dev/FLACidal">GitHub</a>
   </div>
 </header>
@@ -189,13 +205,29 @@ footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);f
 <main class="wrap" id="top">
 
   <section class="hero" id="hero">
-    <div class="term" aria-hidden="true"><span class="term-p">$</span> flacidal --source auto<span class="term-c">_</span></div>
-    <span class="eyebrow">Lossless · multi-source · open source</span>
-    <h1>Lossless FLAC,<br><span class="g">downloaded honestly.</span></h1>
-    <p class="sub">Community proxies for Tidal, Qobuz and Amazon fail often, that's just how it is. When one breaks, FLACidal moves on: five sources get tried in sequence until a download succeeds, with a Soulseek P2P backbone underneath that stays up even when every proxy is down.</p>
-    <div class="cta">
-      <a class="btn btn-primary" href="#download">Download FLACidal</a>
-      <a class="btn btn-ghost" href="#why">See why it doesn't die</a>
+    <div class="hero-grid">
+      <div class="hero-cell hero-main">
+        <div class="term" aria-hidden="true"><span class="term-p">$</span> flacidal --source auto<span class="term-c">_</span></div>
+        <span class="eyebrow">Lossless · multi-source · open source</span>
+        <h1>Lossless FLAC,<br><span class="g">downloaded honestly.</span></h1>
+        <p class="sub">Community proxies for Tidal, Qobuz and Amazon are <b>mostly down right now</b>. FLACidal still gets your FLAC: through your own self-hosted endpoint first, Soulseek P2P always after.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#download">Download FLACidal</a>
+          <a class="btn btn-ghost" href="#why">See why it doesn't die</a>
+        </div>
+      </div>
+      <div class="hero-cell hero-endpoints">
+        <div class="hw-title">$ endpoints <span>self-hosted</span></div>
+        <p>Point FLACidal at your own Tidal, Qobuz and Amazon instances. Tried before the failing shared pool, no restart needed.</p>
+        <span class="hw-tag">→ Settings · live-reload</span>
+      </div>
+      <div class="hero-cell hero-status" role="img" aria-label="Live source status: Soulseek is always on; Tidal and Qobuz proxy pools are degraded; Amazon proxy pool is down.">
+        <div class="hw-title">source health</div>
+        <div class="hw-row"><span class="hw-dot live"></span>Soulseek P2P<span class="hw-live-tag">always on</span></div>
+        <div class="hw-row"><span class="hw-dot live"></span>Bandcamp</div>
+        <div class="hw-row"><span class="hw-dot warn"></span>Tidal proxy pool</div>
+        <div class="hw-row"><span class="hw-dot dead"></span>Amazon proxy pool</div>
+      </div>
     </div>
   </section>
 
@@ -218,19 +250,6 @@ footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);f
         <div class="file">UPC, ISRC, lyrics, popularity, embedded cover art — plus AIFF / ALAC / WAV conversion.</div>
       </div>
     </div>
-    <div class="board mini" role="img" aria-label="Live source status: Soulseek is the most reliable source; Tidal and Qobuz proxies are frequently degraded.">
-      <div class="bar">
-        <span class="dot3"><i></i><i></i><i></i></span>
-        <b>source&nbsp;health</b><span>— what the app shows you, in real time</span>
-      </div>
-      <div class="rows">
-        <div class="row pin"><span class="st live"></span><span class="src">Soulseek&nbsp;P2P</span><span class="tag">most reliable right now</span></div>
-        <div class="row"><span class="st live"></span><span class="src">Bandcamp</span><span class="tag">live</span></div>
-        <div class="row"><span class="st warn"></span><span class="src">Tidal</span><span class="tag">proxy pool degraded</span></div>
-        <div class="row"><span class="st warn"></span><span class="src">Qobuz</span><span class="tag">proxy pool degraded</span></div>
-        <div class="row"><span class="st dead"></span><span class="src">Amazon&nbsp;Music</span><span class="tag">endpoints down</span></div>
-      </div>
-    </div>
     <div class="slsk">
       <h3>Five-minute setup</h3>
       <ol>
@@ -245,9 +264,8 @@ footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);f
   <section id="power">
     <span class="eyebrow">Power users</span>
     <h2>Built for the deep end</h2>
-    <p class="lead">Four things added since the last time you looked, straight from the changelog.</p>
+    <p class="lead">The rest of what's new since the last time you looked, straight from the changelog.</p>
     <div class="strip">
-      <div class="ln"><b>$ endpoints</b>point FLACidal at your own Tidal, Qobuz and Amazon instances and they get checked before the shared community pool, reloading live from Settings with no restart required</div>
       <div class="ln"><b>$ resolve</b>drop in a Spotify, Apple Music or YouTube Music link and FLACidal resolves it to the matching Tidal or Deezer track on its own, whether you're in the app or hitting the headless REST API</div>
       <div class="ln"><b>$ analyze</b>optional aubiotrack and keyfinder-cli power spectral fake-lossless detection plus BPM and musical key in Camelot notation, alongside Deezer retagging and scanning of folders you already have</div>
       <div class="ln"><b>$ serve</b>run docker compose up and get a headless REST API straight away, built from cmd/server via a multi-stage build and shipped as a published image</div>
