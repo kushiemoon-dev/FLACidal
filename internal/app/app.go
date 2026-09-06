@@ -200,6 +200,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
 	a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
 	if a.db != nil {
+		a.downloadManager.SetDatabase(a.db)
 		a.downloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
 			if err := a.db.InsertHistoryEntry(entry); err != nil {
 				a.logBuffer.Warn(fmt.Sprintf("Could not save per-track history for '%s - %s': %v", entry.Artist, entry.Title, err))
@@ -300,6 +301,12 @@ func (a *App) Startup(ctx context.Context) {
 	})
 	a.downloadManager.Start()
 	a.logBuffer.Success("Download manager running (4 workers)")
+
+	if restored, err := a.downloadManager.RestoreQueueState(); err != nil {
+		a.logBuffer.Warn("Could not restore persisted queue: " + err.Error())
+	} else if restored > 0 {
+		a.logBuffer.Info(fmt.Sprintf("Restored %d job(s) from a previous session", restored))
+	}
 
 	a.sourceManager = core.NewSourceManager()
 
