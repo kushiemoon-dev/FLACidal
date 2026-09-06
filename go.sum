@@ -30,8 +30,8 @@ github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e h1:Q3+PugElBCf4P
 github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e/go.mod h1:alcuEEnZsY1WQsagKhZDsoPCRoOijYqhZvPwLG0kzVs=
 github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE9a2c=
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
-github.com/kushiemoon-dev/flacidal-core v0.19.1-0.20260827032330-9048ff3e4584 h1:3bYBGal8yFkFiBVTYfRuzJ6OZxDjhsF/C6fg+kDEXWY=
-github.com/kushiemoon-dev/flacidal-core v0.19.1-0.20260827032330-9048ff3e4584/go.mod h1:aTnNKpccIZKRu+hYYzJXz/ugdeocf0QUKZ8nq3XJ3DM=
+github.com/kushiemoon-dev/flacidal-core v0.19.1-0.20260827032330-9048ff3e458f h1:3bYBGal8yFkFiBVTYfRuzJ6OZxDjhsF/C6fg+kDEXWY=
+github.com/kushiemoon-dev/flacidal-core v0.19.1-0.20260827032330-9048ff3e458f/go.mod h1:aTnNKpccIZKRu+hYYzJXz/ugdeocf0QUKZ8nq3XJ3DM=
 github.com/labstack/echo/v4 v4.15.3 h1:lIdG4kK5RdMyhwCwSc4AmSQsLBb3AVwok6S8PX/9kwQ=
 github.com/labstack/echo/v4 v4.15.3/go.mod h1:Xzp1Ns1RA2c9fY7nSgUJkpkUZGNbEIVHZbtbOMPktBI=
 github.com/labstack/gommon v0.5.0 h1:6VSQ2NOzsnEJ5W6+84E0RbcaDDmgB6NIAzWCczTEe6c=
