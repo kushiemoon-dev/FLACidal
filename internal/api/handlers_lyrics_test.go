@@ -9,7 +9,7 @@ import (
 )
 
 // Out of scope, deliberately: the success paths hit LRCLIB over a live
-// network call with no seam to inject a fake HTTP client — the same
+// network call with no seam to inject a fake HTTP client, the same
 // constraint internal/app's lyrics tests run into. What's actually covered
 // here is validation and the fail-fast "invalid file" branches, which return
 // before any network call happens because core.ReadFLACMetadata errors first.

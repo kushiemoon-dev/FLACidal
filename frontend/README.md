@@ -10,17 +10,17 @@ Use this template as a starting point for building with Svelte and TypeScript on
 
 ## Looking for an official Svelte framework instead?
 
-Take a look at [SvelteKit](https://github.com/sveltejs/kit#readme) — it's also built on Vite. Its serverless-first design deploys anywhere and adapts across platforms, with TypeScript, SCSS, and Less supported out of the box, plus straightforward add-ons for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+Take a look at [SvelteKit](https://github.com/sveltejs/kit#readme); it's also built on Vite. Its serverless-first design deploys anywhere and adapts across platforms, with TypeScript, SCSS, and Less supported out of the box, plus straightforward add-ons for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
 
 ## Technical considerations
 
 **Why pick this instead of SvelteKit?**
 
 - SvelteKit ships its own routing approach, which isn't always what people want.
-- SvelteKit is, first and foremost, a framework that happens to run on Vite — it isn't simply a Vite app.
+- SvelteKit is, first and foremost, a framework that happens to run on Vite; it isn't simply a Vite app.
   For instance, `vite dev` and `vite build` won't function inside a SvelteKit project.
 
-This template keeps things minimal — just enough to get Vite, TypeScript, and Svelte running together — while still
+This template keeps things minimal, just enough to get Vite, TypeScript, and Svelte running together, while still
 caring about developer experience around HMR and editor intellisense. It matches the capabilities of the
 other `create-vite` templates and works well as a first step for anyone new to Vite + Svelte.
 
@@ -40,7 +40,7 @@ them directly when the project is opened.
 
 **Why does the TS template turn on `allowJs`?**
 
-Setting `allowJs: false` would block `.js` files in the project, sure — but JavaScript syntax inside `.svelte` files
+Setting `allowJs: false` would block `.js` files in the project, sure; but JavaScript syntax inside `.svelte` files
 would still slip through. It would also force `checkJs: false`, which is the worst combination: no guarantee the
 codebase is fully TypeScript, and weaker type-checking on whatever JavaScript remains. There are also legitimate
 scenarios where a mixed-language codebase makes sense.

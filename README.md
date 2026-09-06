@@ -101,6 +101,7 @@ You can check endpoint health live at any time under **Settings -> Status**.
 - **Built-in Search** across Tidal (Tracks / Albums / Artists) or Deezer via the Universel tab, which keeps working even when Tidal is down
 - Up to 10 **Concurrent Downloads** in parallel, with live queue progress
 - **Smart Metadata** handling: Vorbis comment tags, embedded cover art, and lyrics
+- **ReplayGain** tagging toggle in Settings
 - An **Audio Tools Suite** covering Quality Analyzer, Resampler, FFmpeg-powered Converter, and File Manager
 - **Custom Filename Templates**, so you set your own naming format, e.g. `{artist} - {title}`
 - **Artist Artwork** pulled in alongside the music
@@ -238,10 +239,11 @@ Reach the Tools panel through the grid icon in the sidebar:
 
 | Tool | What it does |
 |------|-------------|
-| **Quality Analyzer** | Examines actual frequency content to confirm true lossless status, and reports BPM/musical key |
+| **Quality Analyzer** | Examines actual frequency content to confirm true lossless status, reports BPM/musical key, and can retag from Deezer (album/tracknumber/discnumber/year/genre/cover) |
 | **Resampler** | Adjusts sample rate (192 kHz down to 44.1 kHz, for instance) |
-| **Converter** | Transcodes to other formats (MP3, AAC, Opus) through FFmpeg |
+| **Converter** | Transcodes to other formats (MP3, AAC, OGG, Opus, Vorbis, ALAC, WAV, AIFF) through FFmpeg |
 | **File Manager** | Batch-renames files based on metadata templates |
+| **Lyrics Manager** | Batch-fetches and embeds lyrics into FLAC files via LRCLIB |
 
 Converter, Resampler, and the Quality Analyzer's lossless check all need FFmpeg. Get it through your system's package manager, or use the in-app installer under **Settings -> Status**.
 
@@ -269,7 +271,7 @@ Settings live at `~/.flacidal/config.json` and can be edited from within the app
 
 | Setting | Default | Options |
 |---------|---------|---------|
-| Quality | `Lossless` | `Hi-Res` (24-bit/48kHz+) · `Lossless` (16-bit/44.1kHz) · `High` (320kbps, lossy) |
+| Quality | `Lossless` | `Hi-Res` (24-bit/48kHz+) · `Lossless` (16-bit/44.1kHz) · `High` (320kbps, lossy) · `Atmos` (lossy, .m4a, Tidal only) |
 | File naming | `{artist} - {title}` | Custom template with metadata variables |
 | Embed cover art | `true` | `true` · `false` |
 | Concurrent downloads | `4` | `1` – `10` |
@@ -355,7 +357,7 @@ That's a false positive. Heuristic scanners flag Go binaries for no real reason 
 It routes FLACidal's traffic through a personal proxy of your choosing: a corporate VPN, a SOCKS5 tunnel, whatever you already run. Most people can skip it entirely, and it has nothing to do with the community proxy pool that Tidal and Amazon rely on.
 
 **Does Arch Linux get an AUR package?**
-It does, as `flacidal-bin`. Install it with `yay -S flacidal-bin` or `paru -S flacidal-bin`; it just wraps the same `.AppImage` from the releases page.
+Not yet. A `flacidal-bin` `PKGBUILD` exists in the repo (`packaging/aur/`) but isn't published to aur.archlinux.org. Grab the AppImage directly, or [build from source](#build-from-source) for now.
 
 ---
 

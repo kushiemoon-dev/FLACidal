@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 **FLACidal version**
-e.g. v4.8.0 — found under the About tab or in the release filename
+e.g. v4.8.0, found under the About tab or in the release filename
 
 **OS / Platform**
 e.g. Windows 11, macOS 14, Arch Linux x64

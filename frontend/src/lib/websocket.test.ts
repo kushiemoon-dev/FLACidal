@@ -45,7 +45,7 @@ class MockWebSocket {
   }
 }
 
-describe('EventsOn/EventsOff over websocket — Wails mode', () => {
+describe('EventsOn/EventsOff over websocket (Wails mode)', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -75,7 +75,7 @@ describe('EventsOn/EventsOff over websocket — Wails mode', () => {
   })
 })
 
-describe('EventsOn/EventsOff over websocket — browser mode', () => {
+describe('EventsOn/EventsOff over websocket (browser mode)', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()

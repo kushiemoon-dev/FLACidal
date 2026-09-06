@@ -52,6 +52,6 @@ require (
 	golang.org/x/text v0.38.0 // indirect
 )
 
-// Local dev: go.work (gitignored) activates ../FLACidal-Core automatically — no replace needed
+// Local dev: go.work (gitignored) activates ../FLACidal-Core automatically; no replace needed
 
 replace golang.org/x/sys => github.com/golang/sys v0.28.0
