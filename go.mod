@@ -6,7 +6,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/google/uuid v1.6.0
-	github.com/kushiemoon-dev/flacidal-core v0.19.1-0.20260827032330-9048ff3e458f
+	github.com/kushiemoon-dev/flacidal-core v0.21.1-0.20260906170812-0f9b11022949
 	github.com/wailsapp/wails/v2 v2.13.0
 )
 
