@@ -4,6 +4,7 @@
 
 ### Multi-source lossless FLAC downloader with a Soulseek P2P backbone
 
+[![Website](https://img.shields.io/badge/website-flacidal.kushie.dev-a855f7?style=flat-square)](https://flacidal.kushie.dev/)
 [![GitHub Release](https://img.shields.io/github/v/release/kushiemoon-dev/FLACidal?style=flat-square&color=e5a00d)](https://github.com/kushiemoon-dev/FLACidal/releases/latest)
 [![Stars](https://img.shields.io/github/stars/kushiemoon-dev/FLACidal?style=flat-square&color=a855f7)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
 [![License](https://img.shields.io/github/license/kushiemoon-dev/FLACidal?style=flat-square&color=gray)](LICENSE)

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://flacidal.kushie.dev/sitemap.xml
