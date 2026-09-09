@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.17.1: 2026-09-09
+
+### Fixes
+- **Release binaries kept showing the old version number in the app UI**: `wails.json` and `frontend/package.json` weren't bumped for the v4.16.0 and v4.17.0 tags, so both builds shipped with the fixes but still reported themselves as 4.15.2. No functional change from v4.17.0, this release exists to get the version string in sync with the tag.
+
 ## v4.17.0: 2026-08-27
 
 ### Fixes
