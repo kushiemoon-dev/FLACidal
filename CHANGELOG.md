@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.17.2: 2026-09-10
+
+### Fixes
+- **Some Tidal downloads failed even when the endpoint itself was healthy** (#14): a track with no manifest at the requested quality is a per-track gap, not an endpoint problem, but it was blacklisting the whole endpoint anyway. After three such tracks the endpoint went fully dead for up to two hours, taking it out of rotation for every other download. Root cause and fix live in flacidal-core (see [flacidal-core's changelog](https://github.com/kushiemoon-dev/flacidal-core/blob/main/CHANGELOG.md)), bumped to v0.21.1.
+- **A Tidal metadata endpoint returning 401 never showed up as unhealthy on the Status page** (#16): the metadata request path never reported failures back to the endpoint pool, so a broken or misconfigured endpoint could keep failing every metadata call while Settings > Status still reported it live. Fixed in the same flacidal-core bump.
+
 ## v4.17.1: 2026-09-09
 
 ### Fixes
