@@ -7,24 +7,30 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   gen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          # main is protected (required "Test Suite" check); the default
-          # GITHUB_TOKEN isn't exempt like an admin push is, so use a PAT
-          # (repo secret STAR_HISTORY_PAT) to push. Falls back to the
-          # default token if the secret isn't set yet (push will then fail
-          # the same way it did before, no worse off).
-          token: ${{ secrets.STAR_HISTORY_PAT || github.token }}
       - run: python3 .github/scripts/star_history.py "${{ github.repository }}" docs/star-history.svg
         env:
           GH_TOKEN: ${{ github.token }}
-      - run: |
+      - name: Open PR with the refreshed history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/star-history.svg
-          git diff --cached --quiet || { git commit -m "chore: refresh star history"; git push; }
+          git diff --cached --quiet && exit 0
+          git checkout -b star-history-update
+          git commit -m "chore: refresh star history"
+          # main is protected; push the update to its own branch and open
+          # a PR instead of pushing straight to main (avoids needing a PAT).
+          git push -f origin star-history-update
+          gh pr create --title "chore: refresh star history" \
+            --body "Automated weekly star history refresh." \
+            --base main --head star-history-update \
+            || echo "PR already open, branch updated"
