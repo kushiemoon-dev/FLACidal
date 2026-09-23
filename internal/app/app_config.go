@@ -347,6 +347,9 @@ func (a *App) ImportConfig() (*core.Config, error) {
 	if err := json.Unmarshal(data, &export); err != nil {
 		return nil, fmt.Errorf("could not parse import file: %w", err)
 	}
+	if export.SchemaVersion != 1 {
+		return nil, fmt.Errorf("not a FLACidal config export (schemaVersion %d)", export.SchemaVersion)
+	}
 	if err := a.SaveConfig(export.Config); err != nil {
 		return nil, err
 	}
