@@ -11,9 +11,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-version:
+    name: Check version consistency
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify wails.json and frontend/package.json match tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          WAILS_VERSION=$(grep -o '"version": *"[^"]*"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+          PKG_VERSION=$(grep -o '"version": *"[^"]*"' frontend/package.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+          if [ "$TAG_VERSION" != "$WAILS_VERSION" ] || [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Git tag ($TAG_VERSION) does not match wails.json ($WAILS_VERSION) or frontend/package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    needs: check-version
     env:
       GOPRIVATE: github.com/kushiemoon-dev/*
       GONOSUMDB: github.com/kushiemoon-dev/*
@@ -64,6 +81,7 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    needs: check-version
     env:
       GOPRIVATE: github.com/kushiemoon-dev/*
       GONOSUMDB: github.com/kushiemoon-dev/*
@@ -127,6 +145,7 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    needs: check-version
     env:
       GOPRIVATE: github.com/kushiemoon-dev/*
       GONOSUMDB: github.com/kushiemoon-dev/*
