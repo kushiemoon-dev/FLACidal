@@ -8,6 +8,7 @@ import (
 
 	"flacidal/internal/app"
 
+	"github.com/datapointchris/goselfupdate"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -40,6 +41,11 @@ func init() {
 }
 
 func main() {
+	// Only needed on Windows, where the previous binary is moved rather than
+	// deleted during an in-place update (it can't overwrite a locked, running
+	// file). Safe to call on every platform and every startup.
+	_ = goselfupdate.CleanupOldBinary()
+
 	flacidalApp := app.NewApp(appVersion)
 
 	err := wails.Run(&options.App{

@@ -3,11 +3,13 @@ module flacidal
 go 1.26.5
 
 require (
+	github.com/datapointchris/goselfupdate v0.11.0
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/google/uuid v1.6.0
 	github.com/kushiemoon-dev/flacidal-core v0.21.1
 	github.com/wailsapp/wails/v2 v2.13.0
+	golang.org/x/mod v0.41.0
 )
 
 require (
@@ -16,7 +18,6 @@ require (
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bogem/id3v2/v2 v2.1.4 // indirect
 	github.com/clipperhouse/uax29/v2 v2.6.0 // indirect
-	github.com/datapointchris/goselfupdate v0.11.0 // indirect
 	github.com/fasthttp/websocket v1.5.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -48,7 +49,6 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect

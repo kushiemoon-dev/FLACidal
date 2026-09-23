@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/datapointchris/goselfupdate"
 	"golang.org/x/mod/semver"
 )
 
@@ -98,4 +101,36 @@ func (a *App) GetUpdateStatus() (*UpdateStatus, error) {
 		Blocked:        behind >= forcedUpdateThreshold,
 		ReleaseURL:     releaseURL,
 	}, nil
+}
+
+// DownloadAndInstallUpdate downloads, verifies and installs the latest
+// release in place, then relaunches the app. goselfupdate handles asset
+// selection (by GOOS/GOARCH), checksum verification and atomic binary
+// replacement itself, including cleanup of any partial/corrupt download on
+// failure — the caller only needs to surface the returned error.
+// Not tested directly: delegates to goselfupdate's own live network I/O and
+// filesystem replacement, same convention as GetUpdateStatus/CheckForUpdate.
+func (a *App) DownloadAndInstallUpdate() error {
+	result, err := goselfupdate.Update(context.Background(), goselfupdate.Config{
+		Owner:   "kushiemoon-dev",
+		Repo:    "flacidal",
+		Binary:  "flacidal",
+		Version: a.GetAppVersion(),
+	})
+	if err != nil {
+		return err
+	}
+	if !result.Applied {
+		return nil
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if err := exec.Command(exe, os.Args[1:]...).Start(); err != nil {
+		return err
+	}
+	os.Exit(0)
+	return nil
 }
