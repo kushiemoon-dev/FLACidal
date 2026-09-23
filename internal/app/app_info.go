@@ -65,7 +65,7 @@ func selectAssetForPlatform(assets []releaseAsset, goos string) string {
 
 func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/kushiemoon-dev/flacidal/releases/latest", nil)
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/"+updateOwner+"/"+updateRepo+"/releases/latest", nil)
 	if err != nil {
 		return nil, err
 	}

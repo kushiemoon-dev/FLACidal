@@ -99,3 +99,31 @@ func TestAppImagePath_EmptyOutsideAppImage(t *testing.T) {
 		t.Errorf("appImagePath() = %q, want empty when APPIMAGE is unset", got)
 	}
 }
+
+func TestBuildUpdateStatus_BlockedThresholdBoundary(t *testing.T) {
+	tags := []string{"v4.13.0", "v4.12.0", "v4.11.0", "v4.10.0"}
+
+	twoBehind := buildUpdateStatus("v4.12.0", tags, "https://example.com")
+	if twoBehind.VersionsBehind != 1 || twoBehind.Blocked {
+		t.Errorf("1 behind: got VersionsBehind=%d Blocked=%v, want 1/false", twoBehind.VersionsBehind, twoBehind.Blocked)
+	}
+
+	exactlyAtThreshold := buildUpdateStatus("v4.10.0", tags, "https://example.com")
+	if exactlyAtThreshold.VersionsBehind != 3 || !exactlyAtThreshold.Blocked {
+		t.Errorf("3 behind: got VersionsBehind=%d Blocked=%v, want 3/true", exactlyAtThreshold.VersionsBehind, exactlyAtThreshold.Blocked)
+	}
+}
+
+func TestBuildUpdateStatus_ReportsLatestVersionAndReleaseURL(t *testing.T) {
+	tags := []string{"v4.13.0", "v4.12.0"}
+	status := buildUpdateStatus("v4.12.0", tags, "https://example.com/release")
+	if status.LatestVersion != "4.13.0" {
+		t.Errorf("LatestVersion = %q, want %q", status.LatestVersion, "4.13.0")
+	}
+	if status.ReleaseURL != "https://example.com/release" {
+		t.Errorf("ReleaseURL = %q, want the passed-through URL", status.ReleaseURL)
+	}
+	if !status.HasUpdate {
+		t.Error("HasUpdate = false, want true")
+	}
+}
