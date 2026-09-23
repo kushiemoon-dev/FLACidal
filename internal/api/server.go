@@ -33,6 +33,9 @@ type ServerConfig struct {
 	TidalSource     *core.TidalSource
 	QobuzSource     *core.QobuzSource
 	LyricsClient    *core.LyricsClient
+	Downloader      *core.TidalHifiService // same object as the desktop's a.downloader
+	SoulseekSource  *core.SoulseekSource
+	Version         string
 	Context         context.Context
 	FrontendFS      embed.FS
 	FrontendDir     string // on-disk SPA path used when FrontendFS is empty (default: "frontend/dist")
@@ -52,6 +55,8 @@ type Server struct {
 	ctx              context.Context
 	frontendFS       embed.FS
 	frontendDir      string
+	logBuffer        *core.LogBuffer
+	version          string
 }
 
 func NewServer(cfg ServerConfig) *Server {
@@ -71,6 +76,17 @@ func NewServer(cfg ServerConfig) *Server {
 		frontendDir = defaultFrontendDir
 	}
 
+	logBuffer := core.NewLogBuffer(500)
+	if cfg.Downloader != nil {
+		cfg.Downloader.SetLogger(logBuffer)
+	}
+	if cfg.QobuzSource != nil {
+		cfg.QobuzSource.SetLogger(logBuffer)
+	}
+	if cfg.SoulseekSource != nil {
+		cfg.SoulseekSource.SetLogger(logBuffer)
+	}
+
 	server := &Server{
 		app:              app,
 		config:           cfg.Config,
@@ -85,6 +101,8 @@ func NewServer(cfg ServerConfig) *Server {
 		ctx:              cfg.Context,
 		frontendFS:       cfg.FrontendFS,
 		frontendDir:      frontendDir,
+		logBuffer:        logBuffer,
+		version:          cfg.Version,
 	}
 
 	// So every queued/downloading/completed/failed transition reaches WS subscribers.

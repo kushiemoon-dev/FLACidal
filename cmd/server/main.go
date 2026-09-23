@@ -18,6 +18,11 @@ import (
 // filesystem. Production Docker builds populate it via a separate embed file.
 var frontendFS embed.FS
 
+// version is injected at build time via -ldflags "-X main.version=...", read
+// from wails.json (the same source of truth the desktop build uses). Plain
+// `go build` (e.g. the CI smoke check) leaves it at "dev".
+var version = "dev"
+
 func main() {
 	log.Println("Starting FLACidal Server...")
 
@@ -102,7 +107,7 @@ func main() {
 	sourceManager := core.NewSourceManager()
 	sourceManager.RegisterSource(tidalSource)
 	sourceManager.RegisterSource(qobuzSource)
-	registerSoulseekSource(sourceManager, config)
+	soulseekSource := registerSoulseekSource(sourceManager, config)
 	sourceManager.SetPreferredSource(config.PreferredSource)
 
 	lyricsClient := core.NewLyricsClient()
@@ -115,6 +120,9 @@ func main() {
 		TidalSource:     tidalSource,
 		QobuzSource:     qobuzSource,
 		LyricsClient:    lyricsClient,
+		Downloader:      downloader,
+		SoulseekSource:  soulseekSource,
+		Version:         version,
 		Context:         ctx,
 		FrontendFS:      frontendFS,
 		FrontendDir:     os.Getenv("FRONTEND_DIST_DIR"),
@@ -176,8 +184,11 @@ func applyPriorityEndpoints(label string, setPriority func([]string) int, urls [
 // reachable, registers it with sm. This mirrors the Soulseek-init step that
 // internal/app runs during Startup, this headless binary needs its own copy,
 // since otherwise sourceManager would never learn a Soulseek source exists and
-// couldn't fall back to it, even after handleSetSourceOrder is fixed.
-func registerSoulseekSource(sm *core.SourceManager, config *core.Config) {
+// couldn't fall back to it, even after handleSetSourceOrder is fixed. The
+// source is always returned, even when not registered, same pattern as the
+// desktop's a.soulseekSource field, so callers can still wire it up (e.g. for
+// logging) regardless of whether it ended up active.
+func registerSoulseekSource(sm *core.SourceManager, config *core.Config) *core.SoulseekSource {
 	sldlPath := config.SoulseekBinaryPath
 	if sldlPath == "" {
 		sldlPath = app.DefaultSldlPath()
@@ -192,4 +203,5 @@ func registerSoulseekSource(sm *core.SourceManager, config *core.Config) {
 	} else if config.SoulseekEnabled {
 		log.Println("Warning: Soulseek is enabled but unreachable (check the binary path and credentials)")
 	}
+	return soulseekSource
 }

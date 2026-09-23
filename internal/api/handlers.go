@@ -808,15 +808,15 @@ func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetVersion(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"version": "1.0.0"})
+	return c.JSON(fiber.Map{"version": s.version})
 }
 
 func (s *Server) handleGetLogs(c *fiber.Ctx) error {
-	// TODO: wire this up to real log retrieval
-	return c.JSON([]core.LogEntry{})
+	return c.JSON(s.logBuffer.GetAll())
 }
 
 func (s *Server) handleClearLogs(c *fiber.Ctx) error {
+	s.logBuffer.Clear()
 	return c.JSON(fiber.Map{"success": true})
 }
 

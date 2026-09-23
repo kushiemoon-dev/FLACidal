@@ -21,7 +21,8 @@ RUN --mount=type=secret,id=core_access_token \
     && go mod download \
     && rm -f /root/.gitconfig
 COPY . .
-RUN CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o /out/flacidal-server ./cmd/server
+RUN VERSION=$(grep -m1 '"version"' wails.json | sed -E 's/.*"version": *"([^"]+)".*/\1/') \
+    && CGO_ENABLED=1 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/flacidal-server ./cmd/server
 
 # --- sldl (Soulseek client binary, pinned to the same release the desktop app installs) ---
 FROM debian:bookworm-slim AS sldl
