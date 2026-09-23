@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 )
 
 func (a *App) GetAppVersion() string {
@@ -17,6 +20,47 @@ type UpdateInfo struct {
 	Version    string `json:"version"`
 	URL        string `json:"url"`
 	ReleaseURL string `json:"releaseUrl"`
+}
+
+type releaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+}
+
+type release struct {
+	TagName string         `json:"tag_name"`
+	HTMLURL string         `json:"html_url"`
+	Assets  []releaseAsset `json:"assets"`
+}
+
+// platformAssetExtension maps a runtime.GOOS value to the file extension
+// used by this project's release assets. Returns "" for an unsupported OS.
+func platformAssetExtension(goos string) string {
+	switch goos {
+	case "windows":
+		return ".exe"
+	case "darwin":
+		return ".dmg"
+	case "linux":
+		return ".AppImage"
+	default:
+		return ""
+	}
+}
+
+// selectAssetForPlatform returns the download URL of the first asset whose
+// name matches the current platform's extension, or "" if none matches.
+func selectAssetForPlatform(assets []releaseAsset, goos string) string {
+	ext := platformAssetExtension(goos)
+	if ext == "" {
+		return ""
+	}
+	for _, a := range assets {
+		if strings.HasSuffix(a.Name, ext) {
+			return a.BrowserDownloadURL
+		}
+	}
+	return ""
 }
 
 func (a *App) CheckForUpdate() (*UpdateInfo, error) {
@@ -38,37 +82,31 @@ func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 		return &UpdateInfo{HasUpdate: false}, nil
 	}
 
-	var release struct {
-		TagName string `json:"tag_name"`
-		HTMLURL string `json:"html_url"`
-		Assets  []struct {
-			BrowserDownloadURL string `json:"browser_download_url"`
-		} `json:"assets"`
-	}
+	var rel release
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &UpdateInfo{HasUpdate: false}, nil
 	}
 
-	if err := json.Unmarshal(body, &release); err != nil {
+	if err := json.Unmarshal(body, &rel); err != nil {
 		return &UpdateInfo{HasUpdate: false}, nil
 	}
 
-	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	latestVersion := strings.TrimPrefix(rel.TagName, "v")
 	currentVersion := a.GetAppVersion()
 
-	hasUpdate := latestVersion != currentVersion && latestVersion > currentVersion
+	hasUpdate := semver.Compare("v"+latestVersion, "v"+currentVersion) > 0
 
-	downloadURL := release.HTMLURL
-	if len(release.Assets) > 0 {
-		downloadURL = release.Assets[0].BrowserDownloadURL
+	downloadURL := rel.HTMLURL
+	if selected := selectAssetForPlatform(rel.Assets, runtime.GOOS); selected != "" {
+		downloadURL = selected
 	}
 
 	return &UpdateInfo{
 		HasUpdate:  hasUpdate,
 		Version:    latestVersion,
 		URL:        downloadURL,
-		ReleaseURL: release.HTMLURL,
+		ReleaseURL: rel.HTMLURL,
 	}, nil
 }

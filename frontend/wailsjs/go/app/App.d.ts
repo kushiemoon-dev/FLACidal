@@ -29,6 +29,8 @@ export function DeleteHistoryRecord(arg1:number):Promise<void>;
 
 export function DetectSourceFromURL(arg1:string):Promise<Record<string, any>>;
 
+export function DownloadAndInstallUpdate():Promise<void>;
+
 export function DownloadArtistAssets(arg1:string,arg2:string,arg3:string):Promise<number>;
 
 export function DownloadTrack(arg1:number,arg2:string):Promise<core.DownloadResult>;
@@ -106,6 +108,8 @@ export function GetSourceHealth():Promise<Array<core.SourceHealth>>;
 export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePlaylist>;
 
 export function GetSourceTrack(arg1:string,arg2:string):Promise<core.SourceTrack>;
+
+export function GetUpdateStatus():Promise<app.UpdateStatus>;
 
 export function ImportConfig():Promise<core.Config>;
 

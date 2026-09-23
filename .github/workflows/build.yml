@@ -138,11 +138,23 @@ jobs:
               build/bin/flacidal.dmg
           fi
 
+      - name: Zip raw binary for the updater
+        # goselfupdate (desktop auto-update) only consumes .tar.gz/.tgz/.zip/a
+        # bare binary, never a .dmg (a mountable disk image, not an archive).
+        # The .dmg above is unchanged and still used for the initial install
+        # from the release page; this zip exists only for the in-app updater.
+        run: |
+          cd build/bin/flacidal.app/Contents/MacOS
+          zip flacidal_darwin_all.zip flacidal
+          mv flacidal_darwin_all.zip ../../../
+
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: flacidal-macos
-          path: build/bin/flacidal.dmg
+          path: |
+            build/bin/flacidal.dmg
+            build/bin/flacidal_darwin_all.zip
 
   build-linux:
     name: Build Linux
@@ -253,6 +265,19 @@ jobs:
         with:
           path: artifacts
 
+      - name: Rename assets for the updater and generate checksums
+        # goselfupdate expects "<binary>_<GOOS>_<GOARCH>.<ext>". The .dmg is
+        # NOT renamed: it's for the initial install, never consumed by the
+        # updater (see build-macos' "Zip raw binary" step).
+        run: |
+          mv artifacts/flacidal-windows/flacidal.exe artifacts/flacidal-windows/flacidal_windows_amd64.exe
+          mv artifacts/flacidal-linux/flacidal.AppImage artifacts/flacidal-linux/flacidal_linux_amd64.AppImage
+          sha256sum \
+            artifacts/flacidal-windows/flacidal_windows_amd64.exe \
+            artifacts/flacidal-macos/flacidal_darwin_all.zip \
+            artifacts/flacidal-linux/flacidal_linux_amd64.AppImage \
+            > checksums.txt
+
       - name: Extract release notes from CHANGELOG
         id: changelog
         run: |
@@ -276,6 +301,8 @@ jobs:
           body: ${{ steps.changelog.outputs.notes }}
           generate_release_notes: true
           files: |
-            artifacts/flacidal-windows/flacidal.exe
+            artifacts/flacidal-windows/flacidal_windows_amd64.exe
             artifacts/flacidal-macos/flacidal.dmg
-            artifacts/flacidal-linux/flacidal.AppImage
+            artifacts/flacidal-macos/flacidal_darwin_all.zip
+            artifacts/flacidal-linux/flacidal_linux_amd64.AppImage
+            checksums.txt

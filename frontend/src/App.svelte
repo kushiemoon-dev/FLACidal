@@ -18,7 +18,8 @@
   import Toast from './components/Toast.svelte';
   import IssueReporterModal from './components/IssueReporterModal.svelte';
   import QueuePanel from './components/QueuePanel.svelte';
-  import { GetDownloadFolder, GetConfig, IsQueuePaused } from './lib/api';
+  import UpdateRequiredScreen from './components/UpdateRequiredScreen.svelte';
+  import { GetDownloadFolder, GetConfig, IsQueuePaused, GetUpdateStatus, DownloadAndInstallUpdate, type UpdateStatus } from './lib/api';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
   import AudioConverter from './pages/tools/AudioConverter.svelte';
@@ -31,6 +32,7 @@
   let unsubscribeCooldown: () => void;
   let refetchedContent: any = $state(null);
   let showIssueReporter = $state(false);
+  let updateStatus: UpdateStatus | null = $state(null);
 
   function handleNavigate(page: string) {
     activePage = page;
@@ -42,6 +44,18 @@
   }
 
   onMount(async () => {
+    // Fired without awaiting: runs alongside the sequential calls below
+    // rather than blocking them. Fail-open on any error (see plan
+    // Conventions) — an offline user or a GitHub rate limit must never
+    // block them out of the app.
+    (async () => {
+      try {
+        updateStatus = (await GetUpdateStatus()) ?? null;
+      } catch {
+        // fail-open
+      }
+    })();
+
     // Load config and initialize theme + accent color
     try {
       const config = await GetConfig();
@@ -137,6 +151,9 @@
   });
 </script>
 
+{#if updateStatus?.blocked}
+<UpdateRequiredScreen status={updateStatus} onUpdate={DownloadAndInstallUpdate} />
+{:else}
 <main class="app-layout">
   <Sidebar
     {activePage}
@@ -179,6 +196,7 @@
     {/key}
   </div>
 </main>
+{/if}
 <IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/kushiemoon-dev/FLACidal/issues" />
 <Toast />
 <QueuePanel />

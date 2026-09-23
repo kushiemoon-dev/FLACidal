@@ -11,6 +11,8 @@ const wailsMock = {
   QueueDownloads: vi.fn(),
   AnalyzeMultiple: vi.fn(),
   OpenFLACFilesDialog: vi.fn(),
+  GetUpdateStatus: vi.fn(),
+  DownloadAndInstallUpdate: vi.fn(),
 }
 vi.mock('../../wailsjs/go/app/App.js', () => wailsMock)
 
@@ -91,6 +93,24 @@ describe('API call routing in Wails mode', () => {
 
     expect(paths).toEqual(['/music/a.flac'])
     expect(wailsMock.OpenFLACFilesDialog).toHaveBeenCalledOnce()
+  })
+
+  it('GetUpdateStatus goes through the Wails binding', async () => {
+    const status = { hasUpdate: true, currentVersion: '4.9.0', latestVersion: '4.10.0', versionsBehind: 1, blocked: false, releaseUrl: 'https://example.com' }
+    wailsMock.GetUpdateStatus.mockResolvedValue(status)
+
+    const { GetUpdateStatus } = await import('./api')
+    expect(await GetUpdateStatus()).toEqual(status)
+    expect(wailsMock.GetUpdateStatus).toHaveBeenCalledOnce()
+  })
+
+  it('DownloadAndInstallUpdate hands off to the Wails binding', async () => {
+    wailsMock.DownloadAndInstallUpdate.mockResolvedValue(undefined)
+
+    const { DownloadAndInstallUpdate } = await import('./api')
+    await DownloadAndInstallUpdate()
+
+    expect(wailsMock.DownloadAndInstallUpdate).toHaveBeenCalledOnce()
   })
 })
 
@@ -196,5 +216,98 @@ describe('API call routing in browser mode', () => {
     const { SelectDownloadFolder } = await import('./api')
     expect(await SelectDownloadFolder()).toBe('')
     warnSpy.mockRestore()
+  })
+
+  it('GetUpdateStatus warns and resolves to undefined, forced-update blocking does not apply headless', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { GetUpdateStatus } = await import('./api')
+    expect(await GetUpdateStatus()).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('DownloadAndInstallUpdate warns rather than throwing', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { DownloadAndInstallUpdate } = await import('./api')
+    await DownloadAndInstallUpdate()
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+})
+
+describe('compareVersionParts', () => {
+  it('treats a higher minor version as greater regardless of digit count', async () => {
+    const { compareVersionParts } = await import('./api')
+    expect(compareVersionParts('4.10.0', '4.9.0')).toBeGreaterThan(0)
+  })
+
+  it('treats a lower version as lesser', async () => {
+    const { compareVersionParts } = await import('./api')
+    expect(compareVersionParts('4.9.0', '4.10.0')).toBeLessThan(0)
+  })
+
+  it('treats equal versions as equal', async () => {
+    const { compareVersionParts } = await import('./api')
+    expect(compareVersionParts('4.10.0', '4.10.0')).toBe(0)
+  })
+
+  it('treats a missing trailing part as zero', async () => {
+    const { compareVersionParts } = await import('./api')
+    expect(compareVersionParts('4.10', '4.10.0')).toBe(0)
+  })
+})
+
+describe('CheckForUpdate in browser mode', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    clearWailsRuntime()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function mockGithubRelease(body: unknown) {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url === 'https://api.github.com/repos/kushiemoon-dev/flacidal/releases/latest') {
+        return Promise.resolve({ ok: true, status: 200, json: async () => body })
+      }
+      if (url === '/api/version') {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ version: '4.9.0' }) })
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('flags an update using semver comparison, not lexicographic', async () => {
+    mockGithubRelease({ tag_name: 'v4.10.0', html_url: 'https://example.com/release', assets: [] })
+
+    const { CheckForUpdate } = await import('./api')
+    const info = await CheckForUpdate()
+
+    expect(info.hasUpdate).toBe(true)
+    expect(info.version).toBe('4.10.0')
+  })
+
+  it('selects the asset matching the browser platform instead of assets[0]', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Macintosh; Intel Mac OS X 10_15' })
+    mockGithubRelease({
+      tag_name: 'v4.10.0',
+      html_url: 'https://example.com/release',
+      assets: [
+        { name: 'flacidal.exe', browser_download_url: 'https://example.com/flacidal.exe' },
+        { name: 'flacidal.dmg', browser_download_url: 'https://example.com/flacidal.dmg' },
+      ],
+    })
+
+    const { CheckForUpdate } = await import('./api')
+    const info = await CheckForUpdate()
+
+    expect(info.url).toBe('https://example.com/flacidal.dmg')
   })
 })

@@ -688,6 +688,36 @@ export async function GetRecentAlbums(limit: number): Promise<any[]> {
  * round-tripping through the server (the same approach About.svelte
  * already uses for repo stats).
  */
+// compareVersionParts compares two dot-separated numeric version strings
+// part by part (a missing trailing part counts as 0). Returns >0 if a > b,
+// <0 if a < b, 0 if equal. No npm semver dependency exists in this project
+// and desktop tags never carry prerelease/build metadata, so this simple
+// comparison is enough (unlike the mobile side, see FLACidal-Mobile).
+export function compareVersionParts(a: string, b: string): number {
+  const partsA = a.split('.').map(Number)
+  const partsB = b.split('.').map(Number)
+  const len = Math.max(partsA.length, partsB.length)
+  for (let i = 0; i < len; i++) {
+    const diff = (partsA[i] || 0) - (partsB[i] || 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+function browserPlatformExtension(): string {
+  const ua = navigator.userAgent
+  if (/Windows/i.test(ua)) return '.exe'
+  if (/Mac OS X|Macintosh/i.test(ua)) return '.dmg'
+  if (/Linux/i.test(ua)) return '.AppImage'
+  return ''
+}
+
+function selectAssetForPlatform(assets: Array<{ name?: string; browser_download_url?: string }>): string {
+  const ext = browserPlatformExtension()
+  if (!ext) return ''
+  return assets.find((a) => a.name?.endsWith(ext))?.browser_download_url || ''
+}
+
 export async function CheckForUpdate(): Promise<{ hasUpdate: boolean; version: string; url: string; releaseUrl: string }> {
   if (isWailsRuntime()) {
     return Wails.CheckForUpdate() as unknown as Promise<{ hasUpdate: boolean; version: string; url: string; releaseUrl: string }>
@@ -702,12 +732,35 @@ export async function CheckForUpdate(): Promise<{ hasUpdate: boolean; version: s
     const release = await res.json()
     const latestVersion = String(release.tag_name || '').replace(/^v/, '')
     const currentVersion = await GetAppVersion()
-    const hasUpdate = latestVersion !== '' && latestVersion !== currentVersion && latestVersion > currentVersion
-    const downloadUrl = release.assets?.[0]?.browser_download_url || release.html_url
+    const hasUpdate = latestVersion !== '' && compareVersionParts(latestVersion, currentVersion) > 0
+    const downloadUrl = selectAssetForPlatform(release.assets || []) || release.html_url
     return { hasUpdate, version: latestVersion, url: downloadUrl, releaseUrl: release.html_url }
   } catch {
     return { hasUpdate: false, version: '', url: '', releaseUrl: '' }
   }
+}
+
+export interface UpdateStatus {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string
+  versionsBehind: number
+  blocked: boolean
+  releaseUrl: string
+}
+
+export async function GetUpdateStatus(): Promise<UpdateStatus | undefined> {
+  if (isWailsRuntime()) {
+    return Wails.GetUpdateStatus() as unknown as Promise<UpdateStatus>
+  }
+  console.warn('GetUpdateStatus: unavailable in browser mode, forced-update blocking does not apply to headless')
+}
+
+export async function DownloadAndInstallUpdate(): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.DownloadAndInstallUpdate()
+  }
+  console.warn('DownloadAndInstallUpdate: unavailable in browser mode')
 }
 
 // Wails mode is unaffected; in browser mode these throw a clear, catchable
