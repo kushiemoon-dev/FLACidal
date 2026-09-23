@@ -117,9 +117,9 @@ You can check endpoint health live at any time under **Settings -> Status**.
 
 | Platform | File |
 |----------|------|
-| Windows x64 | `flacidal.exe` |
+| Windows x64 | `flacidal_windows_amd64.exe` |
 | macOS Universal | `flacidal.dmg` |
-| Linux x64 | `flacidal.AppImage` |
+| Linux x64 | `flacidal_linux_amd64.AppImage` |
 | **Android** | [`FLACidal.apk`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) |
 | **iOS** | [`FLACidal.ipa`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) (via AltStore) |
 
