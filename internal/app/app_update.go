@@ -9,14 +9,22 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"time"
 
 	"github.com/datapointchris/goselfupdate"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/mod/semver"
 )
 
 const forcedUpdateThreshold = 3
+
+const (
+	updateOwner = "kushiemoon-dev"
+	updateRepo  = "flacidal"
+)
 
 type UpdateStatus struct {
 	HasUpdate      bool   `json:"hasUpdate"`
@@ -67,7 +75,7 @@ func latestValidTag(tags []string) string {
 // fetchReleaseTags lists every release tag for owner/repo, newest first (the
 // order GitHub already returns), plus the HTML URL of the newest release.
 // Not tested directly: live network call, same convention as CheckForUpdate.
-func fetchReleaseTags(ctx context.Context, owner, repo string) (tags []string, releaseURL string, err error) {
+func fetchReleaseTags(ctx context.Context, version, owner, repo string) (tags []string, releaseURL string, err error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	url := "https://api.github.com/repos/" + owner + "/" + repo + "/releases?per_page=100"
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -75,6 +83,7 @@ func fetchReleaseTags(ctx context.Context, owner, repo string) (tags []string, r
 		return nil, "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "FLACidal/"+version)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -106,20 +115,27 @@ func fetchReleaseTags(ctx context.Context, owner, repo string) (tags []string, r
 	return tags, releaseURL, nil
 }
 
-func (a *App) GetUpdateStatus() (*UpdateStatus, error) {
-	tags, releaseURL, err := fetchReleaseTags(context.Background(), "kushiemoon-dev", "flacidal")
-	if err != nil || len(tags) == 0 {
-		return &UpdateStatus{CurrentVersion: a.GetAppVersion()}, nil // fail-open, see plan Conventions
-	}
-	behind := countVersionsBehind(a.GetAppVersion(), tags)
+// buildUpdateStatus is the pure decision at the heart of GetUpdateStatus,
+// split out so the forcedUpdateThreshold boundary is directly testable
+// without a live network call.
+func buildUpdateStatus(current string, tags []string, releaseURL string) *UpdateStatus {
+	behind := countVersionsBehind(current, tags)
 	return &UpdateStatus{
 		HasUpdate:      behind > 0,
-		CurrentVersion: a.GetAppVersion(),
+		CurrentVersion: current,
 		LatestVersion:  strings.TrimPrefix(latestValidTag(tags), "v"),
 		VersionsBehind: behind,
 		Blocked:        behind >= forcedUpdateThreshold,
 		ReleaseURL:     releaseURL,
-	}, nil
+	}
+}
+
+func (a *App) GetUpdateStatus() (*UpdateStatus, error) {
+	tags, releaseURL, err := fetchReleaseTags(context.Background(), a.GetAppVersion(), updateOwner, updateRepo)
+	if err != nil || len(tags) == 0 {
+		return &UpdateStatus{CurrentVersion: a.GetAppVersion()}, nil // fail-open, see plan Conventions
+	}
+	return buildUpdateStatus(a.GetAppVersion(), tags, releaseURL), nil
 }
 
 // appImagePath returns the running AppImage's own file path from the
@@ -143,9 +159,9 @@ func appImagePath() string {
 // filesystem replacement, same convention as GetUpdateStatus/CheckForUpdate.
 func (a *App) DownloadAndInstallUpdate() error {
 	cfg := goselfupdate.Config{
-		Owner:           "kushiemoon-dev",
-		Repo:            "flacidal",
-		Binary:          "flacidal",
+		Owner:           updateOwner,
+		Repo:            updateRepo,
+		Binary:          updateRepo,
 		Version:         a.GetAppVersion(),
 		AllowPrerelease: true,
 	}
@@ -172,9 +188,29 @@ func (a *App) DownloadAndInstallUpdate() error {
 			return err
 		}
 	}
+
+	if goruntime.GOOS == "darwin" {
+		patchInfoPlistVersion(exe, strings.TrimPrefix(result.To, "v"))
+	}
+
 	if err := exec.Command(exe, os.Args[1:]...).Start(); err != nil {
 		return err
 	}
-	os.Exit(0)
+	// Quit (not os.Exit) so OnShutdown still runs: draining download
+	// workers, saving config, closing the DB, same as any other exit path.
+	wailsruntime.Quit(a.ctx)
 	return nil
+}
+
+// patchInfoPlistVersion updates a macOS app bundle's Info.plist version keys
+// to match the just-installed version. goselfupdate only replaces the raw
+// Mach-O binary inside Contents/MacOS/, never Info.plist, so without this
+// Finder's "Get Info" keeps showing the previous version even though the
+// app itself (which reads its version from the embedded wails.json, not
+// Info.plist) already reports correctly. Best-effort and cosmetic only: a
+// failure here never blocks the update or relaunch.
+func patchInfoPlistVersion(binaryPath, version string) {
+	plistPath := filepath.Join(filepath.Dir(filepath.Dir(binaryPath)), "Info.plist")
+	_ = exec.Command("plutil", "-replace", "CFBundleShortVersionString", "-string", version, plistPath).Run()
+	_ = exec.Command("plutil", "-replace", "CFBundleVersion", "-string", version, plistPath).Run()
 }

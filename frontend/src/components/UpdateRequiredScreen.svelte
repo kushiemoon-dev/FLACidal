@@ -2,7 +2,7 @@
   import type { UpdateStatus } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
 
-  let { status, onUpdate }: { status: UpdateStatus; onUpdate: () => void } = $props();
+  let { status, onUpdate }: { status: UpdateStatus; onUpdate: () => Promise<void> } = $props();
 
   let downloading = $state(false);
   let error = $state<string | null>(null);

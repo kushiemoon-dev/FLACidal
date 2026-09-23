@@ -310,4 +310,38 @@ describe('CheckForUpdate in browser mode', () => {
 
     expect(info.url).toBe('https://example.com/flacidal.dmg')
   })
+
+  it('falls back to the release page URL on an Android UA instead of matching Linux', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7)',
+      maxTouchPoints: 5,
+    })
+    mockGithubRelease({
+      tag_name: 'v4.10.0',
+      html_url: 'https://example.com/release',
+      assets: [{ name: 'flacidal.AppImage', browser_download_url: 'https://example.com/flacidal.AppImage' }],
+    })
+
+    const { CheckForUpdate } = await import('./api')
+    const info = await CheckForUpdate()
+
+    expect(info.url).toBe('https://example.com/release')
+  })
+
+  it('falls back to the release page URL on an iPadOS UA instead of matching macOS', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15',
+      maxTouchPoints: 5,
+    })
+    mockGithubRelease({
+      tag_name: 'v4.10.0',
+      html_url: 'https://example.com/release',
+      assets: [{ name: 'flacidal.dmg', browser_download_url: 'https://example.com/flacidal.dmg' }],
+    })
+
+    const { CheckForUpdate } = await import('./api')
+    const info = await CheckForUpdate()
+
+    expect(info.url).toBe('https://example.com/release')
+  })
 })
