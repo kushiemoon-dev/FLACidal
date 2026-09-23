@@ -593,6 +593,20 @@ export async function OpenConfigFolder(): Promise<void> {
   console.warn('OpenConfigFolder: unavailable in browser mode, a web page cannot reach the local file manager')
 }
 
+export async function ExportConfig(): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.ExportConfig()
+  }
+  console.warn('ExportConfig: unavailable in browser mode')
+}
+
+export async function ImportConfig(): Promise<any> {
+  if (isWailsRuntime()) {
+    return Wails.ImportConfig()
+  }
+  console.warn('ImportConfig: unavailable in browser mode')
+}
+
 export async function DetectSourceFromURL(url: string): Promise<any> {
   if (isWailsRuntime()) {
     return Wails.DetectSourceFromURL(url)

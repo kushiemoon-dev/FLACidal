@@ -74,6 +74,10 @@ export function ExpandDiscographyURL(arg1) {
   return window['go']['app']['App']['ExpandDiscographyURL'](arg1);
 }
 
+export function ExportConfig() {
+  return window['go']['app']['App']['ExportConfig']();
+}
+
 export function ExportFailedDownloads(arg1) {
   return window['go']['app']['App']['ExportFailedDownloads'](arg1);
 }
@@ -204,6 +208,10 @@ export function GetSourcePlaylist(arg1, arg2) {
 
 export function GetSourceTrack(arg1, arg2) {
   return window['go']['app']['App']['GetSourceTrack'](arg1, arg2);
+}
+
+export function ImportConfig() {
+  return window['go']['app']['App']['ImportConfig']();
 }
 
 export function InstallFFmpeg() {

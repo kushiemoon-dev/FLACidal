@@ -1,7 +1,9 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	goruntime "runtime"
 	"slices"
@@ -10,6 +12,14 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// configExport mirrors FLACidal-Core/rpc.go's configExport (kept independent
+// per the D5 desktop/mobile split: desktop has no Core dependency), so a file
+// exported by one side can be imported by the other.
+type configExport struct {
+	SchemaVersion int         `json:"schemaVersion"`
+	Config        core.Config `json:"config"`
+}
 
 func (a *App) GetConfig() *core.Config {
 	return a.config
@@ -288,6 +298,59 @@ func endpointStatToStatus(sourceLabel string, ep core.EndpointStat) EndpointStat
 func (a *App) OpenConfigFolder() error {
 	configDir := core.GetDataDir()
 	return openFolder(configDir)
+}
+
+// ExportConfig writes the current config to a user-chosen JSON file, with
+// Tidal/Soulseek/Qobuz secrets redacted (same 7 fields as FLACidal-Core's
+// rpc.go handleExportConfig). Returns nil with no error if the user cancels
+// the save dialog.
+func (a *App) ExportConfig() error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "flacidal-config.json",
+		Filters:         []runtime.FileFilter{{DisplayName: "JSON Files", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	cfg := *a.config
+	cfg.TidalClientID = ""
+	cfg.TidalClientSecret = ""
+	cfg.SoulseekUsername = ""
+	cfg.SoulseekPassword = ""
+	cfg.QobuzAppID = ""
+	cfg.QobuzAppSecret = ""
+	cfg.QobuzAuthToken = ""
+	data, err := json.MarshalIndent(configExport{SchemaVersion: 1, Config: cfg}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("could not marshal config: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// ImportConfig reads a config previously written by ExportConfig (or its
+// FLACidal-Core mobile counterpart) from a user-chosen JSON file and applies
+// it via SaveConfig, so it benefits from the same runtime re-wiring
+// (downloader, downloadManager, sources) SaveConfig already does. Returns nil
+// with no error if the user cancels the open dialog.
+func (a *App) ImportConfig() (*core.Config, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{{DisplayName: "JSON Files", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read import file: %w", err)
+	}
+	var export configExport
+	if err := json.Unmarshal(data, &export); err != nil {
+		return nil, fmt.Errorf("could not parse import file: %w", err)
+	}
+	if err := a.SaveConfig(export.Config); err != nil {
+		return nil, err
+	}
+	return a.config, nil
 }
 
 func openFolder(path string) error {

@@ -11,6 +11,9 @@ import (
 // Deliberately left uncovered here:
 //   - OpenConfigFolder / openFolder: these spawn a real OS file-manager process
 //     (xdg-open/open/explorer), which isn't safe to trigger from a test.
+//   - ExportConfig / ImportConfig: pop a real native save/open dialog through
+//     runtime.SaveFileDialog / runtime.OpenFileDialog, which needs an actual
+//     Wails runtime context, same as ExportFailedDownloads in app_queue_test.go.
 
 func TestGetConfig(t *testing.T) {
 	cfg := &core.Config{Theme: "dark"}

@@ -39,6 +39,8 @@ export function EmbedLyricsToFile(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function ExpandDiscographyURL(arg1:string):Promise<Array<string>>;
 
+export function ExportConfig():Promise<void>;
+
 export function ExportFailedDownloads(arg1:string):Promise<string>;
 
 export function FetchAndEmbedLyrics(arg1:string):Promise<core.Lyrics>;
@@ -104,6 +106,8 @@ export function GetSourceHealth():Promise<Array<core.SourceHealth>>;
 export function GetSourcePlaylist(arg1:string,arg2:string):Promise<core.SourcePlaylist>;
 
 export function GetSourceTrack(arg1:string,arg2:string):Promise<core.SourceTrack>;
+
+export function ImportConfig():Promise<core.Config>;
 
 export function InstallFFmpeg():Promise<void>;
 

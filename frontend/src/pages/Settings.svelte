@@ -19,6 +19,8 @@
     CheckAPIStatus,
     CheckForUpdate,
     OpenConfigFolder,
+    ExportConfig,
+    ImportConfig,
     InstallFFmpeg,
     SetSourceOrder,
     GetSldlStatus,
@@ -234,6 +236,29 @@
       await OpenConfigFolder();
     } catch (e) {
       console.error('Failed to open config folder:', e);
+    }
+  }
+
+  async function exportConfig() {
+    try {
+      await ExportConfig();
+      toastStore.show('Config exported!');
+    } catch (e) {
+      console.error('Failed to export config:', e);
+      toastStore.show('Error exporting config', 'error');
+    }
+  }
+
+  async function importConfig() {
+    try {
+      const result = await ImportConfig();
+      if (result) {
+        await loadConfig();
+        toastStore.show('Config imported!');
+      }
+    } catch (e) {
+      console.error('Failed to import config:', e);
+      toastStore.show('Error importing config', 'error');
     }
   }
 
@@ -575,6 +600,12 @@
       <button class="btn-secondary" onclick={openConfig}>
         <FolderOpen size={16} />
         Open Config Folder
+      </button>
+      <button class="btn-secondary" onclick={exportConfig}>
+        Export Config
+      </button>
+      <button class="btn-secondary" onclick={importConfig}>
+        Import Config
       </button>
       <button class="btn-secondary" onclick={() => showResetConfirm = true} disabled={isResetting}>
         Reset to Default
