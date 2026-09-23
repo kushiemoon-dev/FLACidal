@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.18.0: 2026-09-23
+
+### New features
+- **Automatic update checks and installs**: the app now checks for updates at launch (the "Check for Updates" button in Settings is still there for an on-demand check). A user 3 or more releases behind is blocked with a full-screen prompt until they update; updating downloads the new release, verifies its SHA256 checksum, and replaces the running binary in place before relaunching. The version comparison bug that made `4.10.0` look older than `4.9.0` (a lexicographic string comparison, not semver) is also fixed, as is asset selection always grabbing the first release asset regardless of platform.
+
 ## v4.17.2: 2026-09-10
 
 ### Fixes
