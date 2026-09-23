@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { UpdateStatus } from '../lib/api';
+  import { OpenExternalURL } from '../lib/runtime';
 
   let { status, onUpdate }: { status: UpdateStatus; onUpdate: () => void } = $props();
 
@@ -22,6 +23,10 @@
   function quit() {
     (window as any).runtime?.Quit?.();
   }
+
+  function downloadManually() {
+    if (status.releaseUrl) OpenExternalURL(status.releaseUrl);
+  }
 </script>
 
 <div class="update-required">
@@ -34,7 +39,12 @@
     </p>
 
     {#if error}
-      <div class="error-box">{error}</div>
+      <div class="error-box">
+        {error}
+        {#if status.releaseUrl}
+          <button class="btn-manual" onclick={downloadManually}>Download manually instead</button>
+        {/if}
+      </div>
     {/if}
 
     <div class="update-actions">
@@ -92,6 +102,18 @@
     margin-bottom: 1.25rem;
     line-height: 1.5;
     text-align: left;
+  }
+
+  .btn-manual {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .update-actions {
