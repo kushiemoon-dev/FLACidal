@@ -740,9 +740,18 @@ export async function CheckForUpdate(): Promise<{ hasUpdate: boolean; version: s
   }
 }
 
-export async function GetUpdateStatus(): Promise<{ hasUpdate: boolean; currentVersion: string; latestVersion: string; versionsBehind: number; blocked: boolean; releaseUrl: string } | undefined> {
+export interface UpdateStatus {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string
+  versionsBehind: number
+  blocked: boolean
+  releaseUrl: string
+}
+
+export async function GetUpdateStatus(): Promise<UpdateStatus | undefined> {
   if (isWailsRuntime()) {
-    return Wails.GetUpdateStatus() as unknown as Promise<any>
+    return Wails.GetUpdateStatus() as unknown as Promise<UpdateStatus>
   }
   console.warn('GetUpdateStatus: unavailable in browser mode, forced-update blocking does not apply to headless')
 }
