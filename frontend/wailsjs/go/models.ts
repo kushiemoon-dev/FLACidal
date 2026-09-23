@@ -430,16 +430,20 @@ export namespace core {
 	    album: string;
 	    trackNumber: string;
 	    date: string;
+	    originalDate?: string;
 	    genre: string;
 	    isrc: string;
 	    albumArtist?: string;
 	    discNumber?: string;
+	    discTotal?: string;
 	    copyright?: string;
 	    label?: string;
 	    composer?: string;
 	    comment: string;
 	    bpm?: string;
 	    musicalKey?: string;
+	    replayGainTrackGain?: string;
+	    replayGainTrackPeak?: string;
 	    size: number;
 	    duration: number;
 	    sampleRate: number;
@@ -468,16 +472,20 @@ export namespace core {
 	        this.album = source["album"];
 	        this.trackNumber = source["trackNumber"];
 	        this.date = source["date"];
+	        this.originalDate = source["originalDate"];
 	        this.genre = source["genre"];
 	        this.isrc = source["isrc"];
 	        this.albumArtist = source["albumArtist"];
 	        this.discNumber = source["discNumber"];
+	        this.discTotal = source["discTotal"];
 	        this.copyright = source["copyright"];
 	        this.label = source["label"];
 	        this.composer = source["composer"];
 	        this.comment = source["comment"];
 	        this.bpm = source["bpm"];
 	        this.musicalKey = source["musicalKey"];
+	        this.replayGainTrackGain = source["replayGainTrackGain"];
+	        this.replayGainTrackPeak = source["replayGainTrackPeak"];
 	        this.size = source["size"];
 	        this.duration = source["duration"];
 	        this.sampleRate = source["sampleRate"];
@@ -850,6 +858,40 @@ export namespace core {
 		    return a;
 		}
 	}
+	export class Tier1Status {
+	    configured: boolean;
+	    healthy: boolean;
+	    endpoints?: EndpointStat[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Tier1Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configured = source["configured"];
+	        this.healthy = source["healthy"];
+	        this.endpoints = this.convertValues(source["endpoints"], EndpointStat);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SourceHealth {
 	    name: string;
 	    displayName: string;
@@ -857,6 +899,9 @@ export namespace core {
 	    latencyMs: number;
 	    reason?: string;
 	    endpoints?: EndpointStat[];
+	    tier1?: Tier1Status;
+	    failureKind?: string;
+	    retryEtaSecs?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SourceHealth(source);
@@ -870,6 +915,9 @@ export namespace core {
 	        this.latencyMs = source["latencyMs"];
 	        this.reason = source["reason"];
 	        this.endpoints = this.convertValues(source["endpoints"], EndpointStat);
+	        this.tier1 = this.convertValues(source["tier1"], Tier1Status);
+	        this.failureKind = source["failureKind"];
+	        this.retryEtaSecs = source["retryEtaSecs"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1082,6 +1130,7 @@ export namespace core {
 		    return a;
 		}
 	}
+	
 
 }
 
