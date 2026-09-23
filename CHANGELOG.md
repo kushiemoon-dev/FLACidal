@@ -162,7 +162,270 @@ A self-hosted endpoint that accepts a connection and then never responds (hangs,
 
 ---
 
-## v4.10.0: 2026-06-23
+## v4.10.0: 2026-06-21
 
-- Self-host priority pool, per-endpoint health panel, cascade transparency
-- Soulseek UX (Nicotine+ info box, login test, layout rebalanced)
+### New features
+- **Endpoint revival backoff**: dead proxy endpoints are no longer permanently blacklisted for the session. A dead endpoint enters a backoff queue and re-enters the pool as a probation candidate, starting at 5 minutes and doubling on each failed revival up to a 2 hour cap; a successful download from a probation endpoint resets it. A `200 OK` on metadata routes no longer counts as healthy on its own either: a response body containing the "upstream api error" signature of a proxy with banned upstream credentials now triggers immediate blacklisting instead of a 30 to 90 second stall before falling through to Soulseek.
+- **Self-host priority endpoints** (Settings > Sources): the single custom endpoint fields for Tidal and Qobuz became multi-line lists, tried in order before the public pool, which stays as a fallback rather than being removed. Existing single custom endpoint values migrate automatically into the new lists.
+- **Per-endpoint health panel** (Settings > Status): each proxy endpoint now shows its own state badge (live, probation, blacklisted, or dead), last-request latency, and revival count. Health is read from in-memory pool snapshots, no network requests, which also fixes a Linux crash where live HTTP probes conflicted with WebKitGTK's signal handling.
+- **Queue cascade badges**: a verdict badge (Lossless, Likely upscaled, or Upscaled) on Soulseek and Bandcamp downloads, the sources where bit-perfect lossless can't be guaranteed at the protocol level; Tidal, Qobuz, and Amazon aren't analyzed since they're lossless by construction. A cascade badge shows every source that was tried before the one that succeeded.
+- Home page empty state now shows source chips (Tidal HiFi, Qobuz, Bandcamp, Soulseek P2P, Spotify), and the placeholder typewriter includes Spotify and Bandcamp example URLs.
+
+## v4.9.0: 2026-06-17
+
+### New features
+- **Source health engine**: a 403, 401, 429, or Cloudflare/captcha challenge page from a proxy endpoint now blacklists it immediately instead of counting as a success; after 3 consecutive failures an endpoint is marked dead and never revived for the session (superseded by the backoff system in v4.10.0), and `IsAvailable()` for Qobuz/Amazon now returns false once every endpoint is dead so the orchestrator skips straight to Soulseek instead of timing out first. Each source in the fallback chain is also wrapped in its own panic recovery, so one source panicking no longer aborts the rest of the chain.
+- **Source Health panel** (Settings > Status): a Check Sources button runs concurrent live probes, bounded to 8s per source, Qobuz/Amazon over real proxy requests and Soulseek as an instant local check to avoid ban risk, reporting online, degraded, or dead with latency and a reason.
+- **One-click sldl installer** (Settings > Soulseek): downloads, extracts, and installs the pinned Soulseek client release for the current platform with a progress bar, and re-initializes the Soulseek source without a restart.
+
+### Internal
+- First Go test suite for the download orchestration chain: endpoint blacklisting/revival, orchestrator panic isolation, and Soulseek output parsing.
+- Core dependency bumped to v0.10.7.
+
+## v4.8.6: 2026-06-17
+- **Soulseek download succeeded despite transient reconnection failures being reported as errors** (#8).
+
+## v4.8.5: 2026-06-17
+
+### Fixes
+- **Soulseek fallback failed silently on Windows/macOS**: `sldl`'s error output was discarded, so a Gatekeeper quarantine kill on macOS or an AV/SmartScreen block on Windows produced an empty result that matched no error branch, and the app just showed a generic "Connection failed" with nothing logged (#10). The binary is now made executable and de-quarantined at startup, its raw output is logged to the in-app terminal (password excluded), and new error branches give an actionable hint for each failure mode.
+- Reaching Soulseek when the Qobuz fallback fails on Windows (#8).
+
+## v4.8.4: 2026-06-08
+
+### Fixes
+- **Soulseek login test always failed on Windows/macOS (#10)**: it waited for search results on an inbound listen port, which the default firewall on both platforms blocks; Soulseek authentication itself is outbound-only, which is why Nicotine+ worked fine with the same credentials. The test now checks for the outbound `Logged in <user>` line from `sldl -v` instead, so it no longer depends on inbound connectivity.
+- **Downloads failed whenever Soulseek was the only enabled source and Tidal was down (#8)**: metadata (artist, title, ISRC) was resolved exclusively through the Tidal proxy, so the Fetch button stayed disabled with no Tidal reachable, and Soulseek was never actually reached. The Universal (Deezer) search tab now provides a fully Tidal-independent path: it resolves metadata from the public Deezer API and routes straight to the orchestrator, which can search Soulseek by title and artist alone, no ISRC required.
+
+### Internal
+- `sldl`'s search timeout raised to 12s to tolerate slower indirect (server-mediated) peer connections on firewalled clients, plus a startup log when Soulseek is enabled but fails to initialize.
+- Core dependency bumped to v0.10.4.
+
+## v4.8.3: 2026-06-06
+
+### Fixes
+- **Qobuz short share-button URLs weren't recognized**: `open.qobuz.com/album/{id}` and `play.qobuz.com/album/{id}` (the format Qobuz's own share button produces) were routed to the Tidal parser and rejected as an invalid Tidal URL. The URL detection now accepts both the short format and the full storefront format.
+
+### Internal
+- App version is now read dynamically from `wails.json` at build time instead of being hardcoded, removing a source of version drift between the config and the UI.
+- Core dependency bumped to v0.10.3.
+
+## v4.8.2: 2026-06-06
+
+### Fixes
+- **Soulseek settings silently reset to disabled** (#7): `Settings.svelte`'s config loader omitted the `soulseekEnabled`/username/password fields from the response it read, so remounting the Settings page (it's destroyed and recreated on every navigation) reset the toggle to its default and the next save overwrote the persisted values with it.
+
+### Internal
+- Core dependency bumped to v0.10.1, which also fixes a concurrent-download panic.
+
+## v4.8.1: 2026-06-05
+
+### Fixes
+- **Soulseek (`sldl`) was never found on Windows**: FLACidal looked for the binary at a Linux-only path on every platform, so Windows users always got a "not found" error regardless of where they placed it. The expected path is now `%APPDATA%\flacidal\sldl.exe` on Windows and the existing `~/.local/share/flacidal/sldl` elsewhere, and the in-app message shows the correct path for the current platform.
+
+## v4.8.0: 2026-06-03
+
+### New features
+- **Guided, verifiable Soulseek setup** (Settings > General > Soulseek): previously required knowing the right binary path and hoping the credentials were correct, with no feedback until a download failed. Adds an info box explaining what Soulseek is and that existing Nicotine+ credentials work as-is, a status indicator for whether `sldl` is installed and its version, and a Login button that tests credentials live against the network before saving.
+- Settings' General tab layout rebalanced: Soulseek moved to the left column so both columns are roughly equal height instead of Downloads/Appearance sitting alone against a much taller Sources/Quality/Soulseek column.
+
+### Fixes
+- Soulseek toggle wasn't rendering (wrong CSS class), long setting descriptions crushed the input field width, and the Soulseek source now registers/unregisters live on Save without a restart.
+
+### Internal
+- Core dependency bumped to v0.10.0, which adds `UnregisterSource` to `SourceManager`.
+
+## v4.7.0: 2026-05-23
+
+### New features
+- **7 Qobuz proxy providers**: the proxy pool grew from 3 endpoints sharing one request format to 7 across four independent providers (dab, wjhe, gdstudio, musicdl, from [SpotiFLAC](https://github.com/spotbye/SpotiFLAC)), tried in order with the first success winning. Previously, all three original endpoints going down at once meant Qobuz downloads failed outright. A provider can be excluded via `qobuzProvidersDisabled` in `~/.flacidal/config.json`. No UI changes, existing config and downloads are unaffected.
+
+## v4.6.0: 2026-05-23
+
+### New features
+- **Drag-and-drop source priority** (Settings): reorder Tidal/Qobuz/Amazon/Soulseek priority live via the new `SetSourceOrder` RPC, with allowlist and dedup validation and a drag-cancel reset.
+- **Universal Deezer search tab**: works even when Tidal is down, resolving metadata from the public Deezer API for 30 results with ISRC.
+- **Recent albums grid on the home page**: shows previously downloaded albums pulled from download history.
+
+### Fixes
+- Replaced a raw `console.error` with a toast on the Deezer search handler, propagated a swallowed DB error, and switched an album-fetch effect to `onMount` on the home page.
+
+## v4.4.0: 2026-05-23
+
+### New features
+- **Bandcamp source**: name-your-price FLAC downloads from `bandcamp.com/track` and `bandcamp.com/album` URLs, positioned in the fallback chain between Amazon and Soulseek (core v0.7.0).
+
+## v4.3.0: 2026-05-22
+
+### New features
+- **Circuit breaker + two new metadata sources**: Deezer and Spotify wired in as metadata-only URL sources, Tidal wired into the download manager for circuit-breaker health checks, and the database wired into the orchestrator and Soulseek source for ISRC caching (core v0.6.0).
+
+### Internal
+- Core dependency bumped to v0.5.1 (a Soulseek port conflict fix) and then v0.5.2 (a Soulseek mutex fix).
+
+## v4.2.0: 2026-05-22
+
+### New features
+- **Multi-source download fallback**: FLACidal now tries sources in sequence, Tidal HiFi, then Qobuz, then Amazon Music, then Soulseek, instead of failing outright when the first is unavailable. Shipped in response to every major Tidal HiFi community proxy returning `403 Upstream API error` that month, with Qobuz proxies also down.
+- **Soulseek P2P source**: a last-resort source powered by [sldl](https://github.com/fiso64/slsk-batchdl), the Soulseek batch downloader. Unlike the proxy-based sources it can't be broken by an upstream API change; downloads are FLAC-only and serialized one at a time to avoid connection conflicts. Setup is optional, via new credentials fields in Settings > Sources > Soulseek.
+
+### Internal
+- New `DownloadOrchestrator` (generic multi-source fallback engine), `ISRCSearchable`/`TitleArtistSearchable` interfaces for cross-source matching, `.gitignore` now excludes audio files and Playwright artifacts. Core dependency bumped to v0.5.2.
+
+## v4.1.0: 2026-05-18
+
+### New features
+- **Spotify discography queuing**: paste a Spotify artist discography URL to fetch and queue every album, matched against Tidal.
+- **Per-track download history**: a paginated log of every completed or failed download with source, quality, and file path, backed by new `/api/track-history` and a WebSocket queue panel broadcasting live progress to every connected client.
+- **Audio Quality Analyzer**: drag-and-drop FLAC spectrum analysis with a lossless/upscaled verdict, its first appearance as a dedicated tool page.
+- **Dynamic Tidal endpoints**: background refresh of the community HiFi proxy pool with a disk cache, plus custom self-hosted Tidal/Qobuz endpoint fields in Settings.
+- **Vorbis output format** added to the Audio Converter, with q4/q6/q8/q10 quality presets.
+- **Qobuz community mirrors**: credential-free fallback via community proxies.
+
+## v4.0.6: 2026-04-16
+
+### Fixes
+- **Qobuz credentials UI removed**: credential-free proxy mode is the default now, no account needed.
+- **Selected download quality didn't persist across sessions.**
+- **Community endpoints blocked by ad-blocking DNS resolvers**: added a DNS sinkhole bypass.
+
+## v4.0.5: 2026-04-16
+
+### Fixes
+- Removed UPX compression on the Windows build and added `-trimpath -s -w` instead, to reduce antivirus false positives.
+
+### Internal
+- Core dependency bumped to v0.4.4.
+
+## v4.0.4: 2026-04-13
+
+### Fixes
+- **Album and artist search stopped working**: Tidal revoked the v1 credentials the app used directly; search is now routed through the community proxy pool instead, the same path track downloads already used.
+
+## v4.0.3: 2026-04-13
+- Core dependency bumped to v0.4.3 (search query normalization).
+
+## v4.0.2: 2026-04-13
+- Core dependency bumped to v0.4.2. CI's Go version bumped to 1.26 to match.
+
+## v4.0.1: 2026-04-13
+
+### Fixes
+- **Search was completely broken after the Svelte 5 runes migration**: six state variables (search query, results, in-progress flag) were left as plain `let` bindings instead of `$state()`, so they were never reactive; the search box always read as empty, keeping the button disabled and the Enter key a no-op. Also, the desktop backend had a single hardcoded Tidal proxy with no fallback, so search broke completely whenever that one host was unreachable; it now carries the same endpoint list as flacidal-core.
+- A type error and an accessibility label warning, and Vite pinned to v6.4.2 for plugin compatibility and a security fix.
+
+### Internal
+- Added `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, a PR template, issue templates, and a revised `SECURITY.md`.
+
+## v4.0.0: 2026-04-09
+
+Major UI redesign: a new design system, four dedicated audio tool pages, and improved UX across every page.
+
+### New features
+- **Design system**: new typography (Plus Jakarta Sans), an accent color system with gold highlights, animated tab navigation.
+- **Sidebar redesign**: icon-only navigation with tooltips and a Tools flyout for the new audio utilities.
+- **Audio tools suite**: Audio Quality Analyzer (batch upscale detection across FLAC/MP3/M4A/AAC), Audio Resampler, Audio Converter (MP3/AAC/OGG/Opus/ALAC/WAV), and File Manager (rename via metadata templates, browse tracks/lyrics/covers).
+- **Home page**: typewriter URL animation, region selector, Recent Fetches cards with cover art.
+- **History**: tabbed Downloads/Fetches view with search, sort, and styled empty states.
+- **About page**: project showcase with live GitHub stats and a Ko-fi support link.
+- **Settings**: reorganized into General, File Management, and Status tabs with a 2-column layout.
+- Page fade transitions, reusable empty-state components, click/success/error sound effects, a GitHub issue reporter modal, card hover effects, and a font selector (Plus Jakarta Sans, Outfit, Bricolage Grotesque).
+
+### Fixes
+- Vite bumped to v6.4.2, fixing a path traversal and a WebSocket vulnerability.
+
+## v3.3.0: 2026-04-04
+
+### Fixes
+- **Qobuz Hi-Res downloads failed validation**: fixed alongside a migration of the headless server command from the old `backend` package to the new `flacidal-core` module.
+
+### Internal
+- Core dependency bumped to v0.3.0.
+
+## v3.2.1: 2026-04-04
+
+### New features
+- **Direct Qobuz download support**: download jobs are now source-aware and route Qobuz-sourced jobs straight to `QobuzSource.DownloadTrack` instead of through the Tidal path, with an HTTP status check and a dedicated Wails binding.
+
+### Fixes
+- **Queue events could be silently dropped**: the event channel send was non-blocking, so a full buffer just discarded the event instead of waiting; it now blocks.
+- `HI_RES_LOSSLESS`/`HI_RES_MAX` normalized to the valid Tidal API quality parameter `HI_RES` before requests, the default quality changed from `HI_RES_LOSSLESS` to `HI_RES`, and duplicate quality options merged in the Settings dropdown.
+
+### Internal
+- Core dependency bumped three times this release (v0.2.1, then v0.2.2 and v0.2.3 the same day to work around a Go checksum-DB mismatch on the first retagged v0.2.1), picking up an FFI use-after-free fix, quality normalization, and a playlist pagination fix for playlists of 500+ tracks.
+
+## v3.2.0: 2026-04-03
+
+### New features
+- **Hi-Res by default**: default quality changed from Lossless to Hi-Res Lossless, with automatic fallback through Hi-Res, then Lossless, then High instead of failing outright.
+- Clearer error messages for HTML manifest failures, previously a cryptic JSON parse error.
+
+### Internal
+- First scaffold of the Flutter mobile app: FFI bindings to the Go core, Riverpod providers, go_router with 5-tab navigation, and a Material 3 dark theme, the starting point for what later became the separate FLACidal-Mobile repo.
+- Desktop's imports migrated from the local `backend` package to the standalone `flacidal-core` module.
+
+## v3.1.0: 2026-03-25
+
+12 new features focused on media server compatibility, search, and download workflow.
+
+### New features
+- **Folder cover art**: saves `folder.jpg` in album directories, recognized by Plex, Jellyfin, and Kodi.
+- **LRC lyrics export**: synced `.lrc` or plain `.txt` lyrics alongside FLAC files, for players like foobar2000 or Poweramp.
+- **Multi-type search**: separate Tracks, Albums, and Artists tabs, with whole-album download and artist profile browsing from search results.
+- **Folder structure presets**: templates like `{artist}/{album}` or `{year}/{artist}/{album}`, or a custom pattern.
+- **Full date metadata**: `DATE` now carries the full `YYYY-MM-DD`, plus a new `ORIGINALDATE` Vorbis comment.
+- **Source badge**: completed downloads show whether they came from Tidal or Qobuz.
+- **Convert Folder** button on the Files page batch-converts every FLAC in a folder.
+- Animated cycling URL placeholder on the home page input, and locale-formatted track/file counts.
+
+### Fixes
+- The update checker pointed at the wrong repository.
+
+## v3.0.0: 2026-03-11
+
+Feature parity release: smart downloads, a redesigned settings panel, and dozens of UX improvements.
+
+### New features
+- **Smart ISRC skip**: detects an existing file by its ISRC tag and skips re-downloading it.
+- **Track availability checking**: grays out unavailable tracks before they're queued.
+- **192kHz Hi-Res Lossless** quality tier with automatic fallback.
+- **Playlist pagination** for playlists over 100 tracks, and `DISCNUMBER`/`DISCTOTAL` tags for multi-disc albums.
+- **Settings overhaul**: tabbed into General, Sources, Metadata, Appearance, and Advanced, with 15+ naming presets, a configurable artist separator, new `{date}`/`{albumartist}`/`{discnumber}` template variables, a Tidal region selector, and a flat-vs-organized playlist subfolder toggle.
+- **API status checker**, an update checker (automatic and manual), a debounced search filter, sort-by-status on the queue, one-click Clean & Retry, confirmation dialogs on destructive actions, a track right-click context menu, and an Open Config Folder button.
+- **FFmpeg auto-installer** with a progress bar, and a folder-wide audio converter.
+- Explicit content badges, formatted play counts.
+
+### Internal
+- The queue event channel was serialized to prevent WebKit/GTK crashes on Linux.
+
+## v2.0.1: 2026-02-20
+
+Patch release, no functional changes: adds the automated GitHub Actions build and release pipeline that produces `flacidal.exe` (Windows), `flacidal.dmg` (macOS universal), and `flacidal.AppImage` (Linux), all published automatically on each version tag.
+
+## v2.0.0: 2026-02-20
+
+Major download engine overhaul, a full Svelte 5 migration, and a wide range of new features.
+
+### New features
+- **Download engine**: HiFi/Qobuz endpoint rotation, cross-source fallback by ISRC, automatic quality fallback, M3U8 playlist generation, and failed-download export.
+- **Tidal**: full artist discography browsing, profile picture/banner download, a 30 second audio preview, an explicit content badge, popularity-based sorting, ALAC format support, drag-and-drop FLAC analysis, and `COPYRIGHT`/`ORGANIZATION` Vorbis tags.
+- Toast notifications, a queue status filter bar, HTTP/SOCKS5 proxy support (for restricted regions), per-icon hover animations, and accessibility `aria-label`s.
+
+### Fixes
+- The Files page, History page, Mix URLs, Tidal v1 credentials, and light mode, all broken at various points before this release.
+
+### Internal
+- Migrated the frontend from Svelte 3 to Svelte 5 (runes) and Vite 4 to Vite 6, updated Go and frontend dependencies, and replaced debug `println` calls with structured logging.
+
+## v1.0.0: 2026-02-12
+
+Initial public release. A desktop app for downloading lossless FLAC music from Tidal, built with Go, Svelte, and Wails.
+
+### New features
+- Track, album, and playlist downloads in lossless FLAC quality, with a concurrent worker-pool queue and real-time progress.
+- Spotify ISRC and metadata matching against Tidal results via the Client Credentials flow.
+- Automatic FLAC metadata tagging (Vorbis comments) and album artwork embedding.
+- A queue manager, a file browser for downloaded tracks, and search.
+- SQLite-backed match and history caching, with configuration persisted at `~/.flacidal/`.
+
+Supported platforms at launch: Windows (amd64), macOS (amd64, arm64), Linux (amd64).
