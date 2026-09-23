@@ -11,6 +11,8 @@ const wailsMock = {
   QueueDownloads: vi.fn(),
   AnalyzeMultiple: vi.fn(),
   OpenFLACFilesDialog: vi.fn(),
+  GetUpdateStatus: vi.fn(),
+  DownloadAndInstallUpdate: vi.fn(),
 }
 vi.mock('../../wailsjs/go/app/App.js', () => wailsMock)
 
@@ -91,6 +93,24 @@ describe('API call routing in Wails mode', () => {
 
     expect(paths).toEqual(['/music/a.flac'])
     expect(wailsMock.OpenFLACFilesDialog).toHaveBeenCalledOnce()
+  })
+
+  it('GetUpdateStatus goes through the Wails binding', async () => {
+    const status = { hasUpdate: true, currentVersion: '4.9.0', latestVersion: '4.10.0', versionsBehind: 1, blocked: false, releaseUrl: 'https://example.com' }
+    wailsMock.GetUpdateStatus.mockResolvedValue(status)
+
+    const { GetUpdateStatus } = await import('./api')
+    expect(await GetUpdateStatus()).toEqual(status)
+    expect(wailsMock.GetUpdateStatus).toHaveBeenCalledOnce()
+  })
+
+  it('DownloadAndInstallUpdate hands off to the Wails binding', async () => {
+    wailsMock.DownloadAndInstallUpdate.mockResolvedValue(undefined)
+
+    const { DownloadAndInstallUpdate } = await import('./api')
+    await DownloadAndInstallUpdate()
+
+    expect(wailsMock.DownloadAndInstallUpdate).toHaveBeenCalledOnce()
   })
 })
 
@@ -195,6 +215,24 @@ describe('API call routing in browser mode', () => {
 
     const { SelectDownloadFolder } = await import('./api')
     expect(await SelectDownloadFolder()).toBe('')
+    warnSpy.mockRestore()
+  })
+
+  it('GetUpdateStatus warns and resolves to undefined, forced-update blocking does not apply headless', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { GetUpdateStatus } = await import('./api')
+    expect(await GetUpdateStatus()).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('DownloadAndInstallUpdate warns rather than throwing', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { DownloadAndInstallUpdate } = await import('./api')
+    await DownloadAndInstallUpdate()
+    expect(warnSpy).toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 })

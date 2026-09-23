@@ -740,6 +740,20 @@ export async function CheckForUpdate(): Promise<{ hasUpdate: boolean; version: s
   }
 }
 
+export async function GetUpdateStatus(): Promise<{ hasUpdate: boolean; currentVersion: string; latestVersion: string; versionsBehind: number; blocked: boolean; releaseUrl: string } | undefined> {
+  if (isWailsRuntime()) {
+    return Wails.GetUpdateStatus() as unknown as Promise<any>
+  }
+  console.warn('GetUpdateStatus: unavailable in browser mode, forced-update blocking does not apply to headless')
+}
+
+export async function DownloadAndInstallUpdate(): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.DownloadAndInstallUpdate()
+  }
+  console.warn('DownloadAndInstallUpdate: unavailable in browser mode')
+}
+
 // Wails mode is unaffected; in browser mode these throw a clear, catchable
 // error rather than crashing on an undefined window.go binding or silently
 // no-op'ing something the user explicitly triggered (Install buttons,

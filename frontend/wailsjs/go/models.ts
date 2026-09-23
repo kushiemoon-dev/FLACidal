@@ -36,6 +36,28 @@ export namespace app {
 	        this.releaseUrl = source["releaseUrl"];
 	    }
 	}
+	export class UpdateStatus {
+	    hasUpdate: boolean;
+	    currentVersion: string;
+	    latestVersion: string;
+	    versionsBehind: number;
+	    blocked: boolean;
+	    releaseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasUpdate = source["hasUpdate"];
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.versionsBehind = source["versionsBehind"];
+	        this.blocked = source["blocked"];
+	        this.releaseUrl = source["releaseUrl"];
+	    }
+	}
 
 }
 

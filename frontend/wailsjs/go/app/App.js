@@ -54,6 +54,10 @@ export function DetectSourceFromURL(arg1) {
   return window['go']['app']['App']['DetectSourceFromURL'](arg1);
 }
 
+export function DownloadAndInstallUpdate() {
+  return window['go']['app']['App']['DownloadAndInstallUpdate']();
+}
+
 export function DownloadArtistAssets(arg1, arg2, arg3) {
   return window['go']['app']['App']['DownloadArtistAssets'](arg1, arg2, arg3);
 }
@@ -208,6 +212,10 @@ export function GetSourcePlaylist(arg1, arg2) {
 
 export function GetSourceTrack(arg1, arg2) {
   return window['go']['app']['App']['GetSourceTrack'](arg1, arg2);
+}
+
+export function GetUpdateStatus() {
+  return window['go']['app']['App']['GetUpdateStatus']();
 }
 
 export function ImportConfig() {
