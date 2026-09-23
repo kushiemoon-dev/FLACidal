@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,23 +27,41 @@ type UpdateStatus struct {
 	ReleaseURL     string `json:"releaseUrl"`
 }
 
-// countVersionsBehind returns how many entries of tagsNewestFirst (newest
-// first, as returned by the GitHub releases API) separate current from the
-// newest tag. Malformed tags are skipped. If current is not found in the
-// list (older than everything returned, or a non-semver value like "dev"),
-// it returns len(tagsNewestFirst) — trivially past forcedUpdateThreshold.
+// countVersionsBehind returns how many tags in tagsNewestFirst are strictly
+// newer than current by semver value, not by list position: GitHub orders
+// releases by creation date, so a backported patch can appear before a
+// later feature release. If current itself is not a valid semver value
+// (e.g. "dev", an unreleased local build), it returns len(tagsNewestFirst)
+// — trivially past forcedUpdateThreshold, since it can't be compared.
 func countVersionsBehind(current string, tagsNewestFirst []string) int {
 	cur := "v" + strings.TrimPrefix(current, "v")
-	for i, t := range tagsNewestFirst {
+	if !semver.IsValid(cur) {
+		return len(tagsNewestFirst)
+	}
+	behind := 0
+	for _, t := range tagsNewestFirst {
+		tn := "v" + strings.TrimPrefix(t, "v")
+		if semver.IsValid(tn) && semver.Compare(tn, cur) > 0 {
+			behind++
+		}
+	}
+	return behind
+}
+
+// latestValidTag returns the highest valid semver tag in tags, or "" if
+// none is valid. Not necessarily tags[0]: see countVersionsBehind.
+func latestValidTag(tags []string) string {
+	best := ""
+	for _, t := range tags {
 		tn := "v" + strings.TrimPrefix(t, "v")
 		if !semver.IsValid(tn) {
 			continue
 		}
-		if semver.Compare(tn, cur) == 0 {
-			return i
+		if best == "" || semver.Compare(tn, best) > 0 {
+			best = tn
 		}
 	}
-	return len(tagsNewestFirst)
+	return best
 }
 
 // fetchReleaseTags lists every release tag for owner/repo, newest first (the
@@ -96,11 +115,20 @@ func (a *App) GetUpdateStatus() (*UpdateStatus, error) {
 	return &UpdateStatus{
 		HasUpdate:      behind > 0,
 		CurrentVersion: a.GetAppVersion(),
-		LatestVersion:  strings.TrimPrefix(tags[0], "v"),
+		LatestVersion:  strings.TrimPrefix(latestValidTag(tags), "v"),
 		VersionsBehind: behind,
 		Blocked:        behind >= forcedUpdateThreshold,
 		ReleaseURL:     releaseURL,
 	}, nil
+}
+
+// appImagePath returns the running AppImage's own file path from the
+// APPIMAGE environment variable AppImage itself sets at runtime, or "" when
+// not running from one. goselfupdate's default target, os.Executable(),
+// resolves inside an AppImage to the read-only squashfs mount it extracts
+// itself into, not the AppImage file, and that mount cannot be replaced.
+func appImagePath() string {
+	return os.Getenv("APPIMAGE")
 }
 
 // DownloadAndInstallUpdate downloads, verifies and installs the latest
@@ -108,25 +136,41 @@ func (a *App) GetUpdateStatus() (*UpdateStatus, error) {
 // selection (by GOOS/GOARCH), checksum verification and atomic binary
 // replacement itself, including cleanup of any partial/corrupt download on
 // failure — the caller only needs to surface the returned error.
+// AllowPrerelease matches GetUpdateStatus counting every raw tag (plan
+// Conventions): otherwise a prerelease-only "latest" would count as behind
+// here but never be found by goselfupdate's own default (stable-only) view.
 // Not tested directly: delegates to goselfupdate's own live network I/O and
 // filesystem replacement, same convention as GetUpdateStatus/CheckForUpdate.
 func (a *App) DownloadAndInstallUpdate() error {
-	result, err := goselfupdate.Update(context.Background(), goselfupdate.Config{
-		Owner:   "kushiemoon-dev",
-		Repo:    "flacidal",
-		Binary:  "flacidal",
-		Version: a.GetAppVersion(),
-	})
+	cfg := goselfupdate.Config{
+		Owner:           "kushiemoon-dev",
+		Repo:            "flacidal",
+		Binary:          "flacidal",
+		Version:         a.GetAppVersion(),
+		AllowPrerelease: true,
+	}
+
+	target := appImagePath()
+	var result goselfupdate.Result
+	var err error
+	if target != "" {
+		result, err = goselfupdate.UpdateTo(context.Background(), cfg, target)
+	} else {
+		result, err = goselfupdate.Update(context.Background(), cfg)
+	}
 	if err != nil {
 		return err
 	}
 	if !result.Applied {
-		return nil
+		return errors.New("no update available: already running the latest version")
 	}
 
-	exe, err := os.Executable()
-	if err != nil {
-		return err
+	exe := target
+	if exe == "" {
+		exe, err = os.Executable()
+		if err != nil {
+			return err
+		}
 	}
 	if err := exec.Command(exe, os.Args[1:]...).Start(); err != nil {
 		return err
