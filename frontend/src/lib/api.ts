@@ -682,12 +682,6 @@ export async function GetRecentAlbums(limit: number): Promise<any[]> {
   return apiGet(`/history/recent${qs({ limit })}`)
 }
 
-/**
- * There's no REST route for this, it's a stateless, side-effect-free call
- * to the public GitHub API, so browser mode calls it directly instead of
- * round-tripping through the server (the same approach About.svelte
- * already uses for repo stats).
- */
 // compareVersionParts compares two dot-separated numeric version strings
 // part by part (a missing trailing part counts as 0). Returns >0 if a > b,
 // <0 if a < b, 0 if equal. No npm semver dependency exists in this project
@@ -704,8 +698,15 @@ export function compareVersionParts(a: string, b: string): number {
   return 0
 }
 
+// browserPlatformExtension guesses a desktop OS from the User-Agent to pick
+// a matching release asset. A mobile UA (Android reports "Linux", iPadOS
+// reports "Macintosh") is checked first and returns "", since none of the
+// desktop assets apply there either way: selectAssetForPlatform then falls
+// back to the plain release page URL instead of guessing wrong.
 function browserPlatformExtension(): string {
   const ua = navigator.userAgent
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+  if (isMobile) return ''
   if (/Windows/i.test(ua)) return '.exe'
   if (/Mac OS X|Macintosh/i.test(ua)) return '.dmg'
   if (/Linux/i.test(ua)) return '.AppImage'
@@ -718,6 +719,12 @@ function selectAssetForPlatform(assets: Array<{ name?: string; browser_download_
   return assets.find((a) => a.name?.endsWith(ext))?.browser_download_url || ''
 }
 
+/**
+ * There's no REST route for this, it's a stateless, side-effect-free call
+ * to the public GitHub API, so browser mode calls it directly instead of
+ * round-tripping through the server (the same approach About.svelte
+ * already uses for repo stats).
+ */
 export async function CheckForUpdate(): Promise<{ hasUpdate: boolean; version: string; url: string; releaseUrl: string }> {
   if (isWailsRuntime()) {
     return Wails.CheckForUpdate() as unknown as Promise<{ hasUpdate: boolean; version: string; url: string; releaseUrl: string }>
