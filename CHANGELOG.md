@@ -2,6 +2,8 @@
 
 ## v4.18.1: 2026-09-24
 
+Patch release fixing two regressions surfaced while wiring up a self-hosted Tidal endpoint over a Tailscale/Headscale tailnet.
+
 ### Fixes
 - **A self-hosted Tidal/Qobuz/Amazon endpoint on a Tailscale/Headscale tailnet IP was rejected as insecure**: the CGNAT range (`100.64.0.0/10`) wasn't recognized as private, so an `http://` priority endpoint on a tailnet address got silently dropped, with the Terminal log's only trace being a "0 configured, 1 rejected" warning easy to miss. Self-hosted endpoints on a tailnet now work the same as on any other private network. Fixed in flacidal-core, bumped to v0.21.2.
 - **Browsing a GitHub-hosted extension registry always came back empty**: the registry fetch requested `manifest.json` when every published manifest (including `deezer-metadata`) is actually named `extension.json`. Same flacidal-core bump.
