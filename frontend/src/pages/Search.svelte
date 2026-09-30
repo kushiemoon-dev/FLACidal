@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SvelteSet } from 'svelte/reactivity';
   import { queueStore, downloadFolder, type TidalTrack } from '../stores/queue';
   import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../lib/api';
   import { toastStore } from '../stores/toast';
@@ -49,7 +50,7 @@
   let filterText = $state('');
   let filterTimeout: ReturnType<typeof setTimeout> | undefined;
   let debouncedFilter = $state('');
-  let downloadingAlbums = $state(new Set<number>());
+  const downloadingAlbums = new SvelteSet<number>();
   let deezerResults = $state<DeezerTrack[]>([]);
   let isSearchingDeezer = $state(false);
 
@@ -195,17 +196,14 @@
       return;
     }
 
-    downloadingAlbums = new Set([...downloadingAlbums, album.id]);
+    downloadingAlbums.add(album.id);
 
     try {
       await QueueArtistAlbum(String(album.id), album.artist, $downloadFolder);
     } catch (error) {
       console.error('Album download error:', error);
     } finally {
-      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable copy reassigned to $state
-      const next = new Set(downloadingAlbums);
-      next.delete(album.id);
-      downloadingAlbums = next;
+      downloadingAlbums.delete(album.id);
     }
   }
 

@@ -12,8 +12,8 @@
   let { items, x, y, onClose }: { items: MenuItem[]; x: number; y: number; onClose: () => void } = $props();
 
   let menuEl: HTMLDivElement | null = $state(null);
-  let adjustedX = $state(x);
-  let adjustedY = $state(y);
+  let adjustedX = $state<number | null>(null);
+  let adjustedY = $state<number | null>(null);
   let visible = $state(false);
 
   onMount(() => {
@@ -55,7 +55,7 @@
   class="context-menu"
   class:visible
   bind:this={menuEl}
-  style="left: {adjustedX}px; top: {adjustedY}px;"
+  style="left: {adjustedX ?? x}px; top: {adjustedY ?? y}px;"
   role="menu"
 >
   {#each items as item, i (i)}

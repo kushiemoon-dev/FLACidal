@@ -914,10 +914,10 @@
         </div>
 
         <!-- Track List -->
-        <div class="tracks-container">
+        <div class="tracks-container" role="list">
           {#each paginatedTracks as track, i (track.id)}
             {@const status = trackStatuses[track.id]}
-            <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false} oncontextmenu={(e) => showContextMenu(e, track)}>
+            <div class="track-row" role="listitem" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false} oncontextmenu={(e) => showContextMenu(e, track)}>
               <span class="track-num">{String((currentPage - 1) * tracksPerPage + i + 1).padStart(2, '0')}</span>
               <div class="track-details">
                 <div class="title-row">

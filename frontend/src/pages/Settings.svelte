@@ -937,10 +937,11 @@
 
         <div class="settings-section">
           <p class="settings-hint">{$t('settings.sources.dragHint')}</p>
-          <div class="source-priority-list">
+          <div class="source-priority-list" role="list">
             {#each sourceOrder as source, i (source)}
               <div
                 class="source-priority-item"
+                role="listitem"
                 draggable="true"
                 ondragstart={(e) => onDragStart(e, i)}
                 ondragover={(e) => onDragOver(e, i)}
@@ -986,12 +987,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.quality.fallback')}</label>
+            <label for="setting-autoQualityFallback">{$t('settings.quality.fallback')}</label>
             <span class="setting-desc">{$t('settings.quality.fallbackDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.autoQualityFallback} />
+              <input id="setting-autoQualityFallback" type="checkbox" bind:checked={config.autoQualityFallback} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -999,12 +1000,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>ReplayGain</label>
+            <label for="setting-enableReplayGain">ReplayGain</label>
             <span class="setting-desc">{$t('settings.replayGain.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.enableReplayGain} />
+              <input id="setting-enableReplayGain" type="checkbox" bind:checked={config.enableReplayGain} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1026,12 +1027,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Tidal</label>
+            <label for="setting-tidalEnabled">Tidal</label>
             <span class="setting-desc">{$t('settings.tidal.enableDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.tidalEnabled} />
+              <input id="setting-tidalEnabled" type="checkbox" bind:checked={config.tidalEnabled} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1039,12 +1040,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.skipExisting.label')}</label>
+            <label for="setting-skipExisting">{$t('settings.skipExisting.label')}</label>
             <span class="setting-desc">{$t('settings.skipExisting.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.skipExisting} />
+              <input id="setting-skipExisting" type="checkbox" bind:checked={config.skipExisting} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1072,12 +1073,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.skipUnavailable.label')}</label>
+            <label for="setting-skipUnavailableTracks">{$t('settings.skipUnavailable.label')}</label>
             <span class="setting-desc">{$t('settings.skipUnavailable.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.skipUnavailableTracks} />
+              <input id="setting-skipUnavailableTracks" type="checkbox" bind:checked={config.skipUnavailableTracks} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1085,12 +1086,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.autoStop.label')}</label>
+            <label for="setting-autoStopOnCooldown">{$t('settings.autoStop.label')}</label>
             <span class="setting-desc">{$t('settings.autoStop.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.autoStopOnCooldown} />
+              <input id="setting-autoStopOnCooldown" type="checkbox" bind:checked={config.autoStopOnCooldown} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1339,12 +1340,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.playlistSubfolder.label')}</label>
+            <label for="setting-playlistSubfolder">{$t('settings.playlistSubfolder.label')}</label>
             <span class="setting-desc">{$t('settings.playlistSubfolder.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.playlistSubfolder} />
+              <input id="setting-playlistSubfolder" type="checkbox" bind:checked={config.playlistSubfolder} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1352,12 +1353,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.m3u8.label')}</label>
+            <label for="setting-generateM3u8">{$t('settings.m3u8.label')}</label>
             <span class="setting-desc">{$t('settings.m3u8.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.generateM3u8} />
+              <input id="setting-generateM3u8" type="checkbox" bind:checked={config.generateM3u8} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1370,12 +1371,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.lyrics.embed')}</label>
+            <label for="setting-embedLyrics">{$t('settings.lyrics.embed')}</label>
             <span class="setting-desc">{$t('settings.lyrics.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.embedLyrics} />
+              <input id="setting-embedLyrics" type="checkbox" bind:checked={config.embedLyrics} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1384,12 +1385,12 @@
         {#if config.embedLyrics}
           <div class="setting-item">
             <div class="setting-info">
-              <label>{$t('settings.lyrics.synced')}</label>
+              <label for="setting-preferSyncedLyrics">{$t('settings.lyrics.synced')}</label>
               <span class="setting-desc">{$t('settings.lyrics.syncedDesc')}</span>
             </div>
             <div class="setting-control">
               <label class="toggle">
-                <input type="checkbox" bind:checked={config.preferSyncedLyrics} />
+                <input id="setting-preferSyncedLyrics" type="checkbox" bind:checked={config.preferSyncedLyrics} />
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -1397,12 +1398,12 @@
 
           <div class="setting-item">
             <div class="setting-info">
-              <label>{$t('settings.lyrics.saveFile')}</label>
+              <label for="setting-saveLyricsFile">{$t('settings.lyrics.saveFile')}</label>
               <span class="setting-desc">{$t('settings.lyrics.saveFileDesc')}</span>
             </div>
             <div class="setting-control">
               <label class="toggle">
-                <input type="checkbox" bind:checked={config.saveLyricsFile} />
+                <input id="setting-saveLyricsFile" type="checkbox" bind:checked={config.saveLyricsFile} />
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -1411,12 +1412,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.cover.embed')}</label>
+            <label for="setting-embedCover">{$t('settings.cover.embed')}</label>
             <span class="setting-desc">{$t('settings.cover.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.embedCover} />
+              <input id="setting-embedCover" type="checkbox" bind:checked={config.embedCover} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1424,12 +1425,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.cover.saveFile')}</label>
+            <label for="setting-saveCoverFile">{$t('settings.cover.saveFile')}</label>
             <span class="setting-desc">{$t('settings.cover.saveFileDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.saveCoverFile} />
+              <input id="setting-saveCoverFile" type="checkbox" bind:checked={config.saveCoverFile} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1437,12 +1438,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.cover.saveFolder')}</label>
+            <label for="setting-saveFolderCover">{$t('settings.cover.saveFolder')}</label>
             <span class="setting-desc">{$t('settings.cover.saveFolderDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.saveFolderCover} />
+              <input id="setting-saveFolderCover" type="checkbox" bind:checked={config.saveFolderCover} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1450,12 +1451,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.firstArtist.label')}</label>
+            <label for="setting-firstArtistOnly">{$t('settings.firstArtist.label')}</label>
             <span class="setting-desc">{$t('settings.firstArtist.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.firstArtistOnly} />
+              <input id="setting-firstArtistOnly" type="checkbox" bind:checked={config.firstArtistOnly} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1463,12 +1464,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.genre.embed')}</label>
+            <label for="setting-embedGenre">{$t('settings.genre.embed')}</label>
             <span class="setting-desc">{$t('settings.genre.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.embedGenre} />
+              <input id="setting-embedGenre" type="checkbox" bind:checked={config.embedGenre} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1476,12 +1477,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.genre.single')}</label>
+            <label for="setting-useSingleGenre">{$t('settings.genre.single')}</label>
             <span class="setting-desc">{$t('settings.genre.singleDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.useSingleGenre} />
+              <input id="setting-useSingleGenre" type="checkbox" bind:checked={config.useSingleGenre} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1489,12 +1490,12 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>{$t('settings.autoAnalyze.label')}</label>
+            <label for="setting-autoAnalyze">{$t('settings.autoAnalyze.label')}</label>
             <span class="setting-desc">{$t('settings.autoAnalyze.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.autoAnalyze} />
+              <input id="setting-autoAnalyze" type="checkbox" bind:checked={config.autoAnalyze} />
               <span class="toggle-slider"></span>
             </label>
           </div>

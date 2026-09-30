@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { downloadFolder } from '../stores/queue';
   import { formatNumber, formatBytes, formatDate } from '../lib/format';
   import { t, locale } from '../lib/i18n';
@@ -26,7 +27,7 @@
   let sortBy: 'name' | 'date' | 'size' = $state('date');
   let sortOrder: 'asc' | 'desc' = $state('desc');
   let metadataFilePath: string | null = $state(null);
-  let selectedFiles: Set<string> = $state(new Set());
+  const selectedFiles = new SvelteSet<string>();
   let showRenameModal = $state(false);
   let showConvertModal = $state(false);
   let showAnalysisModal = $state(false);
@@ -58,35 +59,31 @@
   );
 
   function toggleSelectAll() {
-    if (allSelected) {
-      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable Set reassigned to $state
-      selectedFiles = new Set();
-    } else {
-      selectedFiles = new Set(files.map(f => f.path));
+    selectedFiles.clear();
+    if (!allSelected) {
+      for (const f of files) selectedFiles.add(f.path);
     }
   }
 
   function toggleSelect(path: string) {
     if (selectedFiles.has(path)) {
       selectedFiles.delete(path);
-      selectedFiles = selectedFiles; // Trigger reactivity
     } else {
       selectedFiles.add(path);
-      selectedFiles = selectedFiles; // Trigger reactivity
     }
   }
 
   function clearSelection() {
-    selectedFiles = new Set();
+    selectedFiles.clear();
   }
 
   function handleRenameComplete() {
-    selectedFiles = new Set();
+    selectedFiles.clear();
     loadFiles();
   }
 
   function handleConvertComplete() {
-    selectedFiles = new Set();
+    selectedFiles.clear();
     loadFiles();
   }
 

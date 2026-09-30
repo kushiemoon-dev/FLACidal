@@ -19,11 +19,17 @@
   function handleOverlayClick(e: MouseEvent) {
     if (e.target === e.currentTarget) close();
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (isOpen && e.key === 'Escape') close();
+  }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if isOpen}
-<div class="modal-overlay" onclick={handleOverlayClick}>
-  <div class="modal-card">
+<div class="modal-overlay" role="presentation" onclick={handleOverlayClick}>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label={$t('modals.issue.title')}>
     <h2 class="modal-title">{$t('modals.issue.title')}</h2>
 
     <div class="warning-box">

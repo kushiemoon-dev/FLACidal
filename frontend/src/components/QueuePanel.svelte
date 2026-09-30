@@ -177,19 +177,4 @@
     font-weight: 500;
     white-space: nowrap;
   }
-
-  .progress-bar-track {
-    grid-column: 1 / -1;
-    height: 3px;
-    background: var(--color-bg-hover);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--color-accent);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-  }
 </style>
