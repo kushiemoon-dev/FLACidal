@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from 'svelte/compiler';
+import { scanSource } from './hardcodedScanner';
 
 const sources = import.meta.glob(['/src/**/*.svelte', '/src/stores/*.ts', '/src/lib/*.ts'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
-// Paths relative to src/. Each i18n PR appends the files it migrated.
+// Paths relative to src/. Every .svelte file under src/ must be listed either here or in EXCLUDED.
 const MIGRATED: string[] = [
   'App.svelte',
   'components/Sidebar.svelte', 'components/Toast.svelte', 'components/ConfirmDialog.svelte',
@@ -19,304 +19,144 @@ const MIGRATED: string[] = [
   'pages/tools/AudioQualityAnalyzer.svelte',
 ];
 
-// Full R6 scope. MIGRATED must equal this once the migration is finished (PR6).
-const ALL_TARGETS: string[] = [
-  'App.svelte',
-  'pages/Home.svelte', 'pages/Search.svelte', 'pages/Queue.svelte', 'pages/History.svelte',
-  'pages/Files.svelte', 'pages/Settings.svelte', 'pages/Terminal.svelte', 'pages/About.svelte',
-  'pages/tools/AudioConverter.svelte', 'pages/tools/FileManager.svelte',
-  'pages/tools/AudioResampler.svelte', 'pages/tools/LyricsManager.svelte',
-  'pages/tools/AudioQualityAnalyzer.svelte',
-  'components/Sidebar.svelte', 'components/Toast.svelte', 'components/ConfirmDialog.svelte',
-  'components/ContextMenu.svelte', 'components/TabBar.svelte', 'components/DropZone.svelte',
-  'components/QueuePanel.svelte', 'components/IssueReporterModal.svelte',
-  'components/UpdateRequiredScreen.svelte', 'components/AnalysisModal.svelte',
-  'components/ConvertModal.svelte', 'components/MetadataModal.svelte', 'components/RenameModal.svelte',
-];
+// Svelte files deliberately not scanned, each with the reason. Keep this list tiny; a new component belongs in MIGRATED.
+const EXCLUDED: Record<string, string> = {};
 
-// Non-component code that can produce user-visible text. lib/api.ts (browser-mode developer errors)
-// and lib/websocket.ts (console diagnostics) are intentionally out of scope.
-const TS_TARGETS: string[] = [
-  'stores/audio.ts', 'stores/queue.ts', 'stores/theme.ts', 'stores/toast.ts',
-  'lib/format.ts', 'lib/navHistory.ts', 'lib/runtime.ts',
-];
-
-// Proper nouns and product names stay untranslated (longest first so "Amazon Music" wins over "Amazon").
-const PROPER_NOUNS = [
-  'FLACidal Mobile', 'Amazon Music', 'Plus Jakarta Sans', 'Bricolage Grotesque', 'OpenDrop', 'FLACidal', 'YouFLAC', 'Tidal', 'Qobuz',
-  'Soulseek', 'Jellyfin', 'Bandcamp', 'English', 'Français', 'Deutsch', 'Amazon', 'HiFi', 'ReplayGain', 'FFmpeg',
-  'Nicotine+', 'Ko-fi', 'BPM', 'Outfit', 'VJ',
-];
-// Untranslated technical tokens: units, codecs, literal shell commands, log level tags, filename separators.
-const TECH_TERMS = new RegExp(
-  [
-    String.raw`\b(?:kHz|Hz|kbps|ISRC|ms|sldl|ch|VBR|feat\.|sans-serif)\b`,
-    String.raw`\b[KMG]?B\b`,
-    String.raw`\b(?:MP3|AAC|OGG|Opus|Vorbis|ALAC|WAV|AIFF|FLAC)\b`,
-    String.raw`-?\bbit\b`,
-    String.raw`sudo pacman -S ffmpeg`,
-    String.raw`\[(?:ERROR|WARN|OK|INFO|LOG)\]`,
-  ].join('|'),
-  'g'
-);
-// URLs, `{placeholder}` template variables, absolute paths and CSS media queries carry no prose.
-const NON_PROSE = /https?:\/\/\S*|\{\w+\}|(?:^|\s)\/[\w.\-/]+|^\([^)]*\)$/g;
-// Strings that are identifiers, not shown text. Keep this list short and reasoned.
-const ALLOWED_STRINGS: Record<string, string[]> = {
-  '*': ['v'], // version prefix in `v${version}`
-  // Preset ids; the visible label comes from labelKey via $t.
-  'stores/theme.ts': ['Pink', 'Purple', 'Blue', 'Cyan', 'Green', 'Orange', 'Red'],
+// Non-component code that can produce user-visible text. Every src/stores/*.ts and src/lib/*.ts module is scanned
+// (tests aside) except the ones below.
+const TS_EXCLUDED: Record<string, string> = {
+  'lib/api.ts': 'browser-mode developer errors, never shown as product UI',
+  'lib/websocket.ts': 'console diagnostics only',
 };
-// Attributes whose value is shown to the user or read by assistive tech.
-const VISIBLE_ATTRS = ['title', 'placeholder', 'aria-label', 'alt', 'label', 'aria-description', 'aria-valuetext', 'aria-placeholder'];
-// Names of variables/properties that hold user-facing text, so even a lowercase word assigned to them is flagged.
-const TEXT_NAME = /^(?!cssText$)(?:error|err|message|msg|label|title|text|description|desc|hint|tooltip|placeholder|\w+(?:Error|Message|Msg|Label|Title|Text|Result))$/;
-// Calls whose first argument is shown to the user.
-const USER_CALLS = new Set(['toastStore.show', 'toastStore.showMsg', 'alert', 'confirm', 'prompt', 'window.alert', 'window.confirm', 'window.prompt']);
-// Calls whose string arguments are keys, selectors, event names or other machine tokens.
-const MACHINE_CALLS = new Set([
-  'toastStore.showKey',
-  'addEventListener', 'removeEventListener', 'querySelector', 'querySelectorAll', 'getElementById', 'closest',
-  'setAttribute', 'getAttribute', 'removeAttribute', 'matchMedia', 'createElement', 'dispatchEvent',
-  'localStorage.getItem', 'localStorage.setItem', 'localStorage.removeItem',
-  'sessionStorage.getItem', 'sessionStorage.setItem', 'sessionStorage.removeItem',
-  'document.documentElement.style.setProperty', 'document.documentElement.style.removeProperty',
-  'EventsOn', 'EventsOff', 'EventsEmit', 'window.open', 'open', 'fetch', 'RegExp',
-]);
-// Method names that take a search/format token rather than displayed text.
-const MACHINE_METHODS = /(?:^|\.)(?:includes|startsWith|endsWith|indexOf|lastIndexOf|split|join|replace|replaceAll|match|test|padStart|padEnd|concat|toFixed|toLocaleString|toLocaleDateString|localeCompare|on|off|emit|once|has|get|set|delete|add|remove|toggle|contains|getPropertyValue|setProperty|removeProperty|append|scrollIntoView|focus|assign|keys|hasOwnProperty)$/;
-const COMPARISON = new Set(['===', '!==', '==', '!=', '<', '>', '<=', '>=', 'in', 'instanceof']);
-const PASS_THROUGH = new Set(['LogicalExpression', 'TemplateLiteral', 'ChainExpression', 'ParenthesizedExpression', 'TSAsExpression', 'TSNonNullExpression', 'TSSatisfiesExpression', 'AwaitExpression']);
 
-function strip(raw: string): string {
-  let s = raw;
-  for (const n of PROPER_NOUNS) s = s.split(n).join('');
-  return s.replace(TECH_TERMS, '').replace(NON_PROSE, '');
-}
+// TODO(i18n): real leftovers the stricter scanner found in the tree. Fix them in the components, then delete the entry.
+// Format: the finding without its line number, exactly as reported (`file kind detail`).
+const KNOWN_LEFTOVERS: string[] = [];
 
-function visibleText(raw: string): boolean {
-  return /\p{L}/u.test(strip(raw));
-}
+const stripLine = (finding: string) => finding.replace(/^([^:]+):\d+ /, '$1 ');
+const srcPath = (p: string) => p.replace(/^\/src\//, '');
 
-/** Any letter counts, unless the text is an ALL_CAPS constant (enum value, acronym). */
-function strictText(raw: string): boolean {
-  const s = strip(raw);
-  return /\p{L}/u.test(s) && /\p{Ll}/u.test(s);
-}
-
-/** Looks like a sentence or label: capitalised word, or several words. Filters ids, keys and CSS in plain script. */
-function proseText(raw: string): boolean {
-  const s = strip(raw).trim();
-  return /^\p{Lu}\p{Ll}/u.test(s) || /\p{L}{2,}\s+\p{L}{2,}/u.test(s);
-}
-
-/** Loose view of the ESTree / Svelte AST nodes this scanner walks; only the fields it reads are declared. */
-interface AstNode {
-  type: string;
-  start: number;
-  name?: string;
-  data?: string;
-  operator?: string;
-  computed?: boolean;
-  directive?: string;
-  value?: string | boolean | AstNode | AstNode[] | { cooked?: string } | null;
-  test?: AstNode | null;
-  key?: AstNode;
-  left?: AstNode;
-  id?: AstNode;
-  callee?: AstNode;
-  arguments?: AstNode[];
-  object?: AstNode;
-  property?: AstNode;
-  expression?: AstNode;
-}
-
-function calleeName(callee: AstNode | null | undefined): string {
-  if (!callee) return '';
-  if (callee.type === 'Identifier') return callee.name ?? '';
-  if (callee.type === 'MemberExpression' && !callee.computed) return `${calleeName(callee.object)}.${callee.property?.name}`;
-  if (callee.type === 'CallExpression') return `${calleeName(callee.callee)}()`;
-  if (callee.type === 'ChainExpression') return calleeName(callee.expression);
-  return '';
-}
-
-function targetName(node: AstNode | null | undefined): string {
-  if (!node) return '';
-  if (node.type === 'Identifier') return node.name ?? '';
-  if (node.type === 'MemberExpression' && !node.computed) return node.property?.name ?? '';
-  if (node.type === 'Literal') return String(node.value);
-  return '';
-}
-
-type Mode = 'skip' | 'strict' | 'loose';
-
-/**
- * Decides how strictly a string literal is checked by looking at where it is used.
- * strict: shown as-is (template text, visible attribute, toast/alert/confirm argument, state named error/message/label...).
- * loose: plain script code, only sentence-like strings count.
- * skip: comparison operands, translation keys, imports, types, selectors, event names, object keys.
- */
-function modeFor(node: AstNode, anc: AstNode[]): Mode {
-  let child = node;
-  for (let i = anc.length - 1; i >= 0; i--) {
-    const p = anc[i];
-    const type: string = p.type;
-    if (type.startsWith('TS') && !PASS_THROUGH.has(type)) return 'skip';
-    if (type === 'ImportDeclaration' || type === 'ExportAllDeclaration' || type === 'ExportNamedDeclaration') return 'skip';
-    if (type === 'ExpressionStatement' && p.directive) return 'skip';
-    if (type === 'SwitchCase') return child === p.test ? 'skip' : 'loose';
-    if (type === 'BinaryExpression') {
-      if (COMPARISON.has(p.operator ?? '')) return 'skip';
-      if (p.operator !== '+') return 'skip';
-    } else if (type === 'ConditionalExpression') {
-      if (child === p.test) return 'skip';
-    } else if (type === 'MemberExpression') {
-      if (p.computed && child === p.property) return 'skip';
-      return 'loose';
-    } else if (type === 'Property') {
-      if (child === p.key) return 'skip';
-      return TEXT_NAME.test(targetName(p.key)) ? 'strict' : 'loose';
-    } else if (type === 'AssignmentExpression') {
-      return TEXT_NAME.test(targetName(p.left)) ? 'strict' : 'loose';
-    } else if (type === 'VariableDeclarator') {
-      return TEXT_NAME.test(targetName(p.id)) ? 'strict' : 'loose';
-    } else if (type === 'CallExpression' || type === 'NewExpression') {
-      const name = calleeName(p.callee);
-      if (name === '$t' || name.startsWith('get(t)') || name === 't') return 'skip';
-      if (name.startsWith('console.') || MACHINE_CALLS.has(name) || MACHINE_METHODS.test(name)) return 'skip';
-      if (USER_CALLS.has(name)) return p.arguments[0] === child ? 'strict' : 'skip';
-      return 'loose';
-    } else if (type === 'ExpressionTag') {
-      // Template expression. Inside an attribute only the visible ones matter.
-      const attr = anc.slice(0, i).reverse().find((a) => a.type === 'Attribute' || a.type.endsWith('Directive'));
-      if (!attr) return 'strict';
-      if (attr.type === 'Attribute') return VISIBLE_ATTRS.includes(attr.name ?? '') ? 'strict' : 'skip';
-      return attr.type === 'OnDirective' ? 'loose' : 'skip';
-    } else if (type === 'Attribute') {
-      return VISIBLE_ATTRS.includes(p.name ?? '') ? 'strict' : 'skip';
-    } else if (type === 'ArrowFunctionExpression' || type === 'FunctionExpression' || type === 'FunctionDeclaration' || type === 'ReturnStatement') {
-      return 'loose';
-    } else if (!PASS_THROUGH.has(type) && type !== 'ConditionalExpression' && type !== 'BinaryExpression') {
-      return 'loose';
-    }
-    child = p;
-  }
-  return 'loose';
-}
-
-function scanNode(root: AstNode | undefined, file: string, lineOf: (pos: number) => number, out: string[]) {
-  const allowed = [...(ALLOWED_STRINGS['*'] ?? []), ...(ALLOWED_STRINGS[file] ?? [])];
-  const visit = (node: AstNode | AstNode[] | null | undefined, anc: AstNode[]) => {
-    if (!node || typeof node !== 'object') return;
-    if (Array.isArray(node)) {
-      node.forEach((c) => visit(c, anc));
-      return;
-    }
-    if (typeof node.type !== 'string') return;
-
-    if (node.type === 'Text') {
-      // Static text: only real text children and visible attributes count (class, href, id... do not).
-      const inAttr = anc.some((a) => a.type === 'Attribute');
-      if (!inAttr && visibleText(node.data)) out.push(`${file}:${lineOf(node.start)} text "${node.data.trim().slice(0, 40)}"`);
-      return;
-    }
-    if (node.type === 'Attribute') {
-      const vals = (Array.isArray(node.value) ? node.value : node.value === true ? [] : [node.value]) as AstNode[];
-      for (const v of vals) {
-        if (v?.type === 'Text') {
-          if (VISIBLE_ATTRS.includes(node.name) && visibleText(v.data)) {
-            out.push(`${file}:${lineOf(v.start)} attr ${node.name}="${v.data.slice(0, 40)}"`);
-          }
-        } else visit(v, [...anc, node]);
-      }
-      return;
-    }
-
-    const str = node.type === 'Literal' && typeof node.value === 'string' ? node.value
-      : node.type === 'TemplateElement' ? (node.value as { cooked?: string }).cooked ?? null : null;
-    if (str != null) {
-      if (!allowed.includes(str.trim())) {
-        const mode = modeFor(node, anc);
-        const bad = mode === 'strict' ? strictText(str) : mode === 'loose' ? proseText(str) : false;
-        if (bad) out.push(`${file}:${lineOf(node.start)} ${mode} string ${JSON.stringify(str.slice(0, 40))}`);
-      }
-      return;
-    }
-    for (const key of Object.keys(node)) {
-      if (key === 'parent' || key === 'metadata') continue;
-      const val = node[key];
-      if (val && typeof val === 'object') visit(val, [...anc, node]);
-    }
-  };
-  visit(root, []);
-}
-
-/** Returns one finding per hardcoded user-visible string in a component (.svelte) or module (.ts). */
-export function scanSource(file: string, source: string): string[] {
-  const isTs = file.endsWith('.ts');
-  const code = isTs ? `<script lang="ts">${source}</script>` : source;
-  const ast = parse(code, { modern: true }) as unknown as { fragment: AstNode; instance?: { content: AstNode }; module?: { content: AstNode } };
-  const lineOf = (pos: number) => code.slice(0, pos).split('\n').length;
-  const found: string[] = [];
-  scanNode(ast.fragment, file, lineOf, found);
-  scanNode(ast.instance?.content, file, lineOf, found);
-  scanNode(ast.module?.content, file, lineOf, found);
-  return found;
-}
+const svelteFiles = Object.keys(sources).map(srcPath).filter((p) => p.endsWith('.svelte')).sort();
+const tsFiles = Object.keys(sources)
+  .map(srcPath)
+  .filter((p) => /^(?:stores|lib)\/[^/]+\.ts$/.test(p) && !/\.(?:test|spec)\.ts$/.test(p) && !(p in TS_EXCLUDED))
+  .sort();
 
 function scan(file: string): string[] {
-  return scanSource(file, sources[`/src/${file}`]);
+  return scanSource(file, sources[`/src/${file}`]).filter((f) => !KNOWN_LEFTOVERS.includes(stripLine(f)));
 }
 
-describe('no hardcoded UI strings in migrated files', () => {
-  it.each(MIGRATED)('%s', (file) => {
+const scanned = svelteFiles.filter((f) => !(f in EXCLUDED));
+
+describe(`no hardcoded UI strings (${scanned.length} svelte + ${tsFiles.length} ts files scanned)`, () => {
+  it.each(scanned)('%s', (file) => {
     expect(scan(file)).toEqual([]);
   });
-  it.each(TS_TARGETS)('%s', (file) => {
+  it.each(tsFiles)('%s', (file) => {
     expect(scan(file)).toEqual([]);
   });
-  it('covers every store module', () => {
-    const stores = Object.keys(sources)
-      .map((p) => p.replace('/src/', ''))
-      .filter((p) => /^stores\/[^/]+\.ts$/.test(p) && !p.endsWith('.test.ts'));
-    expect(stores.sort()).toEqual(TS_TARGETS.filter((f) => f.startsWith('stores/')).sort());
+});
+
+describe('scan coverage', () => {
+  it('every .svelte file under src/ is MIGRATED or EXCLUDED (add new components to MIGRATED)', () => {
+    const known = [...MIGRATED, ...Object.keys(EXCLUDED)];
+    expect(svelteFiles.filter((f) => !known.includes(f))).toEqual([]);
   });
-  it('MIGRATED only lists known targets', () => {
-    expect(MIGRATED.filter((f) => !ALL_TARGETS.includes(f))).toEqual([]);
+  it('MIGRATED and EXCLUDED only list existing, distinct files', () => {
+    expect(MIGRATED.filter((f) => !svelteFiles.includes(f))).toEqual([]);
+    expect(Object.keys(EXCLUDED).filter((f) => !svelteFiles.includes(f))).toEqual([]);
+    expect(MIGRATED.filter((f) => f in EXCLUDED)).toEqual([]);
+    expect(new Set(MIGRATED).size).toBe(MIGRATED.length);
+  });
+  it('every EXCLUDED entry states a reason', () => {
+    expect([...Object.values(EXCLUDED), ...Object.values(TS_EXCLUDED)].filter((r) => r.trim().length < 5)).toEqual([]);
+  });
+  it('scans every store and lib module', () => {
+    expect(tsFiles).toEqual(expect.arrayContaining(['stores/toast.ts', 'stores/queue.ts', 'lib/format.ts']));
+    expect(tsFiles.some((f) => f in TS_EXCLUDED)).toBe(false);
   });
 });
 
 describe('scanner catches each class of hardcoded string', () => {
   const wrap = (script: string, markup = '') => `<script lang="ts">\n${script}\n</script>\n${markup}`;
-  const cases: [string, string][] = [
+  const toast = "import { toastStore } from '../stores/toast';";
+  const violations: [string, string][] = [
+    // Static markup and attributes
     ['static text', wrap('', '<p>Hello world</p>')],
-    ['static visible attribute', wrap('', '<button title="Close it">x</button>')],
+    ['single lowercase text', wrap('', '<p>hello</p>')],
+    ['svelte:head title', wrap('', '<svelte:head><title>My Player</title></svelte:head>')],
+    ['title attribute', wrap('', '<button title="Close it">x</button>')],
+    ['aria-label attribute', wrap('', '<button aria-label="Close">x</button>')],
+    ['aria-description attribute', wrap('', '<div aria-description="Drop files here"></div>')],
+    ['aria-roledescription attribute', wrap('', '<div aria-roledescription="slider"></div>')],
+    ['aria-placeholder attribute', wrap('', '<div aria-placeholder="Search"></div>')],
+    ['data-tooltip attribute', wrap('', '<span data-tooltip="Copy path">x</span>')],
+    ['optgroup label attribute', wrap('', '<select><optgroup label="Lossless"></optgroup></select>')],
+    ['option text', wrap('', '<select><option value="a">Alpha</option></select>')],
+    ['value-less option shows its value', wrap('', '<select><option value="Alpha"></option></select>')],
+    ['submit input value', wrap('', '<input type="submit" value="Save" />')],
+    ['component text prop', wrap('', '<Foo title="Close" />')],
+    ['component expression prop', wrap('', "<Foo message={'Hi there'} />")],
+    ['text in snippet body', wrap('', '{#snippet row()}<span>Hello</span>{/snippet}')],
+    ['expression in snippet body', wrap('', "{#snippet row()}<span>{'Done'}</span>{/snippet}")],
+    ['@const body', wrap('', "{#if true}{@const t = 'Loading'}<span>{t}</span>{/if}")],
+    ['each over literal list', wrap('', "{#each ['alpha', 'beta'] as x}<li>{x}</li>{/each}")],
+    // Expressions in markup
     ['ternary in text', wrap('let ok = true;', "<span>{ok ? 'Yes' : 'No'}</span>")],
     ['lowercase ternary in text', wrap('let ok = true;', "<span>{ok ? 'yes' : 'no'}</span>")],
-    ['logical fallback in text', wrap('let v = \'\';', "<span>{v || 'Unavailable'}</span>")],
+    ['logical fallback in text', wrap("let v = '';", "<span>{v || 'Unavailable'}</span>")],
     ['template literal in text', wrap('let n = 1;', '<span>{`${n} files selected`}</span>')],
     ['title expression', wrap('', "<button title={'Close it'}>x</button>")],
     ['aria-label conditional', wrap('let o = true;', "<button aria-label={o ? 'Collapse' : 'Expand'}>x</button>")],
     ['placeholder expression', wrap('', "<input placeholder={'Type here'} />")],
+    // Script values that reach the template
     ['state assignment', wrap("let error = $state(''); function f() { error = 'Failed to load'; }")],
     ['lowercase state assignment', wrap("let message = $state(''); function f() { message = 'failed'; }")],
     ['fallback assignment', wrap("let error = $state(''); function f(e: any) { error = e.message || 'Something broke'; }")],
-    ['label array', wrap("const opts = [{ value: 'a', label: 'All files' }];")],
-    ['toast call', wrap("import { toastStore } from '../stores/toast'; toastStore.show('Saved');")],
-    ['toast call with fallback', wrap("import { toastStore } from '../stores/toast'; function f(e: any) { toastStore.show(e.message || 'Failed', 'error'); }")],
-    ['toast template literal', wrap("import { toastStore } from '../stores/toast'; toastStore.show(`Added ${1} items`);")],
+    ['$state initial text', wrap("let error = $state('Not ready');")],
+    ['printed const, lowercase word', wrap("const phase = 'loading';", '<p>{phase}</p>')],
+    ['printed $derived ternary', wrap("let ok = true; const phase = $derived(ok ? 'ready' : 'broken');", '<p>{phase}</p>')],
+    ['printed assignment', wrap("let phase = $state(''); function f() { phase = 'working'; }", '<p>{phase}</p>')],
+    ['printed array of words', wrap("const names = ['alpha', 'beta'];", '{#each names as n}<li>{n}</li>{/each}')],
+    ['printed function return', wrap("function phase() { return 'ready'; }", '<p>{phase()}</p>')],
+    ['printed $derived.by return', wrap("let ok = true; const phase = $derived.by(() => { return ok ? 'ready' : 'broken'; });", '<p>{phase}</p>')],
+    ['property label', wrap("const opts = [{ value: 'a', label: 'All files' }];")],
+    ['property lowercase label', wrap("const opts = [{ value: 'a', label: 'files' }];")],
+    ['property caption', wrap("const c = { caption: 'files' };")],
+    ['property tooltip', wrap("const c = { tooltip: 'copy' };")],
+    ['property hint', wrap("const c = { hint: 'optional' };")],
+    ['property name, capitalised', wrap("const c = { name: 'Alpha' };")],
+    ['property status, phrase', wrap("const c = { status: 'Ready to go' };")],
+    ['prop default', wrap("let { title = 'Untitled' } = $props();")],
+    ['concatenation', wrap("let n = 1; const s = 'Loaded ' + n + ' files';")],
+    ['lowercase concatenation', wrap("let n = 1; const s = n + ' files';")],
+    ['template literal with words', wrap('let n = 1; const s = `${n} files`;')],
+    // Calls
+    ['toast call', wrap(`${toast} toastStore.show('Saved');`)],
+    ['toast call with fallback', wrap(`${toast} function f(e: any) { toastStore.show(e.message || 'Failed', 'error'); }`)],
+    ['toast template literal', wrap(`${toast} toastStore.show(\`Added \${1} items\`);`)],
     ['confirm call', wrap("function f() { return confirm('Delete everything?'); }")],
     ['alert call', wrap("function f() { alert('Oops'); }")],
     ['thrown error text', wrap("function f() { throw new Error('Nothing selected'); }")],
-    ['event handler toast', wrap("import { toastStore } from '../stores/toast';", "<button onclick={() => toastStore.show('Copied')}>x</button>")],
+    ['event handler toast', wrap(`${toast}`, "<button onclick={() => toastStore.show('Copied')}>x</button>")],
+    // Allowlists work on whole tokens only
+    ['proper noun inside a longer word', wrap('', '<p>Bandcampus</p>')],
+    ['tech term inside a longer word', wrap('', '<p>ffmpegs and mss</p>')],
+    ['parenthesised prose is not a media query', wrap('', '<p>(Delete everything)</p>')],
+    ['prose next to a proper noun', wrap('', '<p>Open Qobuz</p>')],
+    ['prose next to a unit', wrap('', '<p>Sample rate in kHz</p>')],
   ];
-  it.each(cases)('flags: %s', (_name, source) => {
+  it.each(violations)('flags: %s', (_name, source) => {
     expect(scanSource('x.svelte', source)).not.toEqual([]);
+  });
+  it('has at least 30 injected violations', () => {
+    expect(violations.length).toBeGreaterThanOrEqual(30);
   });
 
   it('flags a hardcoded string in a store module', () => {
     expect(scanSource('stores/x.ts', "export const msg = { text: 'Something failed' };")).not.toEqual([]);
     expect(scanSource('stores/x.ts', "let error = ''; export function f() { error = 'boom'; }")).not.toEqual([]);
+    expect(scanSource('stores/x.ts', "export function f(n: number) { return n + ' files'; }")).not.toEqual([]);
   });
 
   const clean: [string, string][] = [
@@ -327,24 +167,33 @@ describe('scanner catches each class of hardcoded string', () => {
     ['event and storage names', wrap("window.addEventListener('keydown', () => {}); localStorage.setItem('flacidal-region', 'US');")],
     ['keys, enums and object keys', wrap("const q = { status: 'error', kind: 'album' }; const k = 'nav.home';")],
     ['translation keys in stores', wrap("import { get } from 'svelte/store'; const s = get(t)('shell.downloadFailed');")],
-    ['showKey', wrap("import { toastStore } from '../stores/toast'; toastStore.showKey('a.b', { n: 1 }, 'error');")],
+    ['showKey', wrap(`${'import { toastStore } from "../stores/toast";'} toastStore.showKey('a.b', { n: 1 }, 'error');`)],
     ['key messages', wrap("let error = $state<any>(''); function f(e: any) { error = e.message || { key: 'a.b' }; }")],
     ['units and proper nouns', wrap('', '<span>{n} kHz / 24-bit</span><b>FLACidal</b><i>Qobuz</i>')],
+    ['codec and size tokens', wrap('', '<span>FLAC / MP3 / AAC 320 kbps, 4.2 MB</span>')],
     ['imports', wrap("import x from 'some-package';")],
     ['data URLs and css', wrap("el.style.cssText = `left: ${1}px;`; const u = `data:image/png;base64,${1}`;")],
+    ['css values built from parts', wrap('let x = 1; let w = 2; const a = `translate(${x}px, ${x}px)`; const b = `calc(100% - ${w}px)`;')],
+    ['path built from parts', wrap('let dir = ""; let name = ""; const p = `${dir}/${name}.flac`;')],
+    ['svelte:head with translated title', wrap('', "<svelte:head><title>{$t('app.title')}</title></svelte:head>")],
+    ['option with translated text and machine value', wrap('', "<select><option value=\"flac\">{$t('fmt.flac')}</option></select>")],
+    ['input value bound to state', wrap("let q = $state('');", '<input type="text" bind:value={q} />')],
+    ['submit input with expression', wrap('', "<input type=\"submit\" value={$t('a.save')} />")],
+    ['machine attributes', wrap('', '<a href="/settings" role="button" type="button" data-testid="save-btn" aria-labelledby="title-id">{$t("a")}</a>')],
+    ['component props from translations', wrap('', "<Foo title={$t('a')} kind=\"primary\" size=\"lg\" />")],
+    ['printed translated derived', wrap("let ok = true; const phase = $derived(ok ? $t('a') : $t('b'));", '<p>{phase}</p>')],
+    ['state only compared in the template', wrap("let phase = $state('idle');", "{#if phase === 'idle'}<p>{$t('k')}</p>{/if}")],
+    ['lowercase state that is never printed', wrap("let open = $state('closed'); function f() { open = open === 'closed' ? 'open' : 'closed'; }")],
+    ['printed number', wrap('let n = $state(0);', '<p>{n}</p>')],
+    ['snippet using translations', wrap('', "{#snippet row(item)}<span>{$t(item.key)}</span>{/snippet}")],
+    ['const enum-like uppercase', wrap("const MODE = 'FLAC';")],
+    ['printed option labels via keys', wrap("const opts = [{ value: 'a', labelKey: 'a.b' }];", '{#each opts as o}<option value={o.value}>{$t(o.labelKey)}</option>{/each}')],
+    ['proper noun as a whole token', wrap('', '<p>Soulseek</p><p>Nicotine+</p><p>Ko-fi</p>')],
   ];
   it.each(clean)('allows: %s', (_name, source) => {
     expect(scanSource('x.svelte', source)).toEqual([]);
   });
-});
-
-describe('migration progress', () => {
-  it('reports remaining files', () => {
-    const remaining = ALL_TARGETS.filter((f) => !MIGRATED.includes(f));
-    if (remaining.length) console.warn(`i18n: ${remaining.length} files left to migrate`);
-    expect(true).toBe(true);
-  });
-  it('MIGRATED equals ALL_TARGETS', () => {
-    expect([...MIGRATED].sort()).toEqual([...ALL_TARGETS].sort());
+  it('has at least 20 clean snippets', () => {
+    expect(clean.length).toBeGreaterThanOrEqual(20);
   });
 });
