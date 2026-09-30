@@ -9,7 +9,7 @@
 
   let {
     activePage = 'home',
-    onNavigate = (page: string) => {},
+    onNavigate = (_page: string) => {},
     queueCount = 0,
     onBugReport = () => {},
     canBack = false,
@@ -106,7 +106,7 @@
 
   <!-- Main navigation -->
   <nav class="nav-main">
-    {#each navItems as item}
+    {#each navItems as item (item.id)}
       <button
         class="nav-item"
         class:active={activePage === item.id}
@@ -140,7 +140,7 @@
       {#if showToolsFlyout}
         <div class="flyout">
           <div class="flyout-title">{$t('nav.tools')}</div>
-          {#each toolItems as tool}
+          {#each toolItems as tool (tool.id)}
             <button
               class="flyout-item"
               class:active={activePage === tool.id}
@@ -154,7 +154,7 @@
       {/if}
     </div>
 
-    {#each bottomItems as item}
+    {#each bottomItems as item (item.id)}
       <button
         class="nav-item"
         class:active={activePage === item.id}

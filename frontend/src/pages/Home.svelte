@@ -20,7 +20,7 @@
     GetRecentAlbums,
   } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
-  import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
+  import { queueStore, queueStats, downloadFolder, currentContent, type TidalContent, type TidalTrack } from '../stores/queue';
   import { toastStore } from '../stores/toast';
   import { formatBytes, formatDuration } from '../lib/format';
   import { t, type MessageKey, tm, type UiMsg } from '../lib/i18n';
@@ -28,7 +28,7 @@
   import ContextMenu from '../components/ContextMenu.svelte';
 
   // Accept initial content from history refetch
-  let { initialContent = null, onContentCleared = () => {} }: { initialContent?: any; onContentCleared?: () => void } = $props();
+  let { initialContent = null, onContentCleared = () => {} }: { initialContent?: TidalContent | null; onContentCleared?: () => void } = $props();
 
   let tidalUrl = $state('');
   let urlInputEl: HTMLInputElement | null = $state(null);
@@ -46,24 +46,47 @@
   let discographyConfirmLoading = $state(false); // true while submitting after confirm
 
   // Recent albums grid
-  let recentAlbums = $state<any[]>([]);
+  interface RecentAlbum {
+    content_id: string;
+    content_type: string;
+    title: string;
+    artist?: string;
+    cover_url?: string;
+  }
+  let recentAlbums = $state<RecentAlbum[]>([]);
+
+  // Artist content carries its discography alongside the shared TidalContent fields
+  interface ArtistAlbum {
+    id: number;
+    title: string;
+    artist: string;
+    coverUrl?: string;
+    releaseDate?: string;
+    trackCount: number;
+    albumType?: string;
+  }
+  type ArtistContent = TidalContent & { albums?: ArtistAlbum[] };
+
+  function errorMessage(e: unknown): string | undefined {
+    return typeof e === 'object' && e !== null && 'message' in e ? String(e.message) || undefined : undefined;
+  }
 
   onMount(() => {
     GetRecentAlbums(24).then(albums => {
-      recentAlbums = albums ?? [];
-    }).catch((e: any) => {
-      error = e?.message || { key: 'home.error.loadRecent' };
+      recentAlbums = (albums ?? []) as RecentAlbum[];
+    }).catch((e: unknown) => {
+      error = errorMessage(e) || { key: 'home.error.loadRecent' };
     });
   });
 
-  async function redownloadAlbum(album: any) {
+  async function redownloadAlbum(album: RecentAlbum) {
     if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     try {
       if (album.content_type !== 'track') {
         await QueueArtistAlbum(album.content_id, album.artist, $downloadFolder);
       }
-    } catch(e: any) {
-      error = e.message || { key: 'home.error.queueAlbum' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.queueAlbum' };
     }
   }
 
@@ -231,7 +254,7 @@
     // Load version
     try {
       version = await GetAppVersion();
-    } catch (e) {
+    } catch {
       version = '';
     }
 
@@ -257,8 +280,8 @@
       if (queued === 0) {
         error = { key: 'home.error.noAlbumsMatched' };
       }
-    } catch (e: any) {
-      error = e.message || { key: 'home.error.queueDiscography' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.queueDiscography' };
     }
     discographyAlbums = null;
     discographyConfirmLoading = false;
@@ -279,8 +302,8 @@
       try {
         const albums = await ExpandDiscographyURL(tidalUrl);
         discographyAlbums = albums;
-      } catch (e: any) {
-        error = e.message || { key: 'home.error.expandDiscography' };
+      } catch (e) {
+        error = errorMessage(e) || { key: 'home.error.expandDiscography' };
       }
       discographyPending = false;
       return;
@@ -363,8 +386,8 @@
           timestamp: Date.now(),
         });
       }
-    } catch (e: any) {
-      error = e.message || (typeof e === 'string' ? e : { key: 'home.error.fetchContent' });
+    } catch (e) {
+      error = errorMessage(e) || (typeof e === 'string' ? e : { key: 'home.error.fetchContent' });
     }
 
     loading = false;
@@ -377,8 +400,8 @@
         downloadFolder.set(selected);
         await SetDownloadFolder(selected);
       }
-    } catch (e: any) {
-      error = e.message || { key: 'home.error.selectFolder' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.selectFolder' };
     }
   }
 
@@ -403,8 +426,8 @@
 
     try {
       await QueueSingleDownload(track.id, $downloadFolder, track.title, track.artists);
-    } catch (e: any) {
-      queueStore.updateItem(track.id, { status: 'error', error: e.message });
+    } catch (e) {
+      queueStore.updateItem(track.id, { status: 'error', error: errorMessage(e) });
     }
   }
 
@@ -432,12 +455,12 @@
 
     try {
       if (content.source === 'qobuz') {
-        await QueueQobuzDownloads(tracksToDownload as any, $downloadFolder, content.title);
+        await QueueQobuzDownloads(tracksToDownload, $downloadFolder, content.title);
       } else {
         await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
       }
-    } catch (e: any) {
-      error = e.message || { key: 'home.error.queueDownloads' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.queueDownloads' };
     }
   }
 
@@ -477,11 +500,11 @@
   );
 
   let filteredAlbums = $derived(() => {
-    const albums = (content as any)?.albums || [];
+    const albums = (content as ArtistContent | null)?.albums || [];
     if (albumTypeFilter === 'all') return albums;
-    if (albumTypeFilter === 'albums') return albums.filter((a: any) => a.albumType?.toUpperCase() === 'ALBUM');
-    if (albumTypeFilter === 'epssingles') return albums.filter((a: any) => ['EP', 'SINGLE'].includes(a.albumType?.toUpperCase()));
-    if (albumTypeFilter === 'compilations') return albums.filter((a: any) => a.albumType?.toUpperCase() === 'COMPILATION');
+    if (albumTypeFilter === 'albums') return albums.filter(a => a.albumType?.toUpperCase() === 'ALBUM');
+    if (albumTypeFilter === 'epssingles') return albums.filter(a => ['EP', 'SINGLE'].includes(a.albumType?.toUpperCase() ?? ''));
+    if (albumTypeFilter === 'compilations') return albums.filter(a => a.albumType?.toUpperCase() === 'COMPILATION');
     return albums;
   });
 
@@ -499,8 +522,8 @@
     if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     try {
       await QueueArtistAlbum(String(albumId), content?.title || '', $downloadFolder);
-    } catch (e: any) {
-      error = e.message || { key: 'home.error.queueAlbum' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.queueAlbum' };
     }
   }
 
@@ -580,8 +603,8 @@
     try {
       const count = await DownloadArtistAssets(artistId, content?.title || '', $downloadFolder);
       assetsResult = { key: 'home.assetsSaved', vars: { count } };
-    } catch (e: any) {
-      error = e.message || { key: 'home.error.artistAssets' };
+    } catch (e) {
+      error = errorMessage(e) || { key: 'home.error.artistAssets' };
     }
     downloadingAssets = false;
   }
@@ -653,7 +676,7 @@
         {/if}
       </div>
       <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label={$t('home.selectRegion')}>
-        {#each regionCountries as country}
+        {#each regionCountries as country (country.code)}
           <option value={country.code}>{country.flag} {country.code}</option>
         {/each}
       </select>
@@ -719,7 +742,7 @@
         <button class="btn-ghost" onclick={clearRecentFetches}>{$t('home.clear')}</button>
       </div>
       <div class="recent-grid">
-        {#each recentFetches as recent}
+        {#each recentFetches as recent (recent.url)}
           <button class="recent-card" onclick={() => refetchFromRecent(recent)}>
             {#if recent.coverUrl}
               <img src={recent.coverUrl} alt="" class="recent-cover" />
@@ -744,7 +767,7 @@
   <section class="recent-albums">
     <h3>{$t('home.recentlyDownloaded')}</h3>
     <div class="albums-grid">
-      {#each recentAlbums as album}
+      {#each recentAlbums as album (album.content_id)}
       <div class="album-card" title="{album.artist ? album.artist + ', ' : ''}{album.title}"
         role="button"
         tabindex="0"
@@ -789,7 +812,7 @@
           <h2>{content.title}</h2>
           <p class="creator">{content.creator}</p>
           {#if content.type === 'artist'}
-            <p class="track-count">{$t('home.albumCount', { count: (content as any).albums?.length || 0 })}</p>
+            <p class="track-count">{$t('home.albumCount', { count: (content as ArtistContent).albums?.length || 0 })}</p>
           {:else}
             {@const totalMin = Math.round((content.tracks || []).reduce((sum: number, t: TidalTrack) => sum + (t.duration || 0), 0) / 60)}
             <p class="track-count">{$t('home.trackSummary', { count: content.tracks?.length || 0, minutes: totalMin })}</p>
@@ -811,7 +834,7 @@
       {#if content.type === 'artist'}
         <!-- Artist Album Type Filter -->
         <div class="album-filter-bar">
-          {#each albumFilters as { val, labelKey }}
+          {#each albumFilters as { val, labelKey } (val)}
             <button
               class="filter-btn"
               class:active={albumTypeFilter === val}
@@ -822,7 +845,7 @@
 
         <!-- Album List -->
         <div class="albums-container">
-          {#each filteredAlbums() as album}
+          {#each filteredAlbums() as album (album.id)}
             <div class="album-row">
               {#if album.coverUrl}
                 <img src={album.coverUrl} alt={$t('home.cover')} class="album-thumb" />
@@ -892,7 +915,7 @@
 
         <!-- Track List -->
         <div class="tracks-container">
-          {#each paginatedTracks as track, i}
+          {#each paginatedTracks as track, i (track.id)}
             {@const status = trackStatuses[track.id]}
             <div class="track-row" class:completed={status?.status === 'completed'} class:downloading={status?.status === 'downloading'} class:unavailable-track={track.available === false} oncontextmenu={(e) => showContextMenu(e, track)}>
               <span class="track-num">{String((currentPage - 1) * tracksPerPage + i + 1).padStart(2, '0')}</span>

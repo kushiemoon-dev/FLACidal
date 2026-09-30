@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { onNativeFileDrop } from '../../lib/runtime';
-  import { AnalyzeMultiple, OpenFLACFilesDialog, SelectFolderForAnalysis } from '../../lib/api';
+  import { AnalyzeMultiple, type AnalysisResult, OpenFLACFilesDialog, SelectFolderForAnalysis } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { FileSearch, CheckCircle, AlertTriangle, XCircle } from 'lucide-svelte';
   import { t, locale } from '../../lib/i18n';
 
   let files: string[] = $state([]);
-  let results: any[] = $state([]);
+  type AnalysisRow = AnalysisResult & { bpm?: number; musicalKey?: string };
+  let results: AnalysisRow[] = $state([]);
   let isAnalyzing = $state(false);
 
   async function analyzeFiles(paths: string[]) {
@@ -108,7 +109,7 @@
         <span class="th key-col">{$t('tools.analyzer.key')}</span>
       </div>
       <div class="table-body">
-        {#each results as result}
+        {#each results as result (result.filePath)}
           <div class="table-row">
             <span class="cell file-col" title={result.filePath}>{result.fileName}</span>
             <div class="cell verdict-col">
@@ -126,7 +127,7 @@
             <span class="cell confidence-col">{Math.round(result.confidence)}%</span>
             <span class="cell rate-col mono">{(result.sampleRate / 1000).toLocaleString($locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kHz</span>
             <span class="cell depth-col mono">{result.bitDepth}-bit</span>
-            <span class="cell bpm-col mono">{result.bpm > 0 ? Math.round(result.bpm) : '—'}</span>
+            <span class="cell bpm-col mono">{(result.bpm ?? 0) > 0 ? Math.round(result.bpm ?? 0) : '—'}</span>
             <span class="cell key-col mono">{result.musicalKey || '—'}</span>
           </div>
         {/each}

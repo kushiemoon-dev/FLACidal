@@ -6,27 +6,34 @@
  * `window.go.main.App.*` and `window.runtime.*` at runtime.
  *
  * None of those globals exist under a plain browser context (the vite dev
- * server), so this file installs them via `page.addInitScript` before any
+ * server), so this file installs them via `page.addInitScript` before unknown
  * app module has a chance to load.
  */
 import type { Page } from '@playwright/test'
 
+/** Shape of the window as seen from page.evaluate, after the mocks are installed. */
+export interface WinAny {
+  go: { main: { App: Record<string, (...args: unknown[]) => Promise<unknown>> } }
+  __marker?: number
+  __analyzeRes?: unknown
+}
+
 export interface WailsOverrides {
-  GetConfig?: any
+  GetConfig?: unknown
   GetDownloadFolder?: string
   IsQueuePaused?: boolean
   GetAppVersion?: string
-  DetectSourceFromURL?: any
-  FetchContentFromURL?: any
+  DetectSourceFromURL?: unknown
+  FetchContentFromURL?: unknown
   ExpandDiscographyURL?: string[]
-  GetDownloadHistoryFiltered?: any
-  GetAvailableSources?: any
-  GetConversionFormats?: any
+  GetDownloadHistoryFiltered?: unknown
+  GetAvailableSources?: unknown
+  GetConversionFormats?: unknown
   IsConverterAvailable?: boolean
-  AnalyzeMultiple?: any[]
-  ListDownloadedFiles?: any[]
+  AnalyzeMultiple?: unknown[]
+  ListDownloadedFiles?: unknown[]
   // Network: stubbed fetch response for /api/* endpoints
-  apiAnalyze?: { ok: boolean; body: any }
+  apiAnalyze?: { ok: boolean; body: unknown }
 }
 
 export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
@@ -61,7 +68,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
 
     const App = {
       GetConfig: async () => config,
-      SaveConfig: async (_c: any) => {},
+      SaveConfig: async (_c: unknown) => {},
       ResetToDefaults: async () => defaultConfig,
 
       GetAppVersion: async () => opts.GetAppVersion ?? '4.0.0-test',
@@ -139,12 +146,12 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       SearchTidalAlbums: async (_q: string) => [],
       SearchTidalArtists: async (_q: string) => [],
 
-      QueueDownloads: async (..._a: any[]) => 0,
-      QueueQobuzDownloads: async (..._a: any[]) => 0,
-      QueueSingleDownload: async (..._a: any[]) => {},
-      QueueArtistAlbum: async (..._a: any[]) => 0,
-      DownloadArtistAssets: async (..._a: any[]) => 0,
-      DownloadTrack: async (..._a: any[]) => ({ success: true }),
+      QueueDownloads: async (..._a: unknown[]) => 0,
+      QueueQobuzDownloads: async (..._a: unknown[]) => 0,
+      QueueSingleDownload: async (..._a: unknown[]) => {},
+      QueueArtistAlbum: async (..._a: unknown[]) => 0,
+      DownloadArtistAssets: async (..._a: unknown[]) => 0,
+      DownloadTrack: async (..._a: unknown[]) => ({ success: true }),
       CancelDownload: async (_id: number) => {},
       RetryDownload: async (_id: number) => {},
       RetryAllFailed: async () => 0,
@@ -155,7 +162,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       ExportFailedDownloads: async (_p: string) => '/tmp/failed.txt',
 
       GetDownloadHistory: async () => [],
-      GetDownloadHistoryFiltered: async (_f: any) =>
+      GetDownloadHistoryFiltered: async (_f: unknown) =>
         opts.GetDownloadHistoryFiltered ?? { records: [], total: 0 },
       DeleteHistoryRecord: async (_id: number) => {},
       ClearDownloadHistory: async () => {},
@@ -183,17 +190,17 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
           { name: 'Vorbis', extension: 'ogg' },
           { name: 'WAV', extension: 'wav' },
         ],
-      ConvertFiles: async (..._a: any[]) => [],
-      ConvertFolder: async (..._a: any[]) => [],
+      ConvertFiles: async (..._a: unknown[]) => [],
+      ConvertFolder: async (..._a: unknown[]) => [],
       GetFFmpegInfo: async () => ({ version: '6.0', available: true }),
       GetFFmpegInstallStatus: async () => ({ installed: true }),
       InstallFFmpeg: async () => {},
 
       FetchAndEmbedLyrics: async (_p: string) => ({ synced: false }),
       FetchAndEmbedLyricsMultiple: async (_p: string[]) => [],
-      FetchLyrics: async (..._a: any[]) => ({ synced: false }),
+      FetchLyrics: async (..._a: unknown[]) => ({ synced: false }),
       FetchLyricsForFile: async (_p: string) => ({ synced: false }),
-      EmbedLyricsToFile: async (..._a: any[]) => {},
+      EmbedLyricsToFile: async (..._a: unknown[]) => {},
       GetFileMetadata: async (_p: string) => ({}),
       GetFileCoverArt: async (_p: string) => ({}),
 
@@ -212,34 +219,34 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetCacheStats: async () => ({}),
       GetConnectionStatus: async () => ({}),
       GetDownloadOptions: async () => ({}),
-      SetDownloadOptions: async (..._a: any[]) => {},
+      SetDownloadOptions: async (..._a: unknown[]) => {},
       GetMatchFailures: async () => [],
-      MatchPlaylistTracks: async (_t: any[]) => [],
-      MatchSingleTrack: async (_t: any) => ({}),
+      MatchPlaylistTracks: async (_t: unknown[]) => [],
+      MatchSingleTrack: async (_t: unknown) => ({}),
       GetRenameTemplates: async () => [],
-      PreviewRename: async (..._a: any[]) => [],
-      RenameFiles: async (..._a: any[]) => [],
-      SetTidalCredentials: async (..._a: any[]) => {},
-      UpdateQobuzCredentials: async (..._a: any[]) => {},
+      PreviewRename: async (..._a: unknown[]) => [],
+      RenameFiles: async (..._a: unknown[]) => [],
+      SetTidalCredentials: async (..._a: unknown[]) => {},
+      UpdateQobuzCredentials: async (..._a: unknown[]) => {},
       IsQobuzConfigured: async () => false,
       IsDownloaderAvailable: async () => true,
-      GetSourceTrack: async (..._a: any[]) => ({}),
-      GetSourceAlbum: async (..._a: any[]) => ({}),
-      GetSourcePlaylist: async (..._a: any[]) => ({}),
-      DownloadTrackFromTidal: async (..._a: any[]) => ({}),
-      FetchTidalContent_alias: async (..._a: any[]) => ({}),
+      GetSourceTrack: async (..._a: unknown[]) => ({}),
+      GetSourceAlbum: async (..._a: unknown[]) => ({}),
+      GetSourcePlaylist: async (..._a: unknown[]) => ({}),
+      DownloadTrackFromTidal: async (..._a: unknown[]) => ({}),
+      FetchTidalContent_alias: async (..._a: unknown[]) => ({}),
     }
 
-    ;(window as any).go = { main: { App }, app: { App } }
+    ;(window as unknown as Record<string, unknown>).go = { main: { App }, app: { App } }
 
     const noop = () => {}
     const offFn = () => {}
-    ;(window as any).runtime = {
-      EventsOn: (_n: string, _cb: any) => offFn,
+    ;(window as unknown as Record<string, unknown>).runtime = {
+      EventsOn: (_n: string, _cb: unknown) => offFn,
       EventsOff: noop,
       EventsEmit: noop,
-      EventsOnce: (_n: string, _cb: any) => offFn,
-      EventsOnMultiple: (_n: string, _cb: any, _max: number) => offFn,
+      EventsOnce: (_n: string, _cb: unknown) => offFn,
+      EventsOnMultiple: (_n: string, _cb: unknown, _max: number) => offFn,
       LogPrint: noop,
       LogTrace: noop,
       LogDebug: noop,
@@ -283,11 +290,11 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       Hide: noop,
       Show: noop,
       Environment: async () => ({ buildType: 'dev', platform: 'linux', arch: 'amd64' }),
-      OnFileDrop: (_cb: any, _useDropTarget: boolean) => {},
+      OnFileDrop: (_cb: unknown, _useDropTarget: boolean) => {},
       OnFileDropOff: () => {},
     }
 
     // Flag Wails as ready, in case some code path waits on this
-    ;(window as any).WailsInvoke = noop
-  }, overrides as any)
+    ;(window as unknown as Record<string, unknown>).WailsInvoke = noop
+  }, overrides)
 }

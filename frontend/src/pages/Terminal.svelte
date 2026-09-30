@@ -102,7 +102,8 @@
             <span class="prompt">$</span> {$t('terminal.empty')}
           </div>
         {:else}
-          {#each logs as log}
+          <!-- entries have no id; the list is append-only, so index keys are stable -->
+          {#each logs as log, i (i)}
             <div class="log-entry">
               <span class="timestamp">{log.timestamp}</span>
               <span class="level" style="color: {getLogColor(log.level)}">{getLevelPrefix(log.level)}</span>

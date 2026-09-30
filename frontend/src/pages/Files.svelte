@@ -59,6 +59,7 @@
 
   function toggleSelectAll() {
     if (allSelected) {
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable Set reassigned to $state
       selectedFiles = new Set();
     } else {
       selectedFiles = new Set(files.map(f => f.path));
@@ -479,7 +480,7 @@
       </div>
 
       <div class="table-body">
-        {#each sortedFiles as file}
+        {#each sortedFiles as file (file.path)}
           <div class="table-row" class:selected={selectedFiles.has(file.path)}>
             <label class="cell checkbox-col">
               <input type="checkbox" checked={selectedFiles.has(file.path)} onchange={() => toggleSelect(file.path)} />

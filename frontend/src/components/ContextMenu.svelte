@@ -58,7 +58,7 @@
   style="left: {adjustedX}px; top: {adjustedY}px;"
   role="menu"
 >
-  {#each items as item}
+  {#each items as item, i (i)}
     {#if item.divider}
       <div class="divider"></div>
     {:else}

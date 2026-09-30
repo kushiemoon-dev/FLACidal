@@ -63,8 +63,8 @@
         currentFolder = folder;
         await loadFiles();
       }
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.files.loadFolderFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.loadFolderFailed' }, 'error');
     }
   });
 
@@ -75,8 +75,8 @@
         currentFolder = folder;
         await loadFiles();
       }
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.files.browseFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.browseFailed' }, 'error');
     }
   }
 
@@ -86,9 +86,9 @@
     try {
       const result = await ListDownloadedFiles();
       if (Array.isArray(result)) {
-        files = result.map((f: any) => ({
-          path: f.path || f,
-          name: f.name || getFileName(f.path || f),
+        files = result.map((f) => ({
+          path: f.path,
+          name: f.name || getFileName(f.path),
           size: f.size || 0,
           selected: false,
         }));
@@ -112,12 +112,12 @@
       if (typeof result === 'string') {
         previewResult = result;
       } else if (Array.isArray(result) && result.length > 0) {
-        previewResult = result.map((r: any) => r.newName || r).join('\n');
+        previewResult = result.map((r) => r.newName).join('\n');
       } else {
         previewResult = { key: 'tools.files.noPreview' };
       }
-    } catch (err: any) {
-      previewResult = err?.message || { key: 'tools.files.previewFailed' };
+    } catch (err) {
+      previewResult = (err as Error)?.message || { key: 'tools.files.previewFailed' };
     } finally {
       previewing = false;
     }
@@ -131,8 +131,8 @@
       await RenameFiles(selected, selectedTemplate);
       await loadFiles();
       previewResult = '';
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.files.renameFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.renameFailed' }, 'error');
     }
     renaming = false;
   }
@@ -162,7 +162,7 @@
       <h3 class="section-title">{$t('tools.files.renameFormat')}</h3>
       <div class="rename-controls">
         <select class="select" bind:value={selectedTemplate}>
-          {#each renameTemplates as tmpl}
+          {#each renameTemplates as tmpl (tmpl)}
             <option value={tmpl}>{tmpl}</option>
           {/each}
         </select>

@@ -43,8 +43,8 @@
         selectedTemplate = templates[0].template;
         await updatePreview();
       }
-    } catch (e: any) {
-      error = e.message || { key: 'modals.rename.loadFailedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.rename.loadFailedFallback' };
     } finally {
       isLoading = false;
     }
@@ -58,8 +58,8 @@
 
     try {
       previews = await PreviewRename(files, activeTemplate);
-    } catch (e: any) {
-      error = e.message || { key: 'modals.rename.previewFailedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.rename.previewFailedFallback' };
     }
   }
 
@@ -79,8 +79,8 @@
 
       onComplete();
       onClose();
-    } catch (e: any) {
-      error = e.message || { key: 'modals.rename.failedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.rename.failedFallback' };
     } finally {
       isRenaming = false;
     }
@@ -134,7 +134,7 @@
           <span class="section-label">{$t('modals.rename.template')}</span>
 
           <div class="template-options">
-            {#each templates as tmpl}
+            {#each templates as tmpl (tmpl.template)}
               <label class="template-option" class:selected={!useCustom && selectedTemplate === tmpl.template}>
                 <input
                   type="radio"
@@ -185,7 +185,7 @@
           <span class="section-label">{$t('modals.rename.preview')}</span>
 
           <div class="preview-list">
-            {#each previews as preview}
+            {#each previews as preview (preview.oldPath)}
               <div class="preview-item" class:error={preview.hasError}>
                 <div class="preview-old">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

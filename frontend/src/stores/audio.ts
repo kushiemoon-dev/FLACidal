@@ -19,8 +19,8 @@ type SoundType = 'complete' | 'error' | 'queue-done' | 'click' | 'success';
 function ensureAudioContext(): AudioContext | null {
   if (!audioContext) {
     try {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    } catch (e) {
+      audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    } catch {
       console.warn('Web Audio API is not supported in this environment');
       return null;
     }

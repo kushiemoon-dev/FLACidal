@@ -41,8 +41,8 @@
     try {
       const folder = await GetDownloadFolder();
       if (folder) outputDir = folder;
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.converter.loadFolderFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.converter.loadFolderFailed' }, 'error');
     }
 
     // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
@@ -68,8 +68,8 @@
         files = [...files, ...selected];
         results = [];
       }
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.converter.selectFilesFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.converter.selectFilesFailed' }, 'error');
     }
   }
 
@@ -77,8 +77,8 @@
     try {
       const folder = await SelectDownloadFolder();
       if (folder) outputDir = folder;
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.converter.selectFolderFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.converter.selectFolderFailed' }, 'error');
     }
   }
 
@@ -103,7 +103,7 @@
     try {
       const res = await ConvertFiles(files, outputFormat.toLowerCase(), quality, outputDir, false);
       if (Array.isArray(res)) {
-        results = res.map((r: any, i: number) => ({
+        results = res.map((r, i) => ({
           file: files[i] || '',
           success: r.success ?? !r.error,
           error: r.error,
@@ -111,8 +111,8 @@
       } else {
         results = files.map(f => ({ file: f, success: true }));
       }
-    } catch (err: any) {
-      results = files.map(f => ({ file: f, success: false, error: err?.message || { key: 'tools.converter.conversionFailed' } }));
+    } catch (err) {
+      results = files.map(f => ({ file: f, success: false, error: (err as Error)?.message || { key: 'tools.converter.conversionFailed' } }));
     } finally {
       converting = false;
     }
@@ -159,7 +159,7 @@
         <div class="option-group">
           <label class="option-label" for="format-select">{$t('tools.converter.outputFormat')}</label>
           <select id="format-select" class="select" bind:value={outputFormat}>
-            {#each formatOptions as fmt}
+            {#each formatOptions as fmt (fmt)}
               <option value={fmt}>{fmt}</option>
             {/each}
           </select>
@@ -169,7 +169,7 @@
           <div class="option-group">
             <label class="option-label" for="quality-select">{$t('tools.converter.quality')}</label>
             <select id="quality-select" class="select" bind:value={quality}>
-              {#each qualityOptions[outputFormat] as q}
+              {#each qualityOptions[outputFormat] as q (q)}
                 <option value={q}>{q}</option>
               {/each}
             </select>

@@ -11,7 +11,7 @@
   import Settings from './pages/Settings.svelte';
   import Terminal from './pages/Terminal.svelte';
   import About from './pages/About.svelte';
-  import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
+  import { queueStore, queueStats, downloadFolder, queuePaused, type QueueItem, type TidalContent } from './stores/queue';
   import { toastStore } from './stores/toast';
   import { initLanguage } from './lib/i18n';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
@@ -31,10 +31,22 @@
   let navHistory = $state(createNavHistory('home'));
   let reloadKey = $state(0);
   const activePage = $derived(currentPage(navHistory));
+  interface DownloadProgressEvent {
+    trackId: number;
+    status: string;
+    result?: {
+      filePath: string;
+      fileSize: number;
+      source?: string;
+      attempts?: string[];
+      analysis?: QueueItem['analysis'];
+      error?: string;
+    };
+  }
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
   let unsubscribeCooldown: () => void;
-  let refetchedContent: any = $state(null);
+  let refetchedContent: TidalContent | null = $state(null);
   let showIssueReporter = $state(false);
   let updateStatus: UpdateStatus | null = $state(null);
 
@@ -46,7 +58,7 @@
     go(page);
   }
 
-  function handleHistoryRefetch(content: any) {
+  function handleHistoryRefetch(content: TidalContent) {
     refetchedContent = content;
     go('home');
   }
@@ -142,13 +154,13 @@
     });
 
     // Listen for endpoint cooldown (all Tidal endpoints dead, queue auto-paused)
-    unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: any) => {
+    unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: { result?: { error?: string } } | null) => {
       queuePaused.set(true);
       toastStore.showMsg(data?.result?.error || { key: 'shell.endpointsCooldown' }, 'error', 6000);
     });
 
     // Listen for download progress events and update queue store
-    unsubscribeProgress = EventsOn('download-progress', (data: any) => {
+    unsubscribeProgress = EventsOn('download-progress', (data: DownloadProgressEvent) => {
       const { trackId, status, result } = data;
 
       if (status === 'queued') {
@@ -224,7 +236,7 @@
       {:else if activePage === 'files'}
         <Files />
       {:else if activePage === 'history'}
-        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url }; go('home'); }} />
+        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url } as unknown as TidalContent; go('home'); }} />
       {:else if activePage === 'settings'}
         <Settings />
       {:else if activePage === 'terminal'}

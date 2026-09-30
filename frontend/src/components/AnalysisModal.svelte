@@ -41,8 +41,8 @@
 
     try {
       results = await AnalyzeMultiple(files);
-    } catch (e: any) {
-      error = e.message || { key: 'modals.analysis.failedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.analysis.failedFallback' };
     } finally {
       isAnalyzing = false;
     }
@@ -145,7 +145,7 @@
         <div class="results-section">
           <span class="section-label">{$t('modals.analysis.results')}</span>
           <div class="results-list">
-            {#each results as result}
+            {#each results as result (result.filePath)}
               <div class="result-item">
                 <div class="result-header">
                   <div class="result-icon">

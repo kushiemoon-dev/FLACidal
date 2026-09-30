@@ -22,7 +22,7 @@
   }
 
   function quit() {
-    (window as any).runtime?.Quit?.();
+    (window as unknown as { runtime?: { Quit?: () => void } }).runtime?.Quit?.();
   }
 
   function downloadManually() {

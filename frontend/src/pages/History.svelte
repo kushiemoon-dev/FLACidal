@@ -4,6 +4,7 @@
   import TabBar from '../components/TabBar.svelte';
   import { formatDate } from '../lib/format';
   import { t, locale } from '../lib/i18n';
+  import type { TidalContent } from '../stores/queue';
   import { Clock, Search, Trash2, RefreshCw, ExternalLink, ArrowUpDown, X } from 'lucide-svelte';
 
   interface DownloadRecord {
@@ -47,7 +48,7 @@
   let fetches: RecentFetch[] = $state([]);
   let fetchSearchQuery = $state('');
 
-  let { onRefetch = (content: any) => {}, onNavigateHome = (url: string) => {} }: { onRefetch?: (content: any) => void; onNavigateHome?: (url: string) => void } = $props();
+  let { onRefetch = () => {}, onNavigateHome = () => {} }: { onRefetch?: (content: TidalContent) => void; onNavigateHome?: (url: string) => void } = $props();
 
   onMount(async () => {
     await loadHistory();
@@ -100,7 +101,7 @@
   async function loadHistory() {
     isLoading = true;
     try {
-      const filter: Record<string, any> = {
+      const filter: Record<string, string | number> = {
         limit: pageSize,
         offset: (currentPage - 1) * pageSize
       };
@@ -118,7 +119,7 @@
       }
 
       const result = await GetDownloadHistoryFiltered(filter);
-      records = result.records || [];
+      records = (result.records || []) as DownloadRecord[];
       total = result.total || 0;
     } catch (error) {
       console.error('Error loading history:', error);
@@ -147,7 +148,7 @@
     try {
       const content = await RefetchFromHistory(record.tidalContentId);
       if (content && onRefetch) {
-        onRefetch(content);
+        onRefetch(content as TidalContent);
       }
     } catch (error) {
       console.error('Error refetching:', error);
@@ -287,7 +288,7 @@
         </div>
 
         <div class="table-body">
-          {#each records as record}
+          {#each records as record (record.id)}
             <div class="table-row">
               <div class="cell name-cell">
                 <div class="content-icon" class:playlist={record.contentType === 'playlist'} class:album={record.contentType === 'album'} class:track={record.contentType === 'track'}>
@@ -404,7 +405,7 @@
       </div>
     {:else}
       <div class="fetches-list">
-        {#each filteredFetches as fetch}
+        {#each filteredFetches as fetch (fetch.url)}
           <div class="fetch-card">
             {#if fetch.coverUrl}
               <img class="fetch-cover" src={fetch.coverUrl} alt="" />

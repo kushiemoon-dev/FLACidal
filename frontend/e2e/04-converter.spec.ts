@@ -1,12 +1,12 @@
-import { test, expect } from '@playwright/test'
-import { injectWailsMocks } from './mocks/wails'
+import { test, expect, type Page } from '@playwright/test'
+import { injectWailsMocks, type WinAny } from './mocks/wails'
 
 /**
  * Because App.svelte pairs `{#key activePage}` with `transition:fade`, two copies
  * of the page coexist in the DOM for the 150ms transition window. Rely on
  * `.first()` and pause for the fade before asserting.
  */
-async function gotoConverter(page: any) {
+async function gotoConverter(page: Page) {
   await injectWailsMocks(page)
   await page.goto('/')
   await page.locator('.sidebar button[title="Tools"]').click()
@@ -27,7 +27,7 @@ test.describe('Audio Converter tool', () => {
   test('lists every expected format once files are added', async ({ page }) => {
     await gotoConverter(page)
     await page.evaluate(() => {
-      ;(window as any).go.main.App.OpenFLACFilesDialog = async () => [
+      ;(window as unknown as WinAny).go.main.App.OpenFLACFilesDialog = async () => [
         '/tmp/a.flac',
         '/tmp/b.flac',
       ]
@@ -44,7 +44,7 @@ test.describe('Audio Converter tool', () => {
   test('picking ALAC drops the bitrate quality options', async ({ page }) => {
     await gotoConverter(page)
     await page.evaluate(() => {
-      ;(window as any).go.main.App.OpenFLACFilesDialog = async () => ['/tmp/a.flac']
+      ;(window as unknown as WinAny).go.main.App.OpenFLACFilesDialog = async () => ['/tmp/a.flac']
     })
     await page.locator('button', { hasText: /Select Files/i }).first().click()
     const select = page.locator('select').first()

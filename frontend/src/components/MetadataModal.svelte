@@ -55,8 +55,8 @@
           // Cover art loading failed, ignore
         }
       }
-    } catch (e: any) {
-      error = e.message || { key: 'modals.metadata.failedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.metadata.failedFallback' };
     } finally {
       loading = false;
     }

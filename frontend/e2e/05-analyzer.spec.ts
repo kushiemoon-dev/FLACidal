@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
 /**
@@ -10,7 +10,7 @@ import { injectWailsMocks } from './mocks/wails'
  * As elsewhere, App.svelte's `{#key activePage}` + transition:fade leaves two
  * copies in the DOM for the fade duration, so lean on `.first()`.
  */
-async function gotoAnalyzer(page: any) {
+async function gotoAnalyzer(page: Page) {
   await injectWailsMocks(page)
   await page.goto('/')
   await page.locator('.sidebar button[title="Tools"]').click()

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { onNativeFileDrop } from '../../lib/runtime';
-  import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../lib/api';
+  import { ConvertFiles, type ConversionResult, OpenFLACFilesDialog, SelectDownloadFolder } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { SlidersHorizontal, CheckCircle, XCircle } from 'lucide-svelte';
   import { t, locale } from '../../lib/i18n';
   import { formatNumber } from '../../lib/format';
 
   let files: string[] = $state([]);
-  let results: any[] = $state([]);
+  let results: ConversionResult[] = $state([]);
   let isResampling = $state(false);
 
   let sampleRate = $state('44100');
@@ -98,7 +98,7 @@
     <div class="results-section">
       <h2>{$t('tools.resampler.results')}</h2>
       <div class="results-list">
-        {#each results as result}
+        {#each results as result (result.sourcePath)}
           <div class="result-row" class:success={result.success} class:error={!result.success}>
             {#if result.success}
               <CheckCircle size={16} color="#22c55e" />

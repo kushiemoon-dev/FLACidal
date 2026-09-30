@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { core } from '../../wailsjs/go/models';
   import { onMount } from 'svelte';
   import { downloadFolder } from '../stores/queue';
   import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor, fontPresets, applyFontFamily } from '../stores/theme';
@@ -86,13 +87,24 @@
   });
   let activeTab = $state('general');
   let logFilePath = $state('');
-  let apiStatuses: any[] = $state([]);
+  interface ApiStatusRow { name: string; status: string; latencyMs: number }
+  interface UpdateInfo { hasUpdate: boolean; version: string; url: string; releaseUrl: string }
+  interface FfmpegInfo { available?: boolean; version?: string }
+  interface SldlStatus { installed?: boolean; version?: string; path?: string }
+  interface InstallProgress { Stage?: string; stage?: string; Percent?: number; percent?: number }
+
+  const PLACEHOLDER_LIBRARY_PATHS = '/mnt/music/navidrome\n/srv/jellyfin/library';
+  const PLACEHOLDER_TIDAL_ENDPOINTS = 'https://your-hifi-api-1.com\nhttps://your-hifi-api-2.com';
+  const PLACEHOLDER_QOBUZ_ENDPOINTS = 'https://your-qobuz-proxy-1.com\nhttps://your-qobuz-proxy-2.com';
+  const PLACEHOLDER_AMAZON_ENDPOINTS = 'https://your-amazon-proxy-1.com\nhttps://your-amazon-proxy-2.com';
+
+  let apiStatuses: ApiStatusRow[] = $state([]);
   let checkingAPI = $state(false);
   let appVersion = $state('');
-  let updateInfo: any = $state(null);
+  let updateInfo: UpdateInfo | null = $state(null);
   let checkingUpdate = $state(false);
-  let ffmpegInfo: any = $state(null);
-  let sldlStatus: any = $state(null);
+  let ffmpegInfo: FfmpegInfo | null = $state(null);
+  let sldlStatus: SldlStatus | null = $state(null);
   // Endpoint and source states arrive as raw enum words from Core.
   const STATUS_KEYS: Record<string, MessageKey> = {
     online: 'settings.status.online', degraded: 'settings.status.degraded', dead: 'settings.status.dead',
@@ -108,7 +120,7 @@
   let testingLogin = $state(false);
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
-  let sourceHealth: any[] = $state([]);
+  let sourceHealth: core.SourceHealth[] = $state([]);
   let checkingSourceHealth = $state(false);
   let installingSldl = $state(false);
   let sldlInstallProgress = $state({ stage: '', percent: 0 });
@@ -133,7 +145,7 @@
     (e.dataTransfer as DataTransfer).effectAllowed = 'move';
   }
 
-  function onDragOver(e: DragEvent, index: number) {
+  function onDragOver(e: DragEvent, _index: number) {
     e.preventDefault();
     (e.dataTransfer as DataTransfer).dropEffect = 'move';
   }
@@ -355,15 +367,15 @@
     GetAppVersion().then(v => { appVersion = v; });
     GetFFmpegInfo().then(info => { ffmpegInfo = info; });
     GetSldlStatus().then(s => { sldlStatus = s; });
-    EventsOn('ffmpeg-install-progress', (progress: any) => {
-      ffmpegProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
+    EventsOn('ffmpeg-install-progress', (progress: InstallProgress) => {
+      ffmpegProgress = { stage: progress.Stage || progress.stage || '', percent: progress.Percent || progress.percent || 0 };
       if (ffmpegProgress.stage === 'complete') {
         installingFFmpeg = false;
         GetFFmpegInfo().then(info => { ffmpegInfo = info; });
       }
     });
-    EventsOn('sldl-install-progress', (progress: any) => {
-      sldlInstallProgress = { stage: progress.Stage || progress.stage, percent: progress.Percent || progress.percent };
+    EventsOn('sldl-install-progress', (progress: InstallProgress) => {
+      sldlInstallProgress = { stage: progress.Stage || progress.stage || '', percent: progress.Percent || progress.percent || 0 };
       if (sldlInstallProgress.stage === 'complete') {
         installingSldl = false;
         GetSldlStatus().then(s => { sldlStatus = s; });
@@ -474,7 +486,7 @@
     try {
       const result = await TestSoulseekConnection(config.soulseekUsername, config.soulseekPassword);
       soulseekLoginResult = { success: result.success, message: result.message };
-    } catch (e) {
+    } catch {
       soulseekLoginResult = { success: false, message: { key: 'settings.soulseek.testError' } };
     } finally {
       testingLogin = false;
@@ -715,7 +727,7 @@
             <span class="setting-label">{$t('settings.accent.label')}</span>
           </div>
           <div class="accent-swatches" role="radiogroup" aria-label={$t('settings.accent.groupLabel')}>
-            {#each accentPresets as preset}
+            {#each accentPresets as preset (preset.color)}
               <button
                 class="swatch"
                 class:active={config.accentColor === preset.color}
@@ -735,7 +747,7 @@
           <div class="setting-control">
             <select id="font-family" value={config.fontFamily} onchange={handleFontChange} class="setting-select">
               <option value="">{$t('settings.font.default')}</option>
-              {#each fontPresets as font}
+              {#each fontPresets as font (font.value)}
                 <option value={font.value}>{font.name}</option>
               {/each}
             </select>
@@ -897,7 +909,7 @@
               type="text"
               class="setting-input"
               bind:value={config.jellyfinUrl}
-              placeholder={'http://localhost:8096'}
+              placeholder="http://localhost:8096"
             />
           </div>
         </div>
@@ -926,7 +938,7 @@
         <div class="settings-section">
           <p class="settings-hint">{$t('settings.sources.dragHint')}</p>
           <div class="source-priority-list">
-            {#each sourceOrder as source, i}
+            {#each sourceOrder as source, i (source)}
               <div
                 class="source-priority-item"
                 draggable="true"
@@ -1005,7 +1017,7 @@
           </div>
           <div class="setting-control">
             <select id="country-code" bind:value={config.countryCode} class="setting-select">
-              {#each countries as c}
+              {#each countries as c (c.code)}
                 <option value={c.code}>{$t(c.labelKey)} ({c.code})</option>
               {/each}
             </select>
@@ -1051,7 +1063,7 @@
                 externalLibraryPathsText = (e.target as HTMLTextAreaElement).value;
                 config.externalLibraryPaths = externalLibraryPathsText.split('\n').map(s => s.trim()).filter(Boolean);
               }}
-              placeholder={"/mnt/music/navidrome\n/srv/jellyfin/library"}
+              placeholder={PLACEHOLDER_LIBRARY_PATHS}
               rows={3}
               spellcheck={false}
             ></textarea>
@@ -1158,7 +1170,7 @@
                   tidalPriorityText = (e.target as HTMLTextAreaElement).value;
                   config.tidalPriorityEndpoints = tidalPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
                 }}
-                placeholder={"https://your-hifi-api-1.com\nhttps://your-hifi-api-2.com"}
+                placeholder={PLACEHOLDER_TIDAL_ENDPOINTS}
                 rows={3}
                 spellcheck={false}
               ></textarea>
@@ -1182,7 +1194,7 @@
                   qobuzPriorityText = (e.target as HTMLTextAreaElement).value;
                   config.qobuzPriorityEndpoints = qobuzPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
                 }}
-                placeholder={"https://your-qobuz-proxy-1.com\nhttps://your-qobuz-proxy-2.com"}
+                placeholder={PLACEHOLDER_QOBUZ_ENDPOINTS}
                 rows={3}
                 spellcheck={false}
               ></textarea>
@@ -1206,7 +1218,7 @@
                   amazonPriorityText = (e.target as HTMLTextAreaElement).value;
                   config.amazonPriorityEndpoints = amazonPriorityText.split('\n').map(s => s.trim()).filter(Boolean);
                 }}
-                placeholder={"https://your-amazon-proxy-1.com\nhttps://your-amazon-proxy-2.com"}
+                placeholder={PLACEHOLDER_AMAZON_ENDPOINTS}
                 rows={3}
                 spellcheck={false}
               ></textarea>
@@ -1236,7 +1248,7 @@
               onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) config.fileNameFormat = v; }}
             >
               <option value="">{$t('settings.naming.custom')}</option>
-              {#each namingPresets as preset}
+              {#each namingPresets as preset (preset.template)}
                 <option value={preset.template} selected={config.fileNameFormat === preset.template}>{$t(preset.labelKey)}: {preset.template}</option>
               {/each}
             </select>
@@ -1279,7 +1291,7 @@
           </div>
           <div class="setting-control">
             <select id="artist-separator" bind:value={config.artistSeparator} class="setting-select">
-              {#each artistSeparators as sep}
+              {#each artistSeparators as sep (sep.value)}
                 <option value={sep.value}>{$t(sep.labelKey)}</option>
               {/each}
             </select>
@@ -1502,13 +1514,13 @@
       </div>
       {#if sourceHealth.length > 0}
         <div class="api-status-list">
-          {#each sourceHealth as src}
+          {#each sourceHealth as src (src.displayName)}
             <!-- status only counts live/probation endpoints, while tier1.healthy counts
                  anything not dead, so a merely blacklisted self-hosted endpoint would
                  otherwise render as "dead" right next to "Self-host: healthy". A working
                  self-hosted endpoint means the source is degraded, never fully dead. -->
             {@const displayStatus = src.tier1?.healthy && src.status === 'dead' ? 'degraded' : src.status}
-            <div class="api-status-item" class:api-status-item-expanded={src.endpoints?.length > 0}>
+            <div class="api-status-item" class:api-status-item-expanded={(src.endpoints?.length ?? 0) > 0}>
               <div class="api-status-row">
                 <span class="api-name">{src.displayName}</span>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
@@ -1529,13 +1541,13 @@
                   {/if}
                 </div>
               </div>
-              {#if src.endpoints?.length > 0}
+              {#if (src.endpoints?.length ?? 0) > 0}
                 <div class="endpoint-health-list">
-                  {#each src.endpoints as ep}
+                  {#each src.endpoints ?? [] as ep (ep.url)}
                     <div class="endpoint-health-row">
                       <span class="endpoint-health-url" title={ep.url}>{ep.url.replace(/^https?:\/\//, '')}</span>
                       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-                        {#if ep.latencyMs > 0}
+                        {#if (ep.latencyMs ?? 0) > 0}
                           <span class="endpoint-latency">{ep.latencyMs}ms</span>
                         {/if}
                         <span class="status-badge status-badge-sm"
@@ -1564,7 +1576,7 @@
       </div>
       {#if apiStatuses.length > 0}
         <div class="api-status-list">
-          {#each apiStatuses as ep}
+          {#each apiStatuses as ep (ep.name)}
             <div class="api-status-item">
               <span class="api-name">{ep.name}</span>
               <span class="status-badge" class:ok={ep.status === 'online'} class:error={ep.status === 'offline'} class:slow={ep.status === 'slow'}>

@@ -23,7 +23,8 @@
 import { EventsOn as WailsEventsOn, EventsOff as WailsEventsOff } from '../../wailsjs/runtime/runtime.js'
 import { isWailsRuntime } from './api'
 
-type EventCallback = (...data: any[]) => void
+// `never[]` params let callers pass handlers typed for their own payload.
+type EventCallback = (...data: never[]) => void
 
 const browserListeners = new Map<string, Set<EventCallback>>()
 
@@ -40,12 +41,12 @@ function socketURL(): string {
   return `${proto}//${window.location.host}/ws`
 }
 
-function dispatch(eventName: string, payload: any): void {
+function dispatch(eventName: string, payload: unknown): void {
   const listeners = browserListeners.get(eventName)
   if (!listeners) return
   for (const cb of listeners) {
     try {
-      cb(payload)
+      ;(cb as (data: unknown) => void)(payload)
     } catch (err) {
       console.error(`listener for websocket event '${eventName}' raised an error:`, err)
     }
@@ -53,7 +54,7 @@ function dispatch(eventName: string, payload: any): void {
 }
 
 function handleMessage(event: MessageEvent): void {
-  let msg: any
+  let msg: { type?: string; trackId?: number; status?: string; result?: unknown } | null
   try {
     msg = JSON.parse(event.data)
   } catch {

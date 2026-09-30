@@ -237,7 +237,7 @@
   {#if $queueItems.length > 0}
     <div class="filter-bar">
       <div class="filter-pills">
-        {#each filters as f}
+        {#each filters as f (f.value)}
           <button
             class="filter-btn"
             class:active={statusFilter === f.value}

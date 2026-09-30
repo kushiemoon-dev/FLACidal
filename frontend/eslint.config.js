@@ -13,15 +13,7 @@ export default ts.config(
   },
   {
     rules: {
-      // The codebase runs with tsconfig strict:false and uses `any` for Wails/REST payloads.
-      '@typescript-eslint/no-explicit-any': 'off',
-      // Existing lists are unkeyed; keying each block risks behaviour changes, tracked separately.
-      'svelte/require-each-key': 'off',
-      // Long placeholders need a mustache to carry "\n" escapes.
-      'svelte/no-useless-mustaches': 'off',
-      // State is replaced immutably (new Set(...)), so SvelteSet is not needed.
-      'svelte/prefer-svelte-reactivity': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' }],
     },
   },
   {

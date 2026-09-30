@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { injectWailsMocks } from './mocks/wails'
 
 /**
@@ -7,7 +7,7 @@ import { injectWailsMocks } from './mocks/wails'
  * That means a handful of Settings labels show up twice for a moment, always reach
  * for `.first()` and give the transition time to finish before asserting.
  */
-async function gotoSettings(page: any) {
+async function gotoSettings(page: Page) {
   await injectWailsMocks(page)
   await page.goto('/')
   await page.locator('.sidebar button[title="Settings"]').click()
@@ -16,7 +16,7 @@ async function gotoSettings(page: any) {
   await expect(page.locator('h1').filter({ hasText: /^Settings$/ }).first()).toBeVisible()
 }
 
-async function openAdvancedInstances(page: any) {
+async function openAdvancedInstances(page: Page) {
   await page.locator('details.advanced-instances > summary').click()
 }
 

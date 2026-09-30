@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { injectWailsMocks } from './mocks/wails'
+import { injectWailsMocks, type WinAny } from './mocks/wails'
 
 const heading = (page: import('@playwright/test').Page, name: RegExp) =>
   page.locator('h1, h2').filter({ hasText: name }).first()
@@ -38,7 +38,7 @@ test.describe('Back / Forward / Reload navigation', () => {
   })
 
   test('F5 and Alt+Left never trigger a native reload or Back', async ({ page }) => {
-    await page.evaluate(() => { (window as any).__marker = 1 })
+    await page.evaluate(() => { (window as unknown as WinAny).__marker = 1 })
     const url = page.url()
 
     await page.keyboard.press('F5')
@@ -46,7 +46,7 @@ test.describe('Back / Forward / Reload navigation', () => {
     await page.waitForTimeout(300)
 
     expect(page.url()).toBe(url)
-    expect(await page.evaluate(() => (window as any).__marker)).toBe(1)
+    expect(await page.evaluate(() => (window as unknown as WinAny).__marker)).toBe(1)
   })
 
   test('Alt+Arrow inside a text field does not change page', async ({ page }) => {

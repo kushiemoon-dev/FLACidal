@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
+type WailsWindow = { go?: unknown; runtime?: unknown }
+
 // wailsjs/go/app/App.js is generated code that calls into window.go.app.App.*
 // under the hood, so it's mocked directly here, that way the Wails-mode
 // tests never touch a real window.go.
@@ -17,13 +19,13 @@ const wailsMock = {
 vi.mock('../../wailsjs/go/app/App.js', () => wailsMock)
 
 function setWailsRuntime() {
-  ;(window as any).go = { app: { App: {} } }
-  ;(window as any).runtime = {}
+  ;(window as unknown as WailsWindow).go = { app: { App: {} } }
+  ;(window as unknown as WailsWindow).runtime = {}
 }
 
 function clearWailsRuntime() {
-  delete (window as any).go
-  delete (window as any).runtime
+  delete (window as unknown as WailsWindow).go
+  delete (window as unknown as WailsWindow).runtime
 }
 
 describe('isWailsRuntime', () => {

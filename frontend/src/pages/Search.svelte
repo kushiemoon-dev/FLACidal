@@ -23,6 +23,15 @@
     pictureUrl?: string;
   }
 
+  interface DeezerTrack {
+    id: string | number;
+    title: string;
+    artist: string;
+    album: string;
+    cover: string;
+    duration: number;
+  }
+
   const placeholderKeys: Record<SearchType, MessageKey> = {
     tracks: 'search.placeholder.tracks',
     albums: 'search.placeholder.albums',
@@ -41,7 +50,7 @@
   let filterTimeout: ReturnType<typeof setTimeout> | undefined;
   let debouncedFilter = $state('');
   let downloadingAlbums = $state(new Set<number>());
-  let deezerResults = $state<any[]>([]);
+  let deezerResults = $state<DeezerTrack[]>([]);
   let isSearchingDeezer = $state(false);
 
   function onFilterInput(e: Event) {
@@ -111,8 +120,8 @@
     if (searchType === 'universal') {
       isSearchingDeezer = true;
       try {
-        deezerResults = await SearchDeezer(searchQuery) || [];
-      } catch (error) {
+        deezerResults = (await SearchDeezer(searchQuery) || []) as DeezerTrack[];
+      } catch {
         toastStore.showKey('search.toast.deezerError', {}, 'error');
       } finally {
         isSearchingDeezer = false;
@@ -193,6 +202,7 @@
     } catch (error) {
       console.error('Album download error:', error);
     } finally {
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable copy reassigned to $state
       const next = new Set(downloadingAlbums);
       next.delete(album.id);
       downloadingAlbums = next;
@@ -213,12 +223,12 @@
     return filteredArtists.length;
   }
 
-  async function downloadDeezerTrack(track: any) {
+  async function downloadDeezerTrack(track: DeezerTrack) {
     try {
       const deezerUrl = `https://www.deezer.com/track/${track.id}`;
       const content = await FetchContentFromURL(deezerUrl);
       if (content?.tracks) {
-        await QueueDownloads(content.tracks, $downloadFolder, track.title, track.id, 'track');
+        await QueueDownloads(content.tracks, $downloadFolder, track.title, String(track.id), 'track');
         toastStore.showKey('search.toast.addedToQueue', { title: track.title }, 'success');
       }
     } catch (e) {
@@ -318,7 +328,7 @@
 
     {#if searchType === 'tracks'}
       <div class="results-list">
-        {#each filteredResults as track, i}
+        {#each filteredResults as track, i (track.id)}
           <div class="track-row">
             <span class="track-num">{i + 1}</span>
             <img
@@ -348,7 +358,7 @@
       </div>
     {:else if searchType === 'albums'}
       <div class="album-grid">
-        {#each filteredAlbums as album}
+        {#each filteredAlbums as album (album.id)}
           <div class="album-card">
             {#if album.coverUrl}
               <img src={album.coverUrl} alt={album.title} class="album-cover" />
@@ -397,7 +407,7 @@
       </div>
     {:else if searchType === 'artists'}
       <div class="artist-list">
-        {#each filteredArtists as artist}
+        {#each filteredArtists as artist (artist.id)}
           <div class="artist-row">
             {#if artist.pictureUrl}
               <img src={artist.pictureUrl} alt={artist.name} class="artist-picture" />
@@ -431,7 +441,7 @@
       </div>
     {:else if searchType === 'universal'}
       <div class="results-list">
-        {#each deezerResults as track, i}
+        {#each deezerResults as track, i (track.id)}
           <div class="track-row">
             <span class="track-num">{i + 1}</span>
             {#if track.cover}

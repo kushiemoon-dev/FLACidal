@@ -19,11 +19,16 @@ let cachedIsWails: boolean | null = null
 // Cached after the first check, a later change to window.go won't flip the result.
 export function isWailsRuntime(): boolean {
   if (cachedIsWails === null) {
-    const w = window as any
+    const w = window as unknown as { go?: { app?: { App?: unknown } }; runtime?: unknown }
     cachedIsWails = typeof window !== 'undefined' && !!w.go?.app?.App && !!w.runtime
   }
   return cachedIsWails
 }
+
+// Result type of a generated Wails binding, so REST fallbacks stay aligned
+// with what the desktop side returns (including the loose Record types the
+// generator emits for untyped Go maps).
+type WailsResult<K extends keyof typeof Wails> = Awaited<ReturnType<(typeof Wails)[K]>>
 
 const API_BASE = '/api'
 
@@ -109,7 +114,7 @@ export interface DownloadedFileInfo {
   title: string
   artist: string
   album: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface RenamePreview {
@@ -134,12 +139,24 @@ export interface LogEntry {
   message: string
 }
 
+interface RestAnalysis {
+  fileName: string
+  isUpscaled: boolean
+  confidence: number
+  spectralCutoff: number
+  verdict: string
+  verdictLabel: string
+  message: string
+  sampleRate: number
+  bitDepth: number
+}
+
 export async function AnalyzeMultiple(paths: string[]): Promise<AnalysisResult[]> {
   if (isWailsRuntime()) {
     return Wails.AnalyzeMultiple(paths) as unknown as Promise<AnalysisResult[]>
   }
 
-  const raw = await apiPost<any[]>('/analyze/multiple', { paths })
+  const raw = await apiPost<RestAnalysis[]>('/analyze/multiple', { paths })
   // The REST endpoint returns a different shape (isUpscaled/spectralCutoff/
   // message) than core.AnalysisResult (isTrueLossless/spectrumCutoff/
   // details) on purpose, normalize it here so callers see one shape
@@ -237,14 +254,14 @@ export async function ExportFailedDownloads(format: 'txt' | 'csv'): Promise<stri
 }
 
 export async function QueueDownloads(
-  tracks: any[],
+  tracks: object[],
   outputDir: string,
   contentName: string,
   contentId: string,
   contentType: string
 ): Promise<number> {
   if (isWailsRuntime()) {
-    return Wails.QueueDownloads(tracks as any, outputDir, contentName, contentId, contentType)
+    return Wails.QueueDownloads(tracks as Parameters<typeof Wails.QueueDownloads>[0], outputDir, contentName, contentId, contentType)
   }
   // Known gap: unlike Wails, the REST endpoint doesn't yet save a
   // content-level DownloadRecord for contentId/contentType, so History
@@ -274,15 +291,17 @@ export async function QueueArtistAlbum(albumId: string, artistName: string, outp
   return queued
 }
 
-// `records` is deliberately typed `any`: consumers such as History.svelte
-// declare their own local DownloadRecord interface, and TypeScript can't
-// structurally match two independently-declared interfaces of the same
-// name even when an index signature is present.
+// `records` stays loose (WailsResult is the generated Record type): consumers
+// such as History.svelte declare their own local DownloadRecord interface,
+// and TypeScript can't structurally match two independently-declared
+// interfaces of the same name.
+type HistoryPage = { records: WailsResult<'GetRecentAlbums'>; total: number }
+
 export async function GetDownloadHistoryFiltered(
-  filter: Record<string, any>
-): Promise<{ records: any[]; total: number }> {
+  filter: Record<string, string | number | boolean | undefined>
+): Promise<HistoryPage> {
   if (isWailsRuntime()) {
-    return Wails.GetDownloadHistoryFiltered(filter) as unknown as Promise<{ records: any[]; total: number }>
+    return Wails.GetDownloadHistoryFiltered(filter) as unknown as Promise<HistoryPage>
   }
   const query = qs({
     limit: filter.limit,
@@ -307,7 +326,7 @@ export async function ClearDownloadHistory(): Promise<void> {
   await apiPost('/history/clear')
 }
 
-export async function RefetchFromHistory(tidalContentId: string): Promise<any> {
+export async function RefetchFromHistory(tidalContentId: string): Promise<WailsResult<'RefetchFromHistory'>> {
   if (isWailsRuntime()) {
     return Wails.RefetchFromHistory(tidalContentId)
   }
@@ -328,10 +347,7 @@ export async function DeleteFile(path: string): Promise<void> {
   await apiDelete(`/files?path=${encodeURIComponent(path)}`)
 }
 
-// Deliberately typed `any` here too: MetadataModal.svelte has its own local
-// FLACMetadata interface, and the same structural-typing mismatch described
-// above for GetDownloadHistoryFiltered applies.
-export async function GetFileMetadata(filePath: string): Promise<any> {
+export async function GetFileMetadata(filePath: string): Promise<WailsResult<'GetFileMetadata'>> {
   if (isWailsRuntime()) {
     return Wails.GetFileMetadata(filePath)
   }
@@ -386,7 +402,7 @@ export async function GetConversionFormats(): Promise<ConversionFormat[]> {
   return apiGet('/convert/formats')
 }
 
-export async function GetFFmpegInfo(): Promise<any> {
+export async function GetFFmpegInfo(): Promise<WailsResult<'GetFFmpegInfo'>> {
   if (isWailsRuntime()) {
     return Wails.GetFFmpegInfo()
   }
@@ -401,7 +417,7 @@ export async function IsConverterAvailable(): Promise<boolean> {
   return available
 }
 
-export async function GetConfig(): Promise<any> {
+export async function GetConfig(): Promise<WailsResult<'GetConfig'>> {
   if (isWailsRuntime()) {
     return Wails.GetConfig()
   }
@@ -452,42 +468,42 @@ export async function ClearLogs(): Promise<void> {
   await apiPost('/logs/clear')
 }
 
-export async function FetchContentFromURL(url: string): Promise<any> {
+export async function FetchContentFromURL(url: string): Promise<WailsResult<'FetchContentFromURL'>> {
   if (isWailsRuntime()) {
     return Wails.FetchContentFromURL(url)
   }
   return apiPost('/content/fetch', { url })
 }
 
-export async function SearchTidal(query: string): Promise<any[]> {
+export async function SearchTidal(query: string): Promise<WailsResult<'SearchTidal'>> {
   if (isWailsRuntime()) {
     return Wails.SearchTidal(query)
   }
   return apiGet(`/content/search${qs({ q: query })}`)
 }
 
-export async function SearchTidalAlbums(query: string): Promise<any[]> {
+export async function SearchTidalAlbums(query: string): Promise<WailsResult<'SearchTidalAlbums'>> {
   if (isWailsRuntime()) {
     return Wails.SearchTidalAlbums(query)
   }
   return apiGet(`/content/search/albums${qs({ q: query })}`)
 }
 
-export async function SearchTidalArtists(query: string): Promise<any[]> {
+export async function SearchTidalArtists(query: string): Promise<WailsResult<'SearchTidalArtists'>> {
   if (isWailsRuntime()) {
     return Wails.SearchTidalArtists(query)
   }
   return apiGet(`/content/search/artists${qs({ q: query })}`)
 }
 
-export async function SearchDeezer(query: string): Promise<any[]> {
+export async function SearchDeezer(query: string): Promise<WailsResult<'SearchDeezer'>> {
   if (isWailsRuntime()) {
     return Wails.SearchDeezer(query)
   }
   return apiGet(`/content/search/deezer${qs({ q: query })}`)
 }
 
-export async function FetchAndEmbedLyricsMultiple(filePaths: string[]): Promise<any[]> {
+export async function FetchAndEmbedLyricsMultiple(filePaths: string[]): Promise<WailsResult<'FetchAndEmbedLyricsMultiple'>> {
   if (isWailsRuntime()) {
     return Wails.FetchAndEmbedLyricsMultiple(filePaths)
   }
@@ -558,14 +574,14 @@ export async function SetDownloadFolder(folder: string): Promise<void> {
  * some settings may not take effect until the server restarts. See the
  * migration report.
  */
-export async function SaveConfig(config: any): Promise<void> {
+export async function SaveConfig(config: object): Promise<void> {
   if (isWailsRuntime()) {
-    return Wails.SaveConfig(config)
+    return Wails.SaveConfig(config as Parameters<typeof Wails.SaveConfig>[0])
   }
   await apiPost('/config', config)
 }
 
-export async function GetDownloadOptions(): Promise<any> {
+export async function GetDownloadOptions(): Promise<WailsResult<'GetDownloadOptions'>> {
   if (isWailsRuntime()) {
     return Wails.GetDownloadOptions()
   }
@@ -586,7 +602,7 @@ export async function SetDownloadOptions(
   await apiPost('/downloads/options', { quality, fileNameFormat, organizeFolders, embedCover, saveCoverFile, autoAnalyze })
 }
 
-export async function ResetToDefaults(): Promise<any> {
+export async function ResetToDefaults(): Promise<WailsResult<'ResetToDefaults'>> {
   if (isWailsRuntime()) {
     return Wails.ResetToDefaults()
   }
@@ -607,18 +623,18 @@ export async function ExportConfig(): Promise<void> {
   console.warn('ExportConfig: unavailable in browser mode')
 }
 
-export async function ImportConfig(): Promise<any> {
+export async function ImportConfig(): Promise<WailsResult<'ImportConfig'>> {
   if (isWailsRuntime()) {
     return Wails.ImportConfig()
   }
   console.warn('ImportConfig: unavailable in browser mode')
 }
 
-export async function DetectSourceFromURL(url: string): Promise<any> {
+export async function DetectSourceFromURL(url: string): Promise<WailsResult<'DetectSourceFromURL'>> {
   if (isWailsRuntime()) {
     return Wails.DetectSourceFromURL(url)
   }
-  const result = await apiPost<any>('/sources/detect', { url })
+  const result = await apiPost<Record<string, unknown>>('/sources/detect', { url })
   // Normalize: the REST failure branch omits contentType/id (Wails includes
   // them as empty strings), fill them in so callers can rely on both keys.
   return { contentType: '', id: '', ...result }
@@ -631,14 +647,14 @@ export async function SetSourceOrder(order: string[]): Promise<void> {
   await apiPost('/sources/order', { order })
 }
 
-export async function GetSldlStatus(): Promise<any> {
+export async function GetSldlStatus(): Promise<WailsResult<'GetSldlStatus'>> {
   if (isWailsRuntime()) {
     return Wails.GetSldlStatus()
   }
   return apiGet('/sources/soulseek/status')
 }
 
-export async function TestSoulseekConnection(username: string, password: string): Promise<any> {
+export async function TestSoulseekConnection(username: string, password: string): Promise<WailsResult<'TestSoulseekConnection'>> {
   if (isWailsRuntime()) {
     return Wails.TestSoulseekConnection(username, password)
   }
@@ -651,7 +667,7 @@ export async function TestSoulseekConnection(username: string, password: string)
  * FetchTidalContent also handles Tidal "mix" and "artist" URLs, and those
  * will fail here (400/500). See migration report.
  */
-export async function FetchTidalContent(url: string): Promise<any> {
+export async function FetchTidalContent(url: string): Promise<WailsResult<'FetchTidalContent'>> {
   if (isWailsRuntime()) {
     return Wails.FetchTidalContent(url)
   }
@@ -663,26 +679,26 @@ export async function FetchTidalContent(url: string): Promise<any> {
  * than Tidal specifically, and its success payload uses `contentType`
  * where Wails uses `type`, normalized here to match Wails' shape.
  */
-export async function ValidateTidalURL(url: string): Promise<any> {
+export async function ValidateTidalURL(url: string): Promise<WailsResult<'ValidateTidalURL'>> {
   if (isWailsRuntime()) {
     return Wails.ValidateTidalURL(url)
   }
-  const result = await apiPost<any>('/content/validate', { url })
+  const result = await apiPost<{ valid?: boolean; contentType?: string }>('/content/validate', { url })
   if (result?.valid && result.contentType !== undefined) {
     return { ...result, type: result.contentType }
   }
   return result
 }
 
-export async function QueueQobuzDownloads(tracks: any[], outputDir: string, contentName: string): Promise<number> {
+export async function QueueQobuzDownloads(tracks: object[], outputDir: string, contentName: string): Promise<number> {
   if (isWailsRuntime()) {
-    return Wails.QueueQobuzDownloads(tracks as any, outputDir, contentName)
+    return Wails.QueueQobuzDownloads(tracks as Parameters<typeof Wails.QueueQobuzDownloads>[0], outputDir, contentName)
   }
   const { queued } = await apiPost<{ queued: number }>('/downloads/queue/qobuz', { tracks, outputDir, contentName })
   return queued
 }
 
-export async function GetRecentAlbums(limit: number): Promise<any[]> {
+export async function GetRecentAlbums(limit: number): Promise<WailsResult<'GetRecentAlbums'>> {
   if (isWailsRuntime()) {
     return Wails.GetRecentAlbums(limit)
   }
@@ -809,14 +825,14 @@ export async function QueueDiscographyAlbums(albumUrls: string[], outputDir: str
   return unavailableInBrowser('QueueDiscographyAlbums', 'a Spotify search client is not yet wired up on the headless server')
 }
 
-export async function CheckAPIStatus(): Promise<any[]> {
+export async function CheckAPIStatus(): Promise<WailsResult<'CheckAPIStatus'>> {
   if (isWailsRuntime()) {
     return Wails.CheckAPIStatus()
   }
   return unavailableInBrowser('CheckAPIStatus', 'the headless server does not implement this yet')
 }
 
-export async function GetSourceHealth(): Promise<any[]> {
+export async function GetSourceHealth(): Promise<WailsResult<'GetSourceHealth'>> {
   if (isWailsRuntime()) {
     return Wails.GetSourceHealth()
   }

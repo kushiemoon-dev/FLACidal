@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
+type WailsWindow = { go?: unknown; runtime?: unknown }
+
 const wailsRuntimeMock = {
   EventsOn: vi.fn(),
   EventsOff: vi.fn(),
@@ -7,13 +9,13 @@ const wailsRuntimeMock = {
 vi.mock('../../wailsjs/runtime/runtime.js', () => wailsRuntimeMock)
 
 function setWailsRuntime() {
-  ;(window as any).go = { app: { App: {} } }
-  ;(window as any).runtime = {}
+  ;(window as unknown as WailsWindow).go = { app: { App: {} } }
+  ;(window as unknown as WailsWindow).runtime = {}
 }
 
 function clearWailsRuntime() {
-  delete (window as any).go
-  delete (window as any).runtime
+  delete (window as unknown as WailsWindow).go
+  delete (window as unknown as WailsWindow).runtime
 }
 
 class MockWebSocket {

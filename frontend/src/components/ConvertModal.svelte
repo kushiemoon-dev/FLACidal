@@ -60,8 +60,8 @@
           selectedQuality = formats[0].qualities[0];
         }
       }
-    } catch (e: any) {
-      error = e.message || { key: 'modals.convert.checkFailedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.convert.checkFailedFallback' };
     } finally {
       isLoading = false;
     }
@@ -76,8 +76,8 @@
     try {
       results = await ConvertFiles(files, selectedFormat, selectedQuality, '', deleteSource);
       showResults = true;
-    } catch (e: any) {
-      error = e.message || { key: 'modals.convert.failedFallback' };
+    } catch (e) {
+      error = (e as Error).message || { key: 'modals.convert.failedFallback' };
     } finally {
       isConverting = false;
     }
@@ -170,7 +170,7 @@
           </div>
 
           <div class="results-list">
-            {#each results as result}
+            {#each results as result (result.sourcePath)}
               <div class="result-item" class:success={result.success} class:error={!result.success}>
                 <div class="result-icon">
                   {#if result.success}
@@ -217,7 +217,7 @@
         <div class="format-section">
           <span class="section-label">{$t('modals.convert.outputFormat')}</span>
           <div class="format-grid">
-            {#each formats as format}
+            {#each formats as format (format.id)}
               <button
                 class="format-option"
                 class:selected={selectedFormat === format.id}
@@ -234,7 +234,7 @@
         <div class="quality-section">
           <span class="section-label">{$t('modals.convert.qualityLabel')}</span>
           <div class="quality-options">
-            {#each qualities as quality}
+            {#each qualities as quality (quality)}
               <label class="quality-option" class:selected={selectedQuality === quality}>
                 <input
                   type="radio"

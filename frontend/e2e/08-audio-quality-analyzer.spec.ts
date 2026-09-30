@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { injectWailsMocks } from './mocks/wails'
+import { injectWailsMocks, type WinAny } from './mocks/wails'
 
 test.describe('AudioQualityAnalyzer interactions', () => {
   test('hovering the drop zone does not break the app', async ({ page }) => {
@@ -42,10 +42,10 @@ test.describe('AudioQualityAnalyzer interactions', () => {
     // dialog can't be driven from a browser context, we call the bound function
     // ourselves and check that the UI reflects the results.
     await page.evaluate(async () => {
-      const res = await (window as any).go.main.App.AnalyzeMultiple(['sample.flac'])
-      ;(window as any).__analyzeRes = res
+      const res = await (window as unknown as WinAny).go.main.App.AnalyzeMultiple(['sample.flac'])
+      ;(window as unknown as WinAny).__analyzeRes = res
     })
-    const cached = await page.evaluate(() => (window as any).__analyzeRes)
+    const cached = await page.evaluate(() => (window as unknown as WinAny).__analyzeRes)
     expect(cached?.[0]?.verdict).toBe('lossless')
   })
 })

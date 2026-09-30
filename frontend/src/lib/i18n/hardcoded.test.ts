@@ -110,19 +110,40 @@ function proseText(raw: string): boolean {
   return /^\p{Lu}\p{Ll}/u.test(s) || /\p{L}{2,}\s+\p{L}{2,}/u.test(s);
 }
 
-function calleeName(callee: any): string {
+/** Loose view of the ESTree / Svelte AST nodes this scanner walks; only the fields it reads are declared. */
+interface AstNode {
+  type: string;
+  start: number;
+  name?: string;
+  data?: string;
+  operator?: string;
+  computed?: boolean;
+  directive?: string;
+  value?: string | boolean | AstNode | AstNode[] | { cooked?: string } | null;
+  test?: AstNode | null;
+  key?: AstNode;
+  left?: AstNode;
+  id?: AstNode;
+  callee?: AstNode;
+  arguments?: AstNode[];
+  object?: AstNode;
+  property?: AstNode;
+  expression?: AstNode;
+}
+
+function calleeName(callee: AstNode | null | undefined): string {
   if (!callee) return '';
-  if (callee.type === 'Identifier') return callee.name;
-  if (callee.type === 'MemberExpression' && !callee.computed) return `${calleeName(callee.object)}.${callee.property.name}`;
+  if (callee.type === 'Identifier') return callee.name ?? '';
+  if (callee.type === 'MemberExpression' && !callee.computed) return `${calleeName(callee.object)}.${callee.property?.name}`;
   if (callee.type === 'CallExpression') return `${calleeName(callee.callee)}()`;
   if (callee.type === 'ChainExpression') return calleeName(callee.expression);
   return '';
 }
 
-function targetName(node: any): string {
+function targetName(node: AstNode | null | undefined): string {
   if (!node) return '';
-  if (node.type === 'Identifier') return node.name;
-  if (node.type === 'MemberExpression' && !node.computed) return node.property.name;
+  if (node.type === 'Identifier') return node.name ?? '';
+  if (node.type === 'MemberExpression' && !node.computed) return node.property?.name ?? '';
   if (node.type === 'Literal') return String(node.value);
   return '';
 }
@@ -135,7 +156,7 @@ type Mode = 'skip' | 'strict' | 'loose';
  * loose: plain script code, only sentence-like strings count.
  * skip: comparison operands, translation keys, imports, types, selectors, event names, object keys.
  */
-function modeFor(node: any, anc: any[]): Mode {
+function modeFor(node: AstNode, anc: AstNode[]): Mode {
   let child = node;
   for (let i = anc.length - 1; i >= 0; i--) {
     const p = anc[i];
@@ -145,7 +166,7 @@ function modeFor(node: any, anc: any[]): Mode {
     if (type === 'ExpressionStatement' && p.directive) return 'skip';
     if (type === 'SwitchCase') return child === p.test ? 'skip' : 'loose';
     if (type === 'BinaryExpression') {
-      if (COMPARISON.has(p.operator)) return 'skip';
+      if (COMPARISON.has(p.operator ?? '')) return 'skip';
       if (p.operator !== '+') return 'skip';
     } else if (type === 'ConditionalExpression') {
       if (child === p.test) return 'skip';
@@ -169,10 +190,10 @@ function modeFor(node: any, anc: any[]): Mode {
       // Template expression. Inside an attribute only the visible ones matter.
       const attr = anc.slice(0, i).reverse().find((a) => a.type === 'Attribute' || a.type.endsWith('Directive'));
       if (!attr) return 'strict';
-      if (attr.type === 'Attribute') return VISIBLE_ATTRS.includes(attr.name) ? 'strict' : 'skip';
+      if (attr.type === 'Attribute') return VISIBLE_ATTRS.includes(attr.name ?? '') ? 'strict' : 'skip';
       return attr.type === 'OnDirective' ? 'loose' : 'skip';
     } else if (type === 'Attribute') {
-      return VISIBLE_ATTRS.includes(p.name) ? 'strict' : 'skip';
+      return VISIBLE_ATTRS.includes(p.name ?? '') ? 'strict' : 'skip';
     } else if (type === 'ArrowFunctionExpression' || type === 'FunctionExpression' || type === 'FunctionDeclaration' || type === 'ReturnStatement') {
       return 'loose';
     } else if (!PASS_THROUGH.has(type) && type !== 'ConditionalExpression' && type !== 'BinaryExpression') {
@@ -183,9 +204,9 @@ function modeFor(node: any, anc: any[]): Mode {
   return 'loose';
 }
 
-function scanNode(root: any, file: string, lineOf: (pos: number) => number, out: string[]) {
+function scanNode(root: AstNode | undefined, file: string, lineOf: (pos: number) => number, out: string[]) {
   const allowed = [...(ALLOWED_STRINGS['*'] ?? []), ...(ALLOWED_STRINGS[file] ?? [])];
-  const visit = (node: any, anc: any[]) => {
+  const visit = (node: AstNode | AstNode[] | null | undefined, anc: AstNode[]) => {
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node)) {
       node.forEach((c) => visit(c, anc));
@@ -200,7 +221,7 @@ function scanNode(root: any, file: string, lineOf: (pos: number) => number, out:
       return;
     }
     if (node.type === 'Attribute') {
-      const vals = Array.isArray(node.value) ? node.value : node.value === true ? [] : [node.value];
+      const vals = (Array.isArray(node.value) ? node.value : node.value === true ? [] : [node.value]) as AstNode[];
       for (const v of vals) {
         if (v?.type === 'Text') {
           if (VISIBLE_ATTRS.includes(node.name) && visibleText(v.data)) {
@@ -212,7 +233,7 @@ function scanNode(root: any, file: string, lineOf: (pos: number) => number, out:
     }
 
     const str = node.type === 'Literal' && typeof node.value === 'string' ? node.value
-      : node.type === 'TemplateElement' ? node.value.cooked : null;
+      : node.type === 'TemplateElement' ? (node.value as { cooked?: string }).cooked ?? null : null;
     if (str != null) {
       if (!allowed.includes(str.trim())) {
         const mode = modeFor(node, anc);
@@ -234,7 +255,7 @@ function scanNode(root: any, file: string, lineOf: (pos: number) => number, out:
 export function scanSource(file: string, source: string): string[] {
   const isTs = file.endsWith('.ts');
   const code = isTs ? `<script lang="ts">${source}</script>` : source;
-  const ast: any = parse(code, { modern: true });
+  const ast = parse(code, { modern: true }) as unknown as { fragment: AstNode; instance?: { content: AstNode }; module?: { content: AstNode } };
   const lineOf = (pos: number) => code.slice(0, pos).split('\n').length;
   const found: string[] = [];
   scanNode(ast.fragment, file, lineOf, found);

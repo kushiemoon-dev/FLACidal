@@ -9,7 +9,8 @@
 
   let files: string[] = $state([]);
   let fetching = $state(false);
-  let results: { filePath: string; success: boolean; hasPlain?: boolean; hasSynced?: boolean; error?: UiMsg }[] = $state([]);
+  interface LyricsRow { filePath: string; success: boolean; hasPlain?: boolean; hasSynced?: boolean; error?: UiMsg }
+  let results: LyricsRow[] = $state([]);
 
   let unsubscribeFileDrop: () => void;
 
@@ -35,8 +36,8 @@
         files = [...files, ...selected];
         results = [];
       }
-    } catch (err: any) {
-      toastStore.showMsg(err?.message || { key: 'tools.lyrics.selectFilesFailed' }, 'error');
+    } catch (err) {
+      toastStore.showMsg((err as Error)?.message || { key: 'tools.lyrics.selectFilesFailed' }, 'error');
     }
   }
 
@@ -60,15 +61,15 @@
 
     try {
       const res = await FetchAndEmbedLyricsMultiple(files);
-      results = Array.isArray(res) ? res.map((r: any) => ({
+      results = Array.isArray(res) ? res.map((r: Partial<LyricsRow>) => ({
         filePath:  r.filePath  ?? '',
         success:   r.success   ?? false,
         hasPlain:  r.hasPlain  ?? false,
         hasSynced: r.hasSynced ?? false,
         error:     r.error,
       })) : [];
-    } catch (err: any) {
-      results = files.map(f => ({ filePath: f, success: false, error: err?.message || { key: 'tools.lyrics.failed' } }));
+    } catch (err) {
+      results = files.map(f => ({ filePath: f, success: false, error: (err as Error)?.message || { key: 'tools.lyrics.failed' } }));
     } finally {
       fetching = false;
     }
