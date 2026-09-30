@@ -10,6 +10,10 @@ WORK="${WORK:-build/bin/appimage-work}"
 LIBDIR=/usr/lib/x86_64-linux-gnu
 WEBKIT_DIR="$LIBDIR/webkit2gtk-4.1"
 GIO_TLS="$LIBDIR/gio/modules/libgiognutls.so"
+GST_DIR="$LIBDIR/gstreamer-1.0"
+GST_SCANNER="$LIBDIR/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"
+# Just enough for the MP3 track previews: typefind, playbin, MP3 parsing and decoding, conversion, audio output
+GST_PLUGINS="coreelements typefindfunctions playback app id3demux audioparsers mpg123 audioconvert audioresample volume autodetect pulseaudio alsa"
 
 # Pinned by version + sha256, bump by hand (linuxdeploy-plugin-gtk has no releases, so it is pinned by commit)
 LINUXDEPLOY_URL=https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
@@ -20,8 +24,11 @@ APPIMAGETOOL_URL=https://github.com/AppImage/appimagetool/releases/download/1.9.
 APPIMAGETOOL_SHA=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
 
 command -v convert >/dev/null || { echo "ImageMagick (convert) is required" >&2; exit 1; }
-for f in "$BIN" "$ICON" "$WEBKIT_DIR/WebKitWebProcess" "$WEBKIT_DIR/WebKitNetworkProcess" "$GIO_TLS"; do
+for f in "$BIN" "$ICON" "$WEBKIT_DIR/WebKitWebProcess" "$WEBKIT_DIR/WebKitNetworkProcess" "$GIO_TLS" "$GST_SCANNER"; do
   [ -f "$f" ] || { echo "missing required file: $f" >&2; exit 1; }
+done
+for p in $GST_PLUGINS; do
+  [ -f "$GST_DIR/libgst$p.so" ] || { echo "missing GStreamer plugin: $GST_DIR/libgst$p.so" >&2; exit 1; }
 done
 
 fetch() { # url sha256 dest
@@ -70,6 +77,18 @@ mkdir -p "$APPDIR/usr/lib/gio/modules"
 cp "$GIO_TLS" "$APPDIR/usr/lib/gio/modules/"
 "$WORK/linuxdeploy" --appdir "$APPDIR" --deploy-deps-only "$APPDIR/usr/lib/gio/modules"
 
+# WebKit plays media through GStreamer. The bundled libgstreamer looks for plugins in the Debian path and cannot
+# load the host ones (built against a newer GStreamer), so ship a small set of plugins and the plugin scanner.
+# souphttpsrc is left out on purpose: WebKit fetches media itself, and it would pull libsoup2 next to libsoup3.
+mkdir -p "$APPDIR/usr/lib/gstreamer-1.0" "$APPDIR/usr/libexec/gstreamer-1.0"
+for p in $GST_PLUGINS; do
+  cp "$GST_DIR/libgst$p.so" "$APPDIR/usr/lib/gstreamer-1.0/"
+done
+cp "$GST_SCANNER" "$APPDIR/usr/libexec/gstreamer-1.0/"
+"$WORK/linuxdeploy" --appdir "$APPDIR" \
+  --deploy-deps-only "$APPDIR/usr/lib/gstreamer-1.0" \
+  --deploy-deps-only "$APPDIR/usr/libexec/gstreamer-1.0"
+
 # WebKit ignores WEBKIT_EXEC_PATH in release builds and spawns its helpers from the path compiled into
 # libwebkit2gtk. Rewrite that prefix in the bundled copy to a same-length relative path (padded with
 # slashes) that resolves from $APPDIR, and run the app from there (see the AppRun hook below).
@@ -87,6 +106,9 @@ mkdir -p "$APPDIR/apprun-hooks"
 cat > "$APPDIR/apprun-hooks/webkit-helpers.sh" <<'EOF'
 cd "$APPDIR"
 export GIO_EXTRA_MODULES="$APPDIR/usr/lib/gio/modules"
+export GST_PLUGIN_SYSTEM_PATH_1_0="$APPDIR/usr/lib/gstreamer-1.0"
+export GST_PLUGIN_SCANNER_1_0="$APPDIR/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+export GST_REGISTRY_1_0="${XDG_CACHE_HOME:-$HOME/.cache}/flacidal/gstreamer-registry.bin"
 EOF
 # linuxdeploy's generated AppRun only sources the gtk hook by name, so replace it with one that sources every hook
 cat > "$APPDIR/AppRun" <<'EOF'
