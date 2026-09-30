@@ -55,15 +55,6 @@ jobs:
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
-        # continue-on-error is intentional, not a placeholder. ESLint isn't a
-        # devDependency in package.json and there's no eslint.config.js, so
-        # `npm run lint` currently fails with "eslint: command not found"
-        # (exit 127), confirmed by running it locally. That's not a backlog
-        # of style violations to spot-fix; it's an unfinished tool setup
-        # (add the eslint/svelte-eslint-parser deps + a flat config), out of
-        # scope for this CI-hardening pass. Remove this flag once ESLint is
-        # actually wired up.
-        continue-on-error: true
 
   go-test:
     name: Go Test, Vet & Build
