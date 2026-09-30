@@ -1,5 +1,27 @@
 # Changelog
 
+## v4.18.2: 2026-09-30
+
+### Fixes
+- **The Linux AppImage failed to start on systems without webkit2gtk-4.1 installed** (`libwebkit2gtk-4.1.so.0: cannot open shared object file`): it only contained the binary. It now bundles GTK3, webkit2gtk-4.1, the WebKit helper processes and the TLS backend WebKit needs to load https content such as cover art. It is built on Ubuntu 22.04, so the minimum glibc is now 2.35, and the download grows from about 6 MB to about 84 MB. UPX is no longer applied to the Linux binary.
+
+### New features
+- **Interface language setting**: the interface is translated to English, French and German. Settings > Language offers System, English, Français and Deutsch, is saved in the config, and dates and numbers follow the active locale. Messages shown as toasts and errors follow a language switch.
+- **Back, Forward and Reload navigation**: sidebar buttons, Alt+Left and Alt+Right to walk the page history, F5 or Ctrl+R to reload the current page. Alt+arrows keep working inside text fields.
+- **Date format option**: Settings > Date Format chooses between the full date (YYYY-MM-DD) and the year only (YYYY) for the DATE tag of FLAC and MP3 files. ORIGINALDATE always keeps the full date.
+- **Persistent log file**: log entries are also written to `flacidal.log` in the data folder (`~/.flacidal`), rotated at 5 MB with two backups, in both the desktop app and the headless server. Credentials in URLs, bearer tokens and `password=`, `token=`, `secret=`, `api_key=` style values are masked. Settings shows the log path with a button to open the folder. A secret separated from its keyword by a plain space is not masked.
+
+### Improvements
+- Accessibility fixes: form labels, list roles and dialog semantics, Escape closes the issue reporter.
+
+### Dependencies
+- flacidal-core bumped to v0.22.0 (date format, log file, language setting).
+
+### Development
+- ESLint is set up with a flat config and the frontend lint job is now blocking in CI.
+- The API layer and page payloads are typed instead of using `any`, and dead code reported by the linter is removed.
+- A test guards against hardcoded UI strings outside the translation files.
+
 ## v4.18.1: 2026-09-24
 
 Patch release fixing two regressions surfaced while wiring up a self-hosted Tidal endpoint over a Tailscale/Headscale tailnet.
