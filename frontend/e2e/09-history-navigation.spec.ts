@@ -48,4 +48,14 @@ test.describe('Back / Forward / Reload navigation', () => {
     expect(page.url()).toBe(url)
     expect(await page.evaluate(() => (window as any).__marker)).toBe(1)
   })
+
+  test('Alt+Arrow inside a text field does not change page', async ({ page }) => {
+    await page.locator('.sidebar button[title="Settings"]').click()
+    await page.locator('.sidebar button[title="Search"]').click()
+    const input = page.locator('.main-content input').first()
+    await input.click()
+    await page.keyboard.press('Alt+ArrowLeft')
+    await expect(heading(page, /Search/i)).toBeVisible()
+    await expect(page.locator('.sidebar button[title="Forward"]')).toBeDisabled()
+  })
 })

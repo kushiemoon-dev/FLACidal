@@ -63,7 +63,15 @@
   }
 
   // preventDefault always, so headless mode never gets a native Back or full reload.
+  function isEditable(t: EventTarget | null): boolean {
+    return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  }
+
   function handleKeydown(e: KeyboardEvent) {
+    // Alt+arrows edit text (word jump on macOS), leave them alone in fields and during IME composition.
+    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.isComposing || isEditable(e.target))) {
+      return;
+    }
     if (e.altKey && e.key === 'ArrowLeft') {
       e.preventDefault();
       back();

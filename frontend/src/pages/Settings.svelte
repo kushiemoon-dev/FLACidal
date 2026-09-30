@@ -367,7 +367,6 @@
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
-        config.dateFormat = result.dateFormat === 'year' ? 'year' : 'full';
         config.soundEffects = result.soundEffects || false;
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
@@ -555,6 +554,7 @@
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
+        config.dateFormat = result.dateFormat === 'year' ? 'year' : 'full';
         config.soundEffects = result.soundEffects || false;
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
