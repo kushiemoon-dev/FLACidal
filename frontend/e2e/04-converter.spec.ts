@@ -27,7 +27,6 @@ test.describe('Audio Converter tool', () => {
   test('lists every expected format once files are added', async ({ page }) => {
     await gotoConverter(page)
     await page.evaluate(() => {
-      // @ts-ignore
       ;(window as any).go.main.App.OpenFLACFilesDialog = async () => [
         '/tmp/a.flac',
         '/tmp/b.flac',

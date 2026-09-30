@@ -42,7 +42,6 @@ test.describe('AudioQualityAnalyzer interactions', () => {
     // dialog can't be driven from a browser context, we call the bound function
     // ourselves and check that the UI reflects the results.
     await page.evaluate(async () => {
-      // @ts-ignore
       const res = await (window as any).go.main.App.AnalyzeMultiple(['sample.flac'])
       ;(window as any).__analyzeRes = res
     })

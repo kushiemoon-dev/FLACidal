@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetAppVersion } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
   import { t, type MessageKey } from '../lib/i18n';
   import { Heart, ExternalLink, LayoutGrid, Star, GitFork } from 'lucide-svelte';
@@ -9,7 +8,6 @@
   import youflacLogo from '../assets/logos/youflac.png';
   import opendropLogo from '../assets/logos/opendrop-vj.png';
 
-  let version = $state('...');
   let activeTab = $state('projects');
 
   interface Project {
@@ -72,12 +70,6 @@
   }
 
   onMount(async () => {
-    try {
-      version = await GetAppVersion();
-    } catch {
-      version = '0.0.0';
-    }
-
     // Fetch GitHub stats for each project
     for (let i = 0; i < projects.length; i++) {
       try {

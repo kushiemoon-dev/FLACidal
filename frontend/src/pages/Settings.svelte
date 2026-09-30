@@ -455,14 +455,6 @@
     }
   }
 
-  function moveItem(arr: string[], index: number, direction: -1 | 1): string[] {
-    const target = index + direction;
-    if (target < 0 || target >= arr.length) return arr;
-    const next = [...arr];
-    [next[index], next[target]] = [next[target], next[index]];
-    return next;
-  }
-
   async function selectFolder() {
     try {
       const folder = await SelectDownloadFolder();

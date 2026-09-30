@@ -11,17 +11,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src --ext .ts,.svelte",
+    "lint": "eslint src e2e",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@types/node": "^22.0.0",
+    "eslint": "^10.11.0",
+    "eslint-plugin-svelte": "^3.23.0",
+    "globals": "^17.12.0",
     "jsdom": "^26.0.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.0",
     "vite": "^8.0.16",
     "vitest": "^4.1.8"
   },
