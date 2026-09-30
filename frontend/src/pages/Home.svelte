@@ -23,7 +23,7 @@
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { toastStore } from '../stores/toast';
   import { formatBytes, formatDuration } from '../lib/format';
-  import { t, type MessageKey } from '../lib/i18n';
+  import { t, type MessageKey, tm, type UiMsg } from '../lib/i18n';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
 
@@ -33,7 +33,7 @@
   let tidalUrl = $state('');
   let urlInputEl: HTMLInputElement | null = $state(null);
   let loading = $state(false);
-  let error = $state('');
+  let error = $state<UiMsg>('');
   let version = $state('');
 
   // Source detection
@@ -52,18 +52,18 @@
     GetRecentAlbums(24).then(albums => {
       recentAlbums = albums ?? [];
     }).catch((e: any) => {
-      error = e?.message || $t('home.error.loadRecent');
+      error = e?.message || { key: 'home.error.loadRecent' };
     });
   });
 
   async function redownloadAlbum(album: any) {
-    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
+    if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     try {
       if (album.content_type !== 'track') {
         await QueueArtistAlbum(album.content_id, album.artist, $downloadFolder);
       }
     } catch(e: any) {
-      error = e.message || $t('home.error.queueAlbum');
+      error = e.message || { key: 'home.error.queueAlbum' };
     }
   }
 
@@ -255,10 +255,10 @@
     try {
       const queued = await QueueDiscographyAlbums(discographyAlbums, $downloadFolder);
       if (queued === 0) {
-        error = $t('home.error.noAlbumsMatched');
+        error = { key: 'home.error.noAlbumsMatched' };
       }
     } catch (e: any) {
-      error = e.message || $t('home.error.queueDiscography');
+      error = e.message || { key: 'home.error.queueDiscography' };
     }
     discographyAlbums = null;
     discographyConfirmLoading = false;
@@ -280,7 +280,7 @@
         const albums = await ExpandDiscographyURL(tidalUrl);
         discographyAlbums = albums;
       } catch (e: any) {
-        error = e.message || $t('home.error.expandDiscography');
+        error = e.message || { key: 'home.error.expandDiscography' };
       }
       discographyPending = false;
       return;
@@ -296,7 +296,9 @@
       // Use multi-source fetch if a source is detected, otherwise fall back to Tidal validation
       if (detectedSource) {
         if (!detectedSource.available) {
-          throw new Error($t('home.error.sourceUnavailable', { name: detectedSource.displayName }));
+          error = { key: 'home.error.sourceUnavailable', vars: { name: detectedSource.displayName } };
+          loading = false;
+          return;
         }
         const result = await FetchContentFromURL(tidalUrl);
         currentContent.set({
@@ -328,7 +330,7 @@
             artistId: result.artistId
           });
           if (result.resolvedVia === 'odesli') {
-            toastStore.show($t('home.toast.resolvedViaOdesli', { source: result.source }), 'info');
+            toastStore.showKey('home.toast.resolvedViaOdesli', { source: result.source }, 'info');
           }
         } catch {
           const validation = await ValidateTidalURL(tidalUrl);
@@ -362,7 +364,7 @@
         });
       }
     } catch (e: any) {
-      error = e.message || (typeof e === 'string' ? e : $t('home.error.fetchContent'));
+      error = e.message || (typeof e === 'string' ? e : { key: 'home.error.fetchContent' });
     }
 
     loading = false;
@@ -376,7 +378,7 @@
         await SetDownloadFolder(selected);
       }
     } catch (e: any) {
-      error = e.message || $t('home.error.selectFolder');
+      error = e.message || { key: 'home.error.selectFolder' };
     }
   }
 
@@ -388,7 +390,7 @@
 
   async function downloadSingleTrack(track: TidalTrack) {
     if (!$downloadFolder) {
-      error = $t('home.error.selectFolderFirst');
+      error = { key: 'home.error.selectFolderFirst' };
       return;
     }
 
@@ -408,7 +410,7 @@
 
   async function downloadAllTracks() {
     if (!$downloadFolder) {
-      error = $t('home.error.selectFolderFirst');
+      error = { key: 'home.error.selectFolderFirst' };
       return;
     }
     if (!content?.tracks?.length) return;
@@ -435,7 +437,7 @@
         await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
       }
     } catch (e: any) {
-      error = e.message || $t('home.error.queueDownloads');
+      error = e.message || { key: 'home.error.queueDownloads' };
     }
   }
 
@@ -494,16 +496,16 @@
   }
 
   async function downloadArtistAlbum(albumId: number) {
-    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
+    if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     try {
       await QueueArtistAlbum(String(albumId), content?.title || '', $downloadFolder);
     } catch (e: any) {
-      error = e.message || $t('home.error.queueAlbum');
+      error = e.message || { key: 'home.error.queueAlbum' };
     }
   }
 
   async function downloadAllFilteredAlbums() {
-    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
+    if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     const albums = filteredAlbums();
     for (const album of albums) {
       await downloadArtistAlbum(album.id);
@@ -567,19 +569,19 @@
   }
 
   let downloadingAssets = $state(false);
-  let assetsResult = $state('');
+  let assetsResult = $state<UiMsg>('');
 
   async function downloadArtistAssetsHandler() {
-    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
+    if (!$downloadFolder) { error = { key: 'home.error.selectFolderFirst' }; return; }
     const artistId = String(content?.artistId || '');
-    if (!artistId) { error = $t('home.error.noArtistId'); return; }
+    if (!artistId) { error = { key: 'home.error.noArtistId' }; return; }
     downloadingAssets = true;
     assetsResult = '';
     try {
       const count = await DownloadArtistAssets(artistId, content?.title || '', $downloadFolder);
-      assetsResult = $t('home.assetsSaved', { count });
+      assetsResult = { key: 'home.assetsSaved', vars: { count } };
     } catch (e: any) {
-      error = e.message || $t('home.error.artistAssets');
+      error = e.message || { key: 'home.error.artistAssets' };
     }
     downloadingAssets = false;
   }
@@ -674,7 +676,7 @@
         <line x1="12" y1="8" x2="12" y2="12"/>
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <span>{error}</span>
+      <span>{$tm(error)}</span>
       <button class="btn-icon" onclick={() => error = ''} aria-label={$t('home.dismissError')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -865,7 +867,7 @@
             {/if}
           </button>
           {#if assetsResult}
-            <span class="assets-result">{assetsResult}</span>
+            <span class="assets-result">{$tm(assetsResult)}</span>
           {/if}
         </div>
 

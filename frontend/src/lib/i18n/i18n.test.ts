@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { get } from 'svelte/store';
 import { resolveLang } from './resolve';
 import { translate, type Dicts } from './translate';
-import { t, locale, languagePref, setLanguage, initLanguage } from './index';
+import { t, tm, locale, setLanguage, initLanguage } from './index';
 
 const dicts: Dicts = {
   en: {
@@ -57,6 +57,23 @@ describe('translate', () => {
   it('falls back to English plural forms when the language lacks them', () => {
     expect(translate(dicts, 'de', 'a.items', { count: 3 })).toBe('3 items');
   });
+  it('never picks an English-only _one form when the language has _other', () => {
+    const d: Dicts = {
+      en: { 'b.n_one': '{count} file', 'b.n_other': '{count} files' },
+      fr: { 'b.n_other': '{count} fichiers' },
+      de: {},
+    };
+    expect(translate(d, 'fr', 'b.n', { count: 1 })).toBe('1 fichiers');
+    expect(translate(d, 'fr', 'b.n', { count: 2 })).toBe('2 fichiers');
+  });
+  it('never picks an English-only _one form when the language has the base key', () => {
+    const d: Dicts = {
+      en: { 'c.n_one': '{count} file', 'c.n_other': '{count} files' },
+      fr: { 'c.n': '{count} fichier(s)' },
+      de: {},
+    };
+    expect(translate(d, 'fr', 'c.n', { count: 1 })).toBe('1 fichier(s)');
+  });
 });
 
 describe('language store', () => {
@@ -68,16 +85,25 @@ describe('language store', () => {
     unsub();
     expect(seen).toEqual(['Home', 'Accueil']);
     expect(get(locale)).toBe('fr');
-    expect(get(languagePref)).toBe('fr');
     expect(document.documentElement.lang).toBe('fr');
   });
-  it('auto mode resolves from navigator and keeps pref empty', () => {
+  it('auto mode resolves from navigator', () => {
     initLanguage('');
-    expect(get(languagePref)).toBe('');
     expect(get(locale)).toBe(resolveLang('', navigator.language));
   });
   it('treats an invalid pref as auto', () => {
     setLanguage('xx');
-    expect(get(languagePref)).toBe('');
+    expect(get(locale)).toBe(resolveLang('', navigator.language));
+  });
+});
+
+describe('tm (stored messages)', () => {
+  it('passes raw text through and translates key messages on the current locale', () => {
+    setLanguage('en');
+    const seen: string[] = [];
+    const unsub = tm.subscribe((f) => seen.push(f({ key: 'nav.home' }), f('raw core text'), f(null)));
+    setLanguage('fr');
+    unsub();
+    expect(seen).toEqual(['Home', 'raw core text', '', 'Accueil', 'raw core text', '']);
   });
 });

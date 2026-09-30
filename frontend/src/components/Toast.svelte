@@ -2,6 +2,7 @@
   import { fly, fade } from 'svelte/transition';
   import { XCircle } from 'lucide-svelte';
   import { toastStore } from '../stores/toast';
+  import { tm } from '../lib/i18n';
 </script>
 
 {#if $toastStore.length > 0}
@@ -28,7 +29,7 @@
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         {/if}
-        <span>{toast.message}</span>
+        <span>{$tm(toast.message)}</span>
       </div>
     {/each}
   </div>

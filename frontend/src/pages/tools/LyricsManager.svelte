@@ -5,11 +5,11 @@
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, Music2, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
-  import { t } from '../../lib/i18n';
+  import { t, tm, type UiMsg } from '../../lib/i18n';
 
   let files: string[] = $state([]);
   let fetching = $state(false);
-  let results: { filePath: string; success: boolean; hasPlain?: boolean; hasSynced?: boolean; error?: string }[] = $state([]);
+  let results: { filePath: string; success: boolean; hasPlain?: boolean; hasSynced?: boolean; error?: UiMsg }[] = $state([]);
 
   let unsubscribeFileDrop: () => void;
 
@@ -36,7 +36,7 @@
         results = [];
       }
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.lyrics.selectFilesFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.lyrics.selectFilesFailed' }, 'error');
     }
   }
 
@@ -68,7 +68,7 @@
         error:     r.error,
       })) : [];
     } catch (err: any) {
-      results = files.map(f => ({ filePath: f, success: false, error: err?.message || $t('tools.lyrics.failed') }));
+      results = files.map(f => ({ filePath: f, success: false, error: err?.message || { key: 'tools.lyrics.failed' } }));
     } finally {
       fetching = false;
     }
@@ -144,7 +144,7 @@
               </span>
             {/if}
             {#if result.error}
-              <span class="result-error">{result.error}</span>
+              <span class="result-error">{$tm(result.error)}</span>
             {/if}
           </div>
         {/each}

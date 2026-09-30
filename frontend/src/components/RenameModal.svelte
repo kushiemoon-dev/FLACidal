@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { GetRenameTemplates, PreviewRename, RenameFiles } from '../lib/api';
-  import { t } from '../lib/i18n';
+  import { t, tm, type UiMsg } from '../lib/i18n';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
@@ -26,7 +26,7 @@
   let previews: Preview[] = $state([]);
   let isLoading = $state(true);
   let isRenaming = $state(false);
-  let error = $state('');
+  let error = $state<UiMsg>('');
 
   let activeTemplate = $derived(useCustom ? customTemplate : selectedTemplate);
   let canRename = $derived(previews.length > 0 && !previews.some(p => p.hasError) && activeTemplate);
@@ -44,7 +44,7 @@
         await updatePreview();
       }
     } catch (e: any) {
-      error = e.message || $t('modals.rename.loadFailedFallback');
+      error = e.message || { key: 'modals.rename.loadFailedFallback' };
     } finally {
       isLoading = false;
     }
@@ -59,7 +59,7 @@
     try {
       previews = await PreviewRename(files, activeTemplate);
     } catch (e: any) {
-      error = e.message || $t('modals.rename.previewFailedFallback');
+      error = e.message || { key: 'modals.rename.previewFailedFallback' };
     }
   }
 
@@ -74,13 +74,13 @@
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0) {
-        error = $t('modals.rename.someFailed', { count: failed.length });
+        error = { key: 'modals.rename.someFailed', vars: { count: failed.length } };
       }
 
       onComplete();
       onClose();
     } catch (e: any) {
-      error = e.message || $t('modals.rename.failedFallback');
+      error = e.message || { key: 'modals.rename.failedFallback' };
     } finally {
       isRenaming = false;
     }
@@ -217,7 +217,7 @@
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <span>{error}</span>
+            <span>{$tm(error)}</span>
           </div>
         {/if}
       </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { AnalyzeMultiple } from '../lib/api';
-  import { t } from '../lib/i18n';
+  import { t, tm, type UiMsg } from '../lib/i18n';
 
   let { files, onClose }: { files: string[]; onClose: () => void } = $props();
 
@@ -21,7 +21,7 @@
 
   let results: AnalysisResult[] = $state([]);
   let isAnalyzing = $state(true);
-  let error = $state('');
+  let error = $state<UiMsg>('');
 
   let summary = $derived({
     total: results.length,
@@ -42,7 +42,7 @@
     try {
       results = await AnalyzeMultiple(files);
     } catch (e: any) {
-      error = e.message || $t('modals.analysis.failedFallback');
+      error = e.message || { key: 'modals.analysis.failedFallback' };
     } finally {
       isAnalyzing = false;
     }
@@ -115,7 +115,7 @@
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <h3>{$t('modals.analysis.failedTitle')}</h3>
-        <p>{error}</p>
+        <p>{$tm(error)}</p>
       </div>
     {:else}
       <div class="modal-body">

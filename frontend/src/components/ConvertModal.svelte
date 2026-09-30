@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../lib/api';
   import { formatBytes } from '../lib/format';
-  import { t } from '../lib/i18n';
+  import { t, tm, type UiMsg } from '../lib/i18n';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
@@ -33,7 +33,7 @@
   let ffmpegVersion = $state('');
   let results: ConversionResult[] = $state([]);
   let showResults = $state(false);
-  let error = $state('');
+  let error = $state<UiMsg>('');
 
   let currentFormat = $derived(formats.find(f => f.id === selectedFormat));
   let qualities = $derived(currentFormat?.qualities || []);
@@ -61,7 +61,7 @@
         }
       }
     } catch (e: any) {
-      error = e.message || $t('modals.convert.checkFailedFallback');
+      error = e.message || { key: 'modals.convert.checkFailedFallback' };
     } finally {
       isLoading = false;
     }
@@ -77,7 +77,7 @@
       results = await ConvertFiles(files, selectedFormat, selectedQuality, '', deleteSource);
       showResults = true;
     } catch (e: any) {
-      error = e.message || $t('modals.convert.failedFallback');
+      error = e.message || { key: 'modals.convert.failedFallback' };
     } finally {
       isConverting = false;
     }
@@ -264,7 +264,7 @@
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <span>{error}</span>
+            <span>{$tm(error)}</span>
           </div>
         {/if}
       </div>

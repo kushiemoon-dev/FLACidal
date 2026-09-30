@@ -13,8 +13,7 @@
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
   import { toastStore } from './stores/toast';
-  import { get } from 'svelte/store';
-  import { initLanguage, t } from './lib/i18n';
+  import { initLanguage } from './lib/i18n';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import { createNavHistory, navigateTo, goBack, goForward, canGoBack, canGoForward, currentPage } from './lib/navHistory';
@@ -145,8 +144,7 @@
     // Listen for endpoint cooldown (all Tidal endpoints dead, queue auto-paused)
     unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: any) => {
       queuePaused.set(true);
-      const msg = data?.result?.error || get(t)('shell.endpointsCooldown');
-      toastStore.show(msg, 'error', 6000);
+      toastStore.showMsg(data?.result?.error || { key: 'shell.endpointsCooldown' }, 'error', 6000);
     });
 
     // Listen for download progress events and update queue store
@@ -173,7 +171,7 @@
       } else if (status === 'error') {
         queueStore.updateItem(trackId, {
           status: 'error',
-          error: result?.error || get(t)('shell.downloadFailed')
+          error: result?.error || { key: 'shell.downloadFailed' }
         });
         // Play error sound
         playSound('error');

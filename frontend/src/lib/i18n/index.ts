@@ -12,7 +12,6 @@ export type PluralKey = MessageKey extends infer K ? (K extends `${infer B}_one`
 
 const dicts = { en, fr, de } as Record<Lang, Record<string, string>>;
 
-export const languagePref = writable<LanguagePref>('');
 export const locale = writable<Lang>('en');
 
 export const t = derived(
@@ -20,12 +19,19 @@ export const t = derived(
   (l) => (key: MessageKey | PluralKey, vars?: Vars) => translate(dicts, l, key, vars)
 );
 
-/** Applies a preference: stores it, resolves the active language, updates <html lang>. */
+/** Applies a preference: resolves the active language, updates <html lang>. */
 export function setLanguage(pref: string): void {
   const resolved = resolveLang(pref, typeof navigator !== 'undefined' ? navigator.language : undefined);
-  languagePref.set(pref === 'en' || pref === 'fr' || pref === 'de' ? pref : '');
   locale.set(resolved);
   if (typeof document !== 'undefined') document.documentElement.lang = resolved;
 }
 
 export const initLanguage = setLanguage;
+
+/** A message kept in state: raw text (Core/network) or a key translated at render time. */
+export type UiMsg = string | { key: MessageKey | PluralKey; vars?: Vars } | null | undefined;
+
+/** Renders a stored UiMsg with the current language, so it follows language switches. */
+export const tm = derived(t, ($t) => (m: UiMsg): string =>
+  m == null ? '' : typeof m === 'string' ? m : $t(m.key, m.vars)
+);

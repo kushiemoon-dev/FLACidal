@@ -9,14 +9,32 @@ function readable(key: string): string {
   return last.replace(/[_.]/g, ' ');
 }
 
+const pluralRules = new Map<string, Intl.PluralRules>();
+
+function pluralForm(lang: string, count: number): 'one' | 'other' {
+  let rules = pluralRules.get(lang);
+  if (!rules) {
+    rules = new Intl.PluralRules(lang);
+    pluralRules.set(lang, rules);
+  }
+  return rules.select(count) === 'one' ? 'one' : 'other';
+}
+
+/** Picks the plural variant of `key` for one language, or undefined when it has none. */
+function pluralKey(dicts: Dicts, lang: Lang, key: string, count: number): { lang: Lang; key: string } | undefined {
+  const found = [`${key}_${pluralForm(lang, count)}`, `${key}_other`, key].find((c) => dicts[lang]?.[c] !== undefined);
+  return found ? { lang, key: found } : undefined;
+}
+
 export function translate(dicts: Dicts, lang: Lang, key: string, vars?: Vars): string {
+  let source: Lang = lang;
   let k = key;
   if (typeof vars?.count === 'number') {
-    const form = new Intl.PluralRules(lang).select(vars.count) === 'one' ? 'one' : 'other';
-    const has = (l: Lang, kk: string) => dicts[l]?.[kk] !== undefined;
-    k = [`${key}_${form}`, `${key}_other`, key].find((c) => has(lang, c) || has('en', c)) ?? key;
+    // Choose per language first, and only fall back to English as a whole.
+    const hit = pluralKey(dicts, lang, key, vars.count) ?? pluralKey(dicts, 'en', key, vars.count);
+    if (hit) ({ lang: source, key: k } = hit);
   }
-  const raw = dicts[lang]?.[k] ?? dicts.en?.[k] ?? readable(key);
+  const raw = dicts[source]?.[k] ?? dicts[lang]?.[k] ?? dicts.en?.[k] ?? readable(key);
   if (!vars) return raw;
   return raw.replace(/\{(\w+)\}/g, (m, name) => (name in vars ? String(vars[name]) : m));
 }

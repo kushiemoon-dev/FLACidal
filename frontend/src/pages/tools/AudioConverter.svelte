@@ -5,14 +5,14 @@
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, FolderOpen, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
-  import { t } from '../../lib/i18n';
+  import { t, tm, type UiMsg } from '../../lib/i18n';
 
   let files: string[] = $state([]);
   let outputFormat = $state('MP3');
   let quality = $state('320k');
   let outputDir = $state('');
   let converting = $state(false);
-  let results: { file: string; success: boolean; error?: string }[] = $state([]);
+  let results: { file: string; success: boolean; error?: UiMsg }[] = $state([]);
   let unsubscribeFileDrop: () => void;
 
   const formatOptions = ['MP3', 'AAC', 'OGG', 'Opus', 'Vorbis', 'ALAC', 'WAV', 'AIFF'];
@@ -42,7 +42,7 @@
       const folder = await GetDownloadFolder();
       if (folder) outputDir = folder;
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.converter.loadFolderFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.converter.loadFolderFailed' }, 'error');
     }
 
     // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
@@ -69,7 +69,7 @@
         results = [];
       }
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.converter.selectFilesFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.converter.selectFilesFailed' }, 'error');
     }
   }
 
@@ -78,7 +78,7 @@
       const folder = await SelectDownloadFolder();
       if (folder) outputDir = folder;
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.converter.selectFolderFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.converter.selectFolderFailed' }, 'error');
     }
   }
 
@@ -112,7 +112,7 @@
         results = files.map(f => ({ file: f, success: true }));
       }
     } catch (err: any) {
-      results = files.map(f => ({ file: f, success: false, error: err?.message || $t('tools.converter.conversionFailed') }));
+      results = files.map(f => ({ file: f, success: false, error: err?.message || { key: 'tools.converter.conversionFailed' } }));
     } finally {
       converting = false;
     }
@@ -218,7 +218,7 @@
             {/if}
             <span class="result-name">{getFileName(result.file)}</span>
             {#if result.error}
-              <span class="result-error">{result.error}</span>
+              <span class="result-error">{$tm(result.error)}</span>
             {/if}
           </div>
         {/each}

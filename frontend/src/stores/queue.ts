@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import type { UiMsg } from '../lib/i18n';
 
 interface AnalysisResult {
   verdict: string;          // "lossless" | "likely_upscaled" | "upscaled"
@@ -13,7 +14,8 @@ export interface QueueItem {
   title: string;
   artist: string;
   status: 'pending' | 'queued' | 'downloading' | 'completed' | 'error' | 'cancelled';
-  error?: string;
+  /** Raw Core text, or a key translated at render time. */
+  error?: NonNullable<UiMsg>;
   result?: {
     filePath: string;
     fileSize: number;

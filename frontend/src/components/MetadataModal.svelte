@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { GetFileMetadata, GetFileCoverArt } from '../lib/api';
   import { formatBytes, formatDuration, formatNumber } from '../lib/format';
-  import { t, locale } from '../lib/i18n';
+  import { t, locale, tm, type UiMsg } from '../lib/i18n';
 
   let { filePath, onClose }: { filePath: string; onClose: () => void } = $props();
 
@@ -33,7 +33,7 @@
   let metadata: FLACMetadata | null = $state(null);
   let coverArt: string | null = $state(null);
   let loading = $state(true);
-  let error = $state('');
+  let error = $state<UiMsg>('');
   let showLyrics = $state(false);
 
   onMount(async () => {
@@ -56,7 +56,7 @@
         }
       }
     } catch (e: any) {
-      error = e.message || $t('modals.metadata.failedFallback');
+      error = e.message || { key: 'modals.metadata.failedFallback' };
     } finally {
       loading = false;
     }
@@ -102,7 +102,7 @@
           <line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <p>{error}</p>
+        <p>{$tm(error)}</p>
       </div>
     {:else if metadata}
       <div class="modal-body">

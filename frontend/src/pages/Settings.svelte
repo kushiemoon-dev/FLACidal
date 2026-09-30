@@ -5,7 +5,7 @@
   import { updateAudioSettings, testSound } from '../stores/audio';
   import { toastStore } from '../stores/toast';
   import TabBar from '../components/TabBar.svelte';
-  import { t, setLanguage, type MessageKey } from '../lib/i18n';
+  import { t, tm, setLanguage, type MessageKey, type UiMsg } from '../lib/i18n';
   import { FolderOpen } from 'lucide-svelte';
   import {
     GetConfig,
@@ -93,7 +93,18 @@
   let checkingUpdate = $state(false);
   let ffmpegInfo: any = $state(null);
   let sldlStatus: any = $state(null);
-  let soulseekLoginResult: { success: boolean; message: string } | null = $state(null);
+  // Endpoint and source states arrive as raw enum words from Core.
+  const STATUS_KEYS: Record<string, MessageKey> = {
+    online: 'settings.status.online', degraded: 'settings.status.degraded', dead: 'settings.status.dead',
+    untested: 'settings.status.untested', live: 'settings.status.live', probation: 'settings.status.probation',
+    blacklisted: 'settings.status.blacklisted', offline: 'settings.status.offline', slow: 'settings.status.slow',
+  };
+  function statusText(status: string): string {
+    const key = STATUS_KEYS[status];
+    return key ? $t(key) : status;
+  }
+
+  let soulseekLoginResult: { success: boolean; message: UiMsg } | null = $state(null);
   let testingLogin = $state(false);
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
@@ -136,7 +147,7 @@
     sourceOrder = newOrder;
     dragIndex = null;
     SetSourceOrder(newOrder).catch(() => {
-      toastStore.show($t('settings.toast.sourceOrderFailed'), 'error');
+      toastStore.showKey('settings.toast.sourceOrderFailed', {}, 'error');
     });
   }
 
@@ -248,10 +259,10 @@
   async function exportConfig() {
     try {
       await ExportConfig();
-      toastStore.show($t('settings.toast.configExported'));
+      toastStore.showKey('settings.toast.configExported');
     } catch (e) {
       console.error('Failed to export config:', e);
-      toastStore.show($t('settings.toast.configExportError'), 'error');
+      toastStore.showKey('settings.toast.configExportError', {}, 'error');
     }
   }
 
@@ -260,11 +271,11 @@
       const result = await ImportConfig();
       if (result) {
         await loadConfig();
-        toastStore.show($t('settings.toast.configImported'));
+        toastStore.showKey('settings.toast.configImported');
       }
     } catch (e) {
       console.error('Failed to import config:', e);
-      toastStore.show($t('settings.toast.configImportError'), 'error');
+      toastStore.showKey('settings.toast.configImportError', {}, 'error');
     }
   }
 
@@ -472,7 +483,7 @@
       const result = await TestSoulseekConnection(config.soulseekUsername, config.soulseekPassword);
       soulseekLoginResult = { success: result.success, message: result.message };
     } catch (e) {
-      soulseekLoginResult = { success: false, message: $t('settings.soulseek.testError') };
+      soulseekLoginResult = { success: false, message: { key: 'settings.soulseek.testError' } };
     } finally {
       testingLogin = false;
     }
@@ -544,10 +555,10 @@
         config.saveCoverFile,
         config.autoAnalyze
       );
-      toastStore.show($t('settings.toast.saved'));
+      toastStore.showKey('settings.toast.saved');
     } catch (error) {
       console.error('Error saving config:', error);
-      toastStore.show($t('settings.toast.saveError'), 'error');
+      toastStore.showKey('settings.toast.saveError', {}, 'error');
     } finally {
       isSaving = false;
     }
@@ -607,11 +618,11 @@
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
-        toastStore.show($t('settings.toast.reset'));
+        toastStore.showKey('settings.toast.reset');
       }
     } catch (error) {
       console.error('Error resetting:', error);
-      toastStore.show($t('settings.toast.resetError'), 'error');
+      toastStore.showKey('settings.toast.resetError', {}, 'error');
     } finally {
       isResetting = false;
       showResetConfirm = false;
@@ -862,7 +873,7 @@
           </button>
           {#if soulseekLoginResult}
             <span class="soulseek-login-result" class:ok={soulseekLoginResult.success} class:fail={!soulseekLoginResult.success}>
-              {soulseekLoginResult.success ? '✓' : '✗'} {soulseekLoginResult.message}
+              {soulseekLoginResult.success ? '✓' : '✗'} {$tm(soulseekLoginResult.message)}
               {#if soulseekLoginResult.success}<span class="save-hint">{$t('settings.soulseek.saveHint')}</span>{/if}
             </span>
           {/if}
@@ -1514,7 +1525,7 @@
                     class:error={displayStatus === 'dead'}
                     class:slow={displayStatus === 'degraded' || displayStatus === 'untested'}
                     title={displayStatus !== src.status ? $t('settings.health.overrideTip') : null}>
-                    {displayStatus}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
+                    {statusText(displayStatus)}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
                   </span>
                   {#if src.tier1}
                     <span class="status-badge status-badge-sm" class:ok={src.tier1.healthy} class:error={!src.tier1.healthy}>
@@ -1539,7 +1550,7 @@
                           class:ok={ep.state === 'live'}
                           class:error={ep.state === 'dead'}
                           class:slow={ep.state === 'blacklisted' || ep.state === 'probation'}>
-                          {ep.state}{ep.state === 'probation' ? ` #${ep.revivals}` : ''}
+                          {statusText(ep.state)}{ep.state === 'probation' ? ` #${ep.revivals}` : ''}
                         </span>
                       </div>
                     </div>
@@ -1565,7 +1576,7 @@
             <div class="api-status-item">
               <span class="api-name">{ep.name}</span>
               <span class="status-badge" class:ok={ep.status === 'online'} class:error={ep.status === 'offline'} class:slow={ep.status === 'slow'}>
-                {ep.status} ({ep.latencyMs}ms)
+                {statusText(ep.status)} ({ep.latencyMs}ms)
               </span>
             </div>
           {/each}

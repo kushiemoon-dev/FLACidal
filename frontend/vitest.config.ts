@@ -3,6 +3,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
   plugins: [svelte()],
+  // Resolve Svelte's client runtime so components can be mounted in tests.
+  resolve: { conditions: ['browser'] },
   test: {
     globals: true,
     environment: 'jsdom',

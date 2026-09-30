@@ -5,7 +5,7 @@
   import TabBar from '../../components/TabBar.svelte';
   import { toastStore } from '../../stores/toast';
   import { FolderOpen, RefreshCw, Eye, Pencil } from 'lucide-svelte';
-  import { t } from '../../lib/i18n';
+  import { t, tm, type UiMsg } from '../../lib/i18n';
 
   interface FileEntry {
     path: string;
@@ -19,7 +19,7 @@
   let loading = $state(false);
   let renaming = $state(false);
   let previewing = $state(false);
-  let previewResult = $state('');
+  let previewResult = $state<UiMsg>('');
   let activeTab = $state('tracks');
   let selectAll = $state(false);
 
@@ -64,7 +64,7 @@
         await loadFiles();
       }
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.files.loadFolderFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.files.loadFolderFailed' }, 'error');
     }
   });
 
@@ -76,7 +76,7 @@
         await loadFiles();
       }
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.files.browseFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.files.browseFailed' }, 'error');
     }
   }
 
@@ -114,10 +114,10 @@
       } else if (Array.isArray(result) && result.length > 0) {
         previewResult = result.map((r: any) => r.newName || r).join('\n');
       } else {
-        previewResult = $t('tools.files.noPreview');
+        previewResult = { key: 'tools.files.noPreview' };
       }
     } catch (err: any) {
-      previewResult = err?.message || $t('tools.files.previewFailed');
+      previewResult = err?.message || { key: 'tools.files.previewFailed' };
     } finally {
       previewing = false;
     }
@@ -132,7 +132,7 @@
       await loadFiles();
       previewResult = '';
     } catch (err: any) {
-      toastStore.show(err?.message || $t('tools.files.renameFailed'), 'error');
+      toastStore.showMsg(err?.message || { key: 'tools.files.renameFailed' }, 'error');
     }
     renaming = false;
   }
@@ -170,7 +170,7 @@
       {#if previewResult}
         <div class="preview-box">
           <span class="preview-label">{$t('tools.files.previewLabel')}</span>
-          <span class="preview-text">{previewResult}</span>
+          <span class="preview-text">{$tm(previewResult)}</span>
         </div>
       {/if}
     </div>

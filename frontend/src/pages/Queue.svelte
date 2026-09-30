@@ -2,7 +2,7 @@
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
   import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../lib/api';
   import { formatNumber } from '../lib/format';
-  import { t, locale, type MessageKey } from '../lib/i18n';
+  import { t, tm, locale, type MessageKey } from '../lib/i18n';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let showClearAllConfirm = $state(false);
@@ -87,13 +87,13 @@
   let statusFilter = $state('all');
   let sortMode = $state<'default' | 'status'>('default');
 
-  const filters: { value: string; labelKey: MessageKey }[] = [
-    { value: 'all',        labelKey: 'queue.filter.all' },
-    { value: 'queued',     labelKey: 'queue.filter.queued' },
-    { value: 'downloading',labelKey: 'queue.filter.downloading' },
-    { value: 'completed',  labelKey: 'queue.filter.completed' },
-    { value: 'error',      labelKey: 'queue.filter.failed' },
-    { value: 'cancelled',  labelKey: 'queue.filter.cancelled' },
+  const filters: { value: string; labelKey: MessageKey; emptyKey: MessageKey }[] = [
+    { value: 'all',        labelKey: 'queue.filter.all', emptyKey: 'queue.noFilterItems.all' },
+    { value: 'queued',     labelKey: 'queue.filter.queued', emptyKey: 'queue.noFilterItems.queued' },
+    { value: 'downloading',labelKey: 'queue.filter.downloading', emptyKey: 'queue.noFilterItems.downloading' },
+    { value: 'completed',  labelKey: 'queue.filter.completed', emptyKey: 'queue.noFilterItems.completed' },
+    { value: 'error',      labelKey: 'queue.filter.failed', emptyKey: 'queue.noFilterItems.failed' },
+    { value: 'cancelled',  labelKey: 'queue.filter.cancelled', emptyKey: 'queue.noFilterItems.cancelled' },
   ];
 
   const statusPriority: Record<string, number> = {
@@ -271,7 +271,7 @@
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <p>{$t('queue.noFilterItems', { filter: $t(filters.find(f => f.value === statusFilter)?.labelKey ?? 'queue.filter.all').toLowerCase() })}</p>
+      <p>{$t(filters.find(f => f.value === statusFilter)?.emptyKey ?? 'queue.noFilterItems.all')}</p>
       <span class="hint">{$t('queue.noFilterItemsHint')}</span>
     </div>
   {:else}
@@ -323,7 +323,7 @@
               {/if}
             </span>
             {#if item.error}
-              <span class="item-error">{item.error}</span>
+              <span class="item-error">{$tm(item.error)}</span>
             {/if}
           </div>
 

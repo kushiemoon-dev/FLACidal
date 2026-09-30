@@ -113,7 +113,7 @@
       try {
         deezerResults = await SearchDeezer(searchQuery) || [];
       } catch (error) {
-        toastStore.show($t('search.toast.deezerError'), 'error');
+        toastStore.showKey('search.toast.deezerError', {}, 'error');
       } finally {
         isSearchingDeezer = false;
       }
@@ -152,7 +152,7 @@
 
   async function downloadTrack(track: TidalTrack) {
     if (!$downloadFolder) {
-      toastStore.show($t('search.toast.setFolder'), 'error');
+      toastStore.showKey('search.toast.setFolder', {}, 'error');
       return;
     }
 
@@ -182,7 +182,7 @@
 
   async function downloadAlbum(album: SearchAlbum) {
     if (!$downloadFolder) {
-      toastStore.show($t('search.toast.setFolder'), 'error');
+      toastStore.showKey('search.toast.setFolder', {}, 'error');
       return;
     }
 
@@ -219,10 +219,10 @@
       const content = await FetchContentFromURL(deezerUrl);
       if (content?.tracks) {
         await QueueDownloads(content.tracks, $downloadFolder, track.title, track.id, 'track');
-        toastStore.show($t('search.toast.addedToQueue', { title: track.title }), 'success');
+        toastStore.showKey('search.toast.addedToQueue', { title: track.title }, 'success');
       }
     } catch (e) {
-      toastStore.show($t('search.toast.error', { error: String(e) }), 'error');
+      toastStore.showKey('search.toast.error', { error: String(e) }, 'error');
     }
   }
 </script>
