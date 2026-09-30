@@ -2,14 +2,30 @@
   import {
     Home, Search, Download, FolderOpen, Clock,
     Terminal, Settings, Info, LayoutGrid,
-    AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug, Music2
+    AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug, Music2,
+    ArrowLeft, ArrowRight, RotateCw
   } from 'lucide-svelte';
 
-  let { activePage = 'home', onNavigate = (page: string) => {}, queueCount = 0, onBugReport = () => {} }: {
+  let {
+    activePage = 'home',
+    onNavigate = (page: string) => {},
+    queueCount = 0,
+    onBugReport = () => {},
+    canBack = false,
+    canForward = false,
+    onBack = () => {},
+    onForward = () => {},
+    onReload = () => {},
+  }: {
     activePage?: string;
     onNavigate?: (page: string) => void;
     queueCount?: number;
     onBugReport?: () => void;
+    canBack?: boolean;
+    canForward?: boolean;
+    onBack?: () => void;
+    onForward?: () => void;
+    onReload?: () => void;
   } = $props();
 
   let showToolsFlyout = $state(false);
@@ -71,6 +87,19 @@
       </div>
     </div>
   </div>
+
+  <!-- Back / Forward / Reload -->
+  <nav class="nav-history">
+    <button class="nav-item" onclick={onBack} disabled={!canBack} title="Back" aria-label="Back">
+      <ArrowLeft size={18} />
+    </button>
+    <button class="nav-item" onclick={onForward} disabled={!canForward} title="Forward" aria-label="Forward">
+      <ArrowRight size={18} />
+    </button>
+    <button class="nav-item" onclick={onReload} title="Reload" aria-label="Reload">
+      <RotateCw size={18} />
+    </button>
+  </nav>
 
   <!-- Main navigation -->
   <nav class="nav-main">
@@ -236,6 +265,24 @@
     color: var(--color-text-tertiary);
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
+  }
+
+  .nav-history {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .nav-item:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .nav-item:disabled:hover {
+    background: transparent;
+    color: var(--color-text-tertiary);
   }
 
   .nav-item:hover {

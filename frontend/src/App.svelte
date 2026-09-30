@@ -15,6 +15,7 @@
   import { toastStore } from './stores/toast';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
+  import { createNavHistory, navigateTo, goBack, goForward, canGoBack, canGoForward, currentPage } from './lib/navHistory';
   import Toast from './components/Toast.svelte';
   import IssueReporterModal from './components/IssueReporterModal.svelte';
   import QueuePanel from './components/QueuePanel.svelte';
@@ -26,7 +27,9 @@
   import FileManager from './pages/tools/FileManager.svelte';
   import LyricsManager from './pages/tools/LyricsManager.svelte';
 
-  let activePage = $state('home');
+  let navHistory = $state(createNavHistory('home'));
+  let reloadKey = $state(0);
+  const activePage = $derived(currentPage(navHistory));
   let unsubscribeProgress: () => void;
   let unsubscribePaused: () => void;
   let unsubscribeCooldown: () => void;
@@ -34,13 +37,43 @@
   let showIssueReporter = $state(false);
   let updateStatus: UpdateStatus | null = $state(null);
 
+  function go(page: string) {
+    navHistory = navigateTo(navHistory, page);
+  }
+
   function handleNavigate(page: string) {
-    activePage = page;
+    go(page);
   }
 
   function handleHistoryRefetch(content: any) {
     refetchedContent = content;
-    activePage = 'home';
+    go('home');
+  }
+
+  function back() {
+    navHistory = goBack(navHistory);
+  }
+
+  function forward() {
+    navHistory = goForward(navHistory);
+  }
+
+  function reload() {
+    reloadKey += 1;
+  }
+
+  // preventDefault always, so headless mode never gets a native Back or full reload.
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.altKey && e.key === 'ArrowLeft') {
+      e.preventDefault();
+      back();
+    } else if (e.altKey && e.key === 'ArrowRight') {
+      e.preventDefault();
+      forward();
+    } else if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
+      e.preventDefault();
+      reload();
+    }
   }
 
   onMount(async () => {
@@ -151,6 +184,8 @@
   });
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if updateStatus?.blocked}
 <UpdateRequiredScreen status={updateStatus} onUpdate={DownloadAndInstallUpdate} />
 {:else}
@@ -158,12 +193,17 @@
   <Sidebar
     {activePage}
     onNavigate={handleNavigate}
+    canBack={canGoBack(navHistory)}
+    canForward={canGoForward(navHistory)}
+    onBack={back}
+    onForward={forward}
+    onReload={reload}
     queueCount={$queueStats.pending + $queueStats.downloading}
     onBugReport={() => showIssueReporter = true}
   />
 
   <div class="main-content">
-    {#key activePage}
+    {#key activePage + ':' + reloadKey}
     <div transition:fade={{ duration: 150 }}>
       {#if activePage === 'home'}
         <Home initialContent={refetchedContent} onContentCleared={() => refetchedContent = null} />
@@ -174,7 +214,7 @@
       {:else if activePage === 'files'}
         <Files />
       {:else if activePage === 'history'}
-        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url }; activePage = 'home'; }} />
+        <History onRefetch={handleHistoryRefetch} onNavigateHome={(url) => { refetchedContent = { url }; go('home'); }} />
       {:else if activePage === 'settings'}
         <Settings />
       {:else if activePage === 'terminal'}
