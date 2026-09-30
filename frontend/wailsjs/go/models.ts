@@ -114,6 +114,7 @@ export namespace core {
 	    theme: string;
 	    accentColor?: string;
 	    dateFormat?: string;
+	    language?: string;
 	    soundEffects: boolean;
 	    soundVolume: number;
 	    embedLyrics: boolean;
@@ -185,6 +186,7 @@ export namespace core {
 	        this.theme = source["theme"];
 	        this.accentColor = source["accentColor"];
 	        this.dateFormat = source["dateFormat"];
+	        this.language = source["language"];
 	        this.soundEffects = source["soundEffects"];
 	        this.soundVolume = source["soundVolume"];
 	        this.embedLyrics = source["embedLyrics"];
