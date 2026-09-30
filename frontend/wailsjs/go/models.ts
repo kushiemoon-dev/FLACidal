@@ -113,6 +113,7 @@ export namespace core {
 	    concurrentDownloads?: number;
 	    theme: string;
 	    accentColor?: string;
+	    dateFormat?: string;
 	    soundEffects: boolean;
 	    soundVolume: number;
 	    embedLyrics: boolean;
@@ -183,6 +184,7 @@ export namespace core {
 	        this.concurrentDownloads = source["concurrentDownloads"];
 	        this.theme = source["theme"];
 	        this.accentColor = source["accentColor"];
+	        this.dateFormat = source["dateFormat"];
 	        this.soundEffects = source["soundEffects"];
 	        this.soundVolume = source["soundVolume"];
 	        this.embedLyrics = source["embedLyrics"];

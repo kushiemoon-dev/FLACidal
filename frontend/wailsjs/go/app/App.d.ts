@@ -89,6 +89,8 @@ export function GetFileCoverArt(arg1:string):Promise<Record<string, string>>;
 
 export function GetFileMetadata(arg1:string):Promise<core.FLACMetadata>;
 
+export function GetLogFilePath():Promise<string>;
+
 export function GetLogs():Promise<Array<core.LogEntry>>;
 
 export function GetMatchFailures():Promise<Array<core.MatchFailure>>;

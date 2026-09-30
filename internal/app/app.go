@@ -112,6 +112,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	a.logBuffer = core.NewLogBuffer(500)
+	a.logBuffer.EnableFileLog(core.GetLogFilePath())
 	a.logBuffer.Info("Starting FLACidal...")
 
 	// Must run before the downloader is constructed further down, which reads these endpoints.

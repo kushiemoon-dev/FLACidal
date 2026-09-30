@@ -174,6 +174,10 @@ export function GetFileMetadata(arg1) {
   return window['go']['app']['App']['GetFileMetadata'](arg1);
 }
 
+export function GetLogFilePath() {
+  return window['go']['app']['App']['GetLogFilePath']();
+}
+
 export function GetLogs() {
   return window['go']['app']['App']['GetLogs']();
 }

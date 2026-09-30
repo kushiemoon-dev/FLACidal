@@ -426,10 +426,17 @@ export async function GetDownloadFolder(): Promise<string> {
   return folder
 }
 
-// Known gap: /api/logs and /api/logs/clear on the headless server are
-// currently stubs, there's no server-side log buffer wired up yet the way
-// the Wails app's logBuffer is, so GetLogs() always resolves to [] in
-// browser mode and ClearLogs() does nothing.
+// /api/logs and /api/logs/clear read and clear the headless server's own
+// logBuffer. Only the live "log" websocket event is missing in browser mode,
+// so Terminal has to reload to see new lines.
+
+export async function GetLogFilePath(): Promise<string> {
+  if (isWailsRuntime()) {
+    return Wails.GetLogFilePath()
+  }
+  const { path } = await apiGet<{ path: string }>('/logs/path')
+  return path
+}
 
 export async function GetLogs(): Promise<LogEntry[]> {
   if (isWailsRuntime()) {

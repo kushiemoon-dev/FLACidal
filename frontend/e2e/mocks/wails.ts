@@ -198,6 +198,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetFileCoverArt: async (_p: string) => ({}),
 
       GetLogs: async () => [],
+      GetLogFilePath: async () => '/home/test/.flacidal/flacidal.log',
       ClearLogs: async () => {},
       AddLog: async (_l: string, _m: string) => {},
 

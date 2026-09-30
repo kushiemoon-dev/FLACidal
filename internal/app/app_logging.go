@@ -25,3 +25,7 @@ func (a *App) AddLog(level, message string) {
 		runtime.EventsEmit(a.ctx, "log", entry)
 	}
 }
+
+func (a *App) GetLogFilePath() string {
+	return core.GetLogFilePath()
+}

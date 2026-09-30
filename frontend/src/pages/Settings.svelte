@@ -19,6 +19,8 @@
     CheckAPIStatus,
     CheckForUpdate,
     OpenConfigFolder,
+    GetLogFilePath,
+    isWailsRuntime,
     ExportConfig,
     ImportConfig,
     InstallFFmpeg,
@@ -39,6 +41,7 @@
     fileNameFormat: '{artist} - {title}',
     theme: 'system' as ThemeMode,
     accentColor: '#f472b6',
+    dateFormat: 'full',
     soundEffects: false,
     soundVolume: 70,
     embedLyrics: false,
@@ -80,6 +83,7 @@
     enableReplayGain: false,
   });
   let activeTab = $state('general');
+  let logFilePath = $state('');
   let apiStatuses: any[] = $state([]);
   let checkingAPI = $state(false);
   let appVersion = $state('');
@@ -357,11 +361,13 @@
       const result = await GetConfig();
       if (result) {
         config.downloadFolder = result.downloadFolder || '';
+        config.dateFormat = result.dateFormat === 'year' ? 'year' : 'full';
         config.concurrentDownloads = result.concurrentDownloads || 4;
         config.embedCover = result.embedCover !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
         config.accentColor = result.accentColor || '#f472b6';
+        config.dateFormat = result.dateFormat === 'year' ? 'year' : 'full';
         config.soundEffects = result.soundEffects || false;
         config.soundVolume = result.soundVolume || 70;
         config.embedLyrics = result.embedLyrics || false;
@@ -407,6 +413,12 @@
         config.jellyfinUrl = result.jellyfinUrl || '';
         config.jellyfinApiKey = result.jellyfinApiKey || '';
         downloadFolder.set(config.downloadFolder);
+      }
+
+      try {
+        logFilePath = await GetLogFilePath();
+      } catch (e) {
+        console.error('Failed to get log file path:', e);
       }
 
       // Also get download options
@@ -467,6 +479,7 @@
         ...fullConfig,
         theme: config.theme,
         accentColor: config.accentColor,
+        dateFormat: config.dateFormat,
         downloadFolder: config.downloadFolder,
         concurrentDownloads: config.concurrentDownloads,
         embedCover: config.embedCover,
@@ -1071,6 +1084,18 @@
           </div>
         </div>
 
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Log file</span>
+            <span class="setting-desc log-path">{logFilePath || 'Unavailable'}</span>
+          </div>
+          {#if isWailsRuntime()}
+            <div class="setting-control">
+              <button class="btn-secondary" onclick={openConfig}>Open folder</button>
+            </div>
+          {/if}
+        </div>
+
         <div class="setting-item setting-item-stack">
           <div class="setting-info">
             <span class="setting-label">Self-hosted instances</span>
@@ -1201,6 +1226,19 @@
               class="setting-input"
               placeholder="{'{artist}'} - {'{title}'}"
             />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="date-format">Date Format</label>
+            <span class="setting-desc">Format of the DATE tag. ORIGINALDATE always keeps the full date.</span>
+          </div>
+          <div class="setting-control">
+            <select id="date-format" bind:value={config.dateFormat} class="setting-select">
+              <option value="full">Full date (YYYY-MM-DD)</option>
+              <option value="year">Year only (YYYY)</option>
+            </select>
           </div>
         </div>
 
@@ -1626,6 +1664,11 @@
 {/if}
 
 <style>
+  .log-path {
+    user-select: text;
+    word-break: break-all;
+  }
+
   .settings-page {
     padding: 32px;
     max-width: 960px;

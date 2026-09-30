@@ -815,6 +815,10 @@ func (s *Server) handleGetLogs(c *fiber.Ctx) error {
 	return c.JSON(s.logBuffer.GetAll())
 }
 
+func (s *Server) handleGetLogPath(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"path": core.GetLogFilePath()})
+}
+
 func (s *Server) handleClearLogs(c *fiber.Ctx) error {
 	s.logBuffer.Clear()
 	return c.JSON(fiber.Map{"success": true})

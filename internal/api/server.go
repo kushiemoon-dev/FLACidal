@@ -77,6 +77,7 @@ func NewServer(cfg ServerConfig) *Server {
 	}
 
 	logBuffer := core.NewLogBuffer(500)
+	logBuffer.EnableFileLog(core.GetLogFilePath())
 	if cfg.Downloader != nil {
 		cfg.Downloader.SetLogger(logBuffer)
 	}
@@ -248,6 +249,7 @@ func (s *Server) setupRoutes() {
 	api.Get("/version", s.handleGetVersion)
 	api.Get("/logs", s.handleGetLogs)
 	api.Post("/logs/clear", s.handleClearLogs)
+	api.Get("/logs/path", s.handleGetLogPath)
 	api.Get("/connection", s.handleGetConnectionStatus)
 	api.Get("/downloader/available", s.handleIsDownloaderAvailable)
 
