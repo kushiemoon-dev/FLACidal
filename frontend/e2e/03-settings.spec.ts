@@ -16,18 +16,24 @@ async function gotoSettings(page: any) {
   await expect(page.locator('h1').filter({ hasText: /^Settings$/ }).first()).toBeVisible()
 }
 
+async function openAdvancedInstances(page: any) {
+  await page.locator('details.advanced-instances > summary').click()
+}
+
 test.describe('Settings screen', () => {
-  test('renders the Tidal HiFi Priority Instances field', async ({ page }) => {
+  test('renders the Tidal HiFi instances field', async ({ page }) => {
     await gotoSettings(page)
+    await openAdvancedInstances(page)
     await expect(
-      page.locator('.setting-label', { hasText: 'Tidal HiFi Priority Instances' }).first(),
+      page.locator('.advanced-instances .setting-label', { hasText: 'Tidal HiFi' }).first(),
     ).toBeVisible()
   })
 
-  test('renders the Qobuz Priority Instances field', async ({ page }) => {
+  test('renders the Qobuz instances field', async ({ page }) => {
     await gotoSettings(page)
+    await openAdvancedInstances(page)
     await expect(
-      page.locator('.setting-label', { hasText: 'Qobuz Priority Instances' }).first(),
+      page.locator('.advanced-instances .setting-label', { hasText: 'Qobuz' }).first(),
     ).toBeVisible()
   })
 
@@ -41,17 +47,19 @@ test.describe('Settings screen', () => {
     await expect(page.locator('input[type="checkbox"]').first()).toBeAttached()
   })
 
-  test('keeps what you type into the Tidal priority instances textarea', async ({ page }) => {
+  test('keeps what you type into the Tidal instances textarea', async ({ page }) => {
     await gotoSettings(page)
-    const tidalTextarea = page.locator('textarea.endpoint-list').first()
+    await openAdvancedInstances(page)
+    const tidalTextarea = page.locator('.advanced-instances textarea.endpoint-list').first()
     await tidalTextarea.scrollIntoViewIfNeeded()
     await tidalTextarea.fill('https://my-tidal-api.example.com')
     await expect(tidalTextarea).toHaveValue('https://my-tidal-api.example.com')
   })
 
-  test('keeps what you type into the Qobuz priority instances textarea', async ({ page }) => {
+  test('keeps what you type into the Qobuz instances textarea', async ({ page }) => {
     await gotoSettings(page)
-    const qobuzTextarea = page.locator('textarea.endpoint-list').nth(1)
+    await openAdvancedInstances(page)
+    const qobuzTextarea = page.locator('.advanced-instances textarea.endpoint-list').nth(1)
     await qobuzTextarea.scrollIntoViewIfNeeded()
     await qobuzTextarea.fill('https://my-qobuz.example.com')
     await expect(qobuzTextarea).toHaveValue('https://my-qobuz.example.com')
