@@ -108,6 +108,7 @@ You can check endpoint health live at any time under **Settings -> Status**.
 - **Artist Artwork** pulled in alongside the music
 - A **Source Status Panel** showing live endpoint health under Settings -> Status
 - **Outbound Proxy Support** for every outbound request, HTTP or SOCKS5
+- A **Multilingual Interface** in English, French and German, switchable under Settings -> Language (System follows your OS language)
 
 ---
 
@@ -123,7 +124,7 @@ You can check endpoint health live at any time under **Settings -> Status**.
 | **Android** | [`FLACidal.apk`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) |
 | **iOS** | [`FLACidal.ipa`](https://github.com/kushiemoon-dev/flacidal-mobile/releases/latest) (via AltStore) |
 
-> **Linux:** No AUR package exists yet. Grab the AppImage directly, or [build from source](#build-from-source).
+> **Linux:** The AppImage bundles its own WebKit and GTK, so you do not need webkit2gtk installed, and it needs glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 or later). No AUR package exists yet. Grab the AppImage directly, or [build from source](#build-from-source).
 
 An Android and iOS build exists too: **[FLACidal Mobile](https://github.com/kushiemoon-dev/flacidal-mobile)**
 
@@ -277,8 +278,12 @@ Settings live at `~/.flacidal/config.json` and can be edited from within the app
 | Embed cover art | `true` | `true` · `false` |
 | Concurrent downloads | `4` | `1` – `10` |
 | Outbound proxy | _(none)_ | `http://host:port` or `socks5://host:port` |
+| Language | `System` | `System` · `English` · `Français` · `Deutsch` |
+| Date format | `full` | `full` (YYYY-MM-DD) · `year` (YYYY), for the DATE tag of FLAC and MP3 files. ORIGINALDATE always keeps the full date |
 
 The config file sits at `~/.flacidal/config.json`, while the `sldl` binary lives separately at `~/.local/share/flacidal/sldl` on Linux and macOS. Two distinct locations, easy to mix up if you're not expecting it.
+
+The log file is next to the config, at `~/.flacidal/flacidal.log`, and Settings shows its path. It rotates at 5 MB and keeps two backups (`flacidal.log.1` and `flacidal.log.2`). Credentials in URLs, bearer tokens and values written as `password=`, `token=`, `secret=` or `api_key=` are masked, but a secret separated from its keyword by a plain space is not, so skim it before attaching it to a bug report.
 
 ---
 
