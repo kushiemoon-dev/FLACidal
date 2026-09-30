@@ -3,7 +3,7 @@
 ## v4.18.2: 2026-09-30
 
 ### Fixes
-- **The Linux AppImage failed to start on systems without webkit2gtk-4.1 installed** (`libwebkit2gtk-4.1.so.0: cannot open shared object file`): it only contained the binary. It now bundles GTK3, webkit2gtk-4.1, the WebKit helper processes, the TLS backend WebKit needs to load https content such as cover art, and the GStreamer plugins needed to play the MP3 track previews (the host's own GStreamer plugins cannot be used with the bundled libraries). It is built on Ubuntu 22.04, so the minimum glibc is now 2.35, and the download grows from about 6 MB to about 83 MB. UPX is no longer applied to the Linux binary.
+- **The Linux AppImage failed to start on systems without webkit2gtk-4.1 installed** (`libwebkit2gtk-4.1.so.0: cannot open shared object file`): it only contained the binary. It now bundles GTK3, webkit2gtk-4.1, the WebKit helper processes, the TLS backend WebKit needs to load https content such as cover art, and the GStreamer plugins needed to play the MP3 track previews (the host's own GStreamer plugins cannot be used with the bundled libraries). It is built on Ubuntu 22.04, so the minimum glibc is now 2.35, and the download grows from about 6 MB to about 86 MB. UPX is no longer applied to the Linux binary.
 
 ### New features
 - **Interface language setting**: the interface is translated to English, French and German. Settings > Language offers System, English, Français and Deutsch, is saved in the config, and dates and numbers follow the active locale. Messages shown as toasts and errors follow a language switch.
