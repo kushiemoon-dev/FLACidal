@@ -1,13 +1,14 @@
 # Maintainer: kushiemoon-dev <noreply@users.noreply.github.com>
 pkgname=flacidal-bin
 _appname=flacidal
-pkgver=4.14.0
+pkgver=4.18.2
 pkgrel=1
 pkgdesc='Free FLAC and hi-res music downloader (Tidal, Qobuz, Amazon, Soulseek, Bandcamp)'
 arch=('x86_64')
 url='https://github.com/kushiemoon-dev/FLACidal'
 license=('MIT')
-# Wails webview runtime deps. The AppImage bundles the app but not the webview.
+# Wails webview runtime deps. The AppImage bundles its own copies of the webview and GTK, but this
+# package only installs the binary extracted from it, which uses the system ones.
 # Confirmed by running the extracted binary and inspecting /proc/PID/maps:
 # it loads libwebkit2gtk-4.1.so + libgtk-3.so, not the (chaotic-aur-only) webkit2gtk 4.0.
 depends=('webkit2gtk-4.1' 'gtk3')
@@ -16,9 +17,9 @@ optdepends=('ffmpeg: audio conversion (FLAC/AIFF/ALAC/WAV)'
 provides=('flacidal')
 conflicts=('flacidal')
 options=('!strip' '!debug')
-source=("${_appname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/flacidal.AppImage"
+source=("${_appname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/flacidal_linux_amd64.AppImage"
         "LICENSE-${pkgver}::${url}/raw/v${pkgver}/LICENSE")
-sha256sums=('cd2f263d622af5121d7e6665ed534e34c07ea9800f8744c9e2e4217be0cb0e20'
+sha256sums=('55404f4a3cc730c73b9c076f6645e4d1fd3c075dc2eb360fca079e57a8d2f2cd'
             '7576c6620cb1d95a2633595c1bedf85c70541d4ae3c3b2fc31bad8be11a14e67')
 
 prepare() {
@@ -29,6 +30,6 @@ prepare() {
 package() {
   install -Dm755 "squashfs-root/usr/bin/${_appname}" "${pkgdir}/usr/bin/${_appname}"
   install -Dm644 "squashfs-root/${_appname}.desktop" "${pkgdir}/usr/share/applications/${_appname}.desktop"
-  install -Dm644 "squashfs-root/${_appname}.png" "${pkgdir}/usr/share/icons/hicolor/1024x1024/apps/${_appname}.png"
+  install -Dm644 "squashfs-root/${_appname}.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${_appname}.png"
   install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
