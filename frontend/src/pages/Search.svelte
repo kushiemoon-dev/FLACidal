@@ -3,6 +3,7 @@
   import { SearchTidal, SearchTidalAlbums, SearchTidalArtists, SearchDeezer, FetchContentFromURL, QueueDownloads, QueueSingleDownload, QueueArtistAlbum } from '../lib/api';
   import { toastStore } from '../stores/toast';
   import { formatNumber, formatDuration } from '../lib/format';
+  import { t, locale, type MessageKey } from '../lib/i18n';
 
   type SearchType = 'tracks' | 'albums' | 'artists' | 'universal';
 
@@ -21,6 +22,13 @@
     name: string;
     pictureUrl?: string;
   }
+
+  const placeholderKeys: Record<SearchType, MessageKey> = {
+    tracks: 'search.placeholder.tracks',
+    albums: 'search.placeholder.albums',
+    artists: 'search.placeholder.artists',
+    universal: 'search.placeholder.universal',
+  };
 
   let searchQuery = $state('');
   let searchType: SearchType = $state('tracks');
@@ -105,7 +113,7 @@
       try {
         deezerResults = await SearchDeezer(searchQuery) || [];
       } catch (error) {
-        toastStore.show('Deezer search error', 'error');
+        toastStore.show($t('search.toast.deezerError'), 'error');
       } finally {
         isSearchingDeezer = false;
       }
@@ -144,7 +152,7 @@
 
   async function downloadTrack(track: TidalTrack) {
     if (!$downloadFolder) {
-      toastStore.show('Set a download folder in Settings first', 'error');
+      toastStore.show($t('search.toast.setFolder'), 'error');
       return;
     }
 
@@ -174,7 +182,7 @@
 
   async function downloadAlbum(album: SearchAlbum) {
     if (!$downloadFolder) {
-      toastStore.show('Set a download folder in Settings first', 'error');
+      toastStore.show($t('search.toast.setFolder'), 'error');
       return;
     }
 
@@ -211,25 +219,25 @@
       const content = await FetchContentFromURL(deezerUrl);
       if (content?.tracks) {
         await QueueDownloads(content.tracks, $downloadFolder, track.title, track.id, 'track');
-        toastStore.show(`"${track.title}" added to queue`, 'success');
+        toastStore.show($t('search.toast.addedToQueue', { title: track.title }), 'success');
       }
     } catch (e) {
-      toastStore.show(`Error: ${e}`, 'error');
+      toastStore.show($t('search.toast.error', { error: String(e) }), 'error');
     }
   }
 </script>
 
 <div class="search-page">
   <div class="search-header">
-    <h1>Search Tidal</h1>
-    <p class="subtitle">Find tracks, albums, and artists</p>
+    <h1>{$t('search.title')}</h1>
+    <p class="subtitle">{$t('search.subtitle')}</p>
   </div>
 
   <div class="search-tabs">
-    <button class="tab" class:active={searchType === 'tracks'} onclick={() => switchTab('tracks')}>Tracks</button>
-    <button class="tab" class:active={searchType === 'albums'} onclick={() => switchTab('albums')}>Albums</button>
-    <button class="tab" class:active={searchType === 'artists'} onclick={() => switchTab('artists')}>Artists</button>
-    <button class="tab" class:active={searchType === 'universal'} onclick={() => switchTab('universal')}>Universal</button>
+    <button class="tab" class:active={searchType === 'tracks'} onclick={() => switchTab('tracks')}>{$t('search.tab.tracks')}</button>
+    <button class="tab" class:active={searchType === 'albums'} onclick={() => switchTab('albums')}>{$t('search.tab.albums')}</button>
+    <button class="tab" class:active={searchType === 'artists'} onclick={() => switchTab('artists')}>{$t('search.tab.artists')}</button>
+    <button class="tab" class:active={searchType === 'universal'} onclick={() => switchTab('universal')}>{$t('search.tab.universal')}</button>
   </div>
 
   <div class="search-box">
@@ -242,7 +250,7 @@
         type="text"
         bind:value={searchQuery}
         onkeypress={handleKeyPress}
-        placeholder="Search for {searchType}..."
+        placeholder={$t(placeholderKeys[searchType])}
         class="search-input"
       />
       <button
@@ -253,7 +261,7 @@
         {#if isSearching}
           <div class="spinner"></div>
         {:else}
-          Search
+          {$t('search.submit')}
         {/if}
       </button>
     </div>
@@ -262,7 +270,7 @@
   {#if isSearching || isSearchingDeezer}
     <div class="loading-state">
       <div class="loader"></div>
-      <p>{searchType === 'universal' ? 'Searching Deezer...' : 'Searching Tidal...'}</p>
+      <p>{searchType === 'universal' ? $t('search.searchingDeezer') : $t('search.searchingTidal')}</p>
     </div>
   {:else if hasSearched && currentResultCount() === 0}
     <div class="empty-state">
@@ -270,11 +278,11 @@
         <circle cx="11" cy="11" r="8"/>
         <path d="m21 21-4.35-4.35"/>
       </svg>
-      <p>No results found for "{searchQuery}"</p>
+      <p>{$t('search.noResults', { query: searchQuery })}</p>
     </div>
   {:else if currentResultCount() > 0}
     <div class="results-header">
-      <span class="results-count">{formatNumber(currentFilteredCount())} of {formatNumber(currentResultCount())} results</span>
+      <span class="results-count">{$t('search.resultsCount', { shown: formatNumber(currentFilteredCount(), $locale), total: formatNumber(currentResultCount(), $locale) })}</span>
       {#if searchType === 'tracks'}
         <button class="download-all-btn" onclick={downloadAll}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -282,7 +290,7 @@
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Download All
+          {$t('search.downloadAll')}
         </button>
       {/if}
     </div>
@@ -295,11 +303,11 @@
         type="text"
         value={filterText}
         oninput={onFilterInput}
-        placeholder={searchType === 'artists' ? 'Filter by name...' : 'Filter by artist, album, or title...'}
+        placeholder={searchType === 'artists' ? $t('search.filter.byName') : $t('search.filter.byAll')}
         class="filter-input"
       />
       {#if filterText}
-        <button class="filter-clear-btn" onclick={clearFilter} title="Clear filter">
+        <button class="filter-clear-btn" onclick={clearFilter} title={$t('search.filter.clear')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -327,7 +335,7 @@
             <button
               class="track-download-btn"
               onclick={() => downloadTrack(track)}
-              title="Download"
+              title={$t('search.download')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -363,7 +371,7 @@
                   <span class="album-type-badge">{album.albumType}</span>
                 {/if}
                 {#if album.trackCount > 0}
-                  <span>{album.trackCount} tracks</span>
+                  <span>{$t('search.trackCount', { count: album.trackCount })}</span>
                 {/if}
               </div>
             </div>
@@ -371,7 +379,7 @@
               class="album-download-btn"
               onclick={() => downloadAlbum(album)}
               disabled={downloadingAlbums.has(album.id)}
-              title="Download Album"
+              title={$t('search.downloadAlbum')}
             >
               {#if downloadingAlbums.has(album.id)}
                 <div class="spinner-small"></div>
@@ -381,7 +389,7 @@
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Download
+                {$t('search.download')}
               {/if}
             </button>
           </div>
@@ -409,14 +417,14 @@
               href="https://tidal.com/browse/artist/{artist.id}"
               target="_blank"
               rel="noopener noreferrer"
-              title="Open on Tidal"
+              title={$t('search.openOnTidal')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                 <polyline points="15 3 21 3 21 9"/>
                 <line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
-              Open on Tidal
+              {$t('search.openOnTidal')}
             </a>
           </div>
         {/each}
@@ -440,7 +448,7 @@
             <button
               class="track-download-btn"
               onclick={() => downloadDeezerTrack(track)}
-              title="Download"
+              title={$t('search.download')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -458,8 +466,8 @@
         <circle cx="11" cy="11" r="8"/>
         <path d="m21 21-4.35-4.35"/>
       </svg>
-      <p>{searchType === 'universal' ? 'Search for music via Deezer' : 'Search for music on Tidal'}</p>
-      <span class="hint">{searchType === 'universal' ? 'Works even when Tidal is down' : 'Enter a track name, artist, or album'}</span>
+      <p>{searchType === 'universal' ? $t('search.initial.deezer') : $t('search.initial.tidal')}</p>
+      <span class="hint">{searchType === 'universal' ? $t('search.hint.deezer') : $t('search.hint.tidal')}</span>
     </div>
   {/if}
 </div>

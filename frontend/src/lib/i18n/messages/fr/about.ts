@@ -1,0 +1,16 @@
+export const about = {
+  'about.title': 'À propos',
+  'about.tabProjects': 'Autres projets',
+  'about.tabSupport': 'Me soutenir',
+  'about.desc.mobile': 'FLACidal en déplacement, téléchargez du FLAC sans perte depuis votre téléphone',
+  'about.desc.youflac': 'Vidéo YouTube + audio FLAC sans perte, créez des clips musicaux de haute qualité',
+  'about.desc.opendrop': 'Visualiseur audio open source multi-decks avec presets MilkDrop et contrôle MIDI',
+  'about.today': "aujourd'hui",
+  'about.daysAgo_one': 'il y a {count} jour',
+  'about.daysAgo_other': 'il y a {count} jours',
+  'about.monthsAgo_one': 'il y a {count} mois',
+  'about.monthsAgo_other': 'il y a {count} mois',
+  'about.supportKofi': 'Soutenir via Ko-fi',
+  'about.supportDesc': "Vous aimez le projet ? Vous pouvez soutenir son développement en m'offrant un café.",
+  'about.supportButton': 'Me soutenir sur Ko-fi',
+};

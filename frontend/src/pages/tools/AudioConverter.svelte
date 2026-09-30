@@ -5,6 +5,7 @@
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, FolderOpen, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
+  import { t } from '../../lib/i18n';
 
   let files: string[] = $state([]);
   let outputFormat = $state('MP3');
@@ -41,7 +42,7 @@
       const folder = await GetDownloadFolder();
       if (folder) outputDir = folder;
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to load download folder', 'error');
+      toastStore.show(err?.message || $t('tools.converter.loadFolderFailed'), 'error');
     }
 
     // Browser mode: no-op (see lib/runtime.ts), drag-and-drop needs the desktop app.
@@ -68,7 +69,7 @@
         results = [];
       }
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to select files', 'error');
+      toastStore.show(err?.message || $t('tools.converter.selectFilesFailed'), 'error');
     }
   }
 
@@ -77,7 +78,7 @@
       const folder = await SelectDownloadFolder();
       if (folder) outputDir = folder;
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to select output folder', 'error');
+      toastStore.show(err?.message || $t('tools.converter.selectFolderFailed'), 'error');
     }
   }
 
@@ -111,7 +112,7 @@
         results = files.map(f => ({ file: f, success: true }));
       }
     } catch (err: any) {
-      results = files.map(f => ({ file: f, success: false, error: err?.message || 'Conversion failed' }));
+      results = files.map(f => ({ file: f, success: false, error: err?.message || $t('tools.converter.conversionFailed') }));
     } finally {
       converting = false;
     }
@@ -120,8 +121,8 @@
 
 <div class="page">
   <header class="page-header">
-    <h1>Audio Converter</h1>
-    <p class="page-subtitle">Convert audio files between formats</p>
+    <h1>{$t('tools.converter.title')}</h1>
+    <p class="page-subtitle">{$t('tools.converter.subtitle')}</p>
   </header>
 
   {#if files.length === 0}
@@ -132,10 +133,10 @@
   {:else}
     <div class="file-list-section">
       <div class="file-list-header">
-        <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''} selected</span>
+        <span class="file-count">{$t('tools.converter.filesSelected', { count: files.length })}</span>
         <div class="file-list-actions">
-          <button class="btn btn-outline btn-sm" onclick={selectFiles}>Add More</button>
-          <button class="btn btn-outline btn-sm" onclick={clearFiles}>Clear All</button>
+          <button class="btn btn-outline btn-sm" onclick={selectFiles}>{$t('tools.converter.addMore')}</button>
+          <button class="btn btn-outline btn-sm" onclick={clearFiles}>{$t('tools.converter.clearAll')}</button>
         </div>
       </div>
 
@@ -144,7 +145,7 @@
           <div class="file-item">
             <FileAudio size={16} strokeWidth={1.5} />
             <span class="file-name">{getFileName(file)}</span>
-            <button class="btn-icon" onclick={() => removeFile(i)} aria-label="Remove file">
+            <button class="btn-icon" onclick={() => removeFile(i)} aria-label={$t('tools.converter.removeFile')}>
               <X size={14} />
             </button>
           </div>
@@ -153,10 +154,10 @@
     </div>
 
     <div class="options-section">
-      <h3 class="section-title">Conversion Options</h3>
+      <h3 class="section-title">{$t('tools.converter.options')}</h3>
       <div class="options-grid">
         <div class="option-group">
-          <label class="option-label" for="format-select">Output Format</label>
+          <label class="option-label" for="format-select">{$t('tools.converter.outputFormat')}</label>
           <select id="format-select" class="select" bind:value={outputFormat}>
             {#each formatOptions as fmt}
               <option value={fmt}>{fmt}</option>
@@ -166,7 +167,7 @@
 
         {#if qualityOptions[outputFormat]?.length > 0}
           <div class="option-group">
-            <label class="option-label" for="quality-select">Quality</label>
+            <label class="option-label" for="quality-select">{$t('tools.converter.quality')}</label>
             <select id="quality-select" class="select" bind:value={quality}>
               {#each qualityOptions[outputFormat] as q}
                 <option value={q}>{q}</option>
@@ -176,12 +177,12 @@
         {/if}
 
         <div class="option-group option-wide">
-          <label class="option-label" for="output-folder">Output Folder</label>
+          <label class="option-label" for="output-folder">{$t('tools.converter.outputFolder')}</label>
           <div class="folder-row">
-            <input id="output-folder" type="text" class="input" value={outputDir} readonly placeholder="Select output folder..." />
+            <input id="output-folder" type="text" class="input" value={outputDir} readonly placeholder={$t('tools.converter.selectFolderPlaceholder')} />
             <button class="btn btn-accent" onclick={selectOutputFolder}>
               <FolderOpen size={16} />
-              Browse
+              {$t('tools.converter.browse')}
             </button>
           </div>
         </div>
@@ -196,9 +197,9 @@
       >
         {#if converting}
           <Loader size={16} class="spin" />
-          Converting...
+          {$t('tools.converter.converting')}
         {:else}
-          Convert
+          {$t('tools.converter.convert')}
         {/if}
       </button>
     </div>
@@ -206,7 +207,7 @@
 
   {#if results.length > 0}
     <div class="results-section">
-      <h3 class="section-title">Results</h3>
+      <h3 class="section-title">{$t('tools.converter.results')}</h3>
       <div class="results-list">
         {#each results as result (result.file)}
           <div class="result-item" class:success={result.success} class:failure={!result.success}>

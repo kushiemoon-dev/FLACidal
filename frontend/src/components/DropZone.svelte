@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Upload, AlertTriangle } from 'lucide-svelte';
   import { isWailsRuntime } from '../lib/api';
+  import { t } from '../lib/i18n';
 
   let {
     supportedFormats = 'FLAC',
@@ -61,24 +62,24 @@
   ondragover={handleDragOver}
   ondrop={handleDrop}
   role="region"
-  aria-label="File drop zone"
+  aria-label={$t('shell.dropZone.label')}
 >
   {#if nativeFileAccessAvailable}
     <Upload size={48} strokeWidth={1.5} color="var(--color-text-tertiary)" />
-    <p class="drop-text">Drag and drop audio files here, or click the button below to select</p>
+    <p class="drop-text">{$t('shell.dropZone.hint')}</p>
     <div class="drop-actions">
       {#if onFilesSelected}
-        <button class="btn btn-primary" onclick={onFilesSelected}>Select Files</button>
+        <button class="btn btn-primary" onclick={onFilesSelected}>{$t('shell.dropZone.selectFiles')}</button>
       {/if}
       {#if onFolderSelected}
-        <button class="btn btn-outline" onclick={onFolderSelected}>Select Folder</button>
+        <button class="btn btn-outline" onclick={onFolderSelected}>{$t('shell.dropZone.selectFolder')}</button>
       {/if}
     </div>
-    <p class="supported-formats">Supported formats: {supportedFormats}</p>
+    <p class="supported-formats">{$t('shell.dropZone.supportedFormats', { formats: supportedFormats })}</p>
   {:else}
     <AlertTriangle size={40} strokeWidth={1.5} color="var(--color-warning, #f59e0b)" />
-    <p class="drop-text">File selection isn't available in browser mode</p>
-    <p class="supported-formats">Drag-and-drop and the file picker need the FLACidal desktop app, a browser page can't hand this server real filesystem paths.</p>
+    <p class="drop-text">{$t('shell.dropZone.unavailable')}</p>
+    <p class="supported-formats">{$t('shell.dropZone.unavailableDetail')}</p>
   {/if}
 </div>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { UpdateStatus } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
+  import { t } from '../lib/i18n';
 
   let { status, onUpdate }: { status: UpdateStatus; onUpdate: () => Promise<void> } = $props();
 
@@ -31,26 +32,25 @@
 
 <div class="update-required">
   <div class="update-card">
-    <h1 class="update-title">Update Required</h1>
+    <h1 class="update-title">{$t('shell.update.title')}</h1>
 
     <p class="update-body">
-      This version of FLACidal ({status.currentVersion}) is {status.versionsBehind} versions
-      behind the latest release ({status.latestVersion}). Update now to keep using the app.
+      {$t('shell.update.body', { current: status.currentVersion, behind: status.versionsBehind, latest: status.latestVersion })}
     </p>
 
     {#if error}
       <div class="error-box">
         {error}
         {#if status.releaseUrl}
-          <button class="btn-manual" onclick={downloadManually}>Download manually instead</button>
+          <button class="btn-manual" onclick={downloadManually}>{$t('shell.update.manual')}</button>
         {/if}
       </div>
     {/if}
 
     <div class="update-actions">
-      <button class="btn-quit" onclick={quit} disabled={downloading}>Quit</button>
+      <button class="btn-quit" onclick={quit} disabled={downloading}>{$t('shell.update.quit')}</button>
       <button class="btn-update" onclick={handleUpdate} disabled={downloading}>
-        {downloading ? 'Downloading update...' : 'Update Now'}
+        {downloading ? $t('shell.update.downloading') : $t('shell.update.now')}
       </button>
     </div>
   </div>

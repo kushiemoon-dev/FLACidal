@@ -1,0 +1,17 @@
+export const shell = {
+  'shell.endpointsCooldown': 'Alle Tidal-Endpoints im Cooldown, Warteschlange pausiert',
+  'shell.downloadFailed': 'Download fehlgeschlagen',
+  'shell.dropZone.label': 'Ablagebereich für Dateien',
+  'shell.dropZone.hint': 'Audiodateien hierher ziehen und ablegen oder unten auf die Schaltfläche klicken, um sie auszuwählen',
+  'shell.dropZone.selectFiles': 'Dateien auswählen',
+  'shell.dropZone.selectFolder': 'Ordner auswählen',
+  'shell.dropZone.supportedFormats': 'Unterstützte Formate: {formats}',
+  'shell.dropZone.unavailable': 'Die Dateiauswahl ist im Browsermodus nicht verfügbar',
+  'shell.dropZone.unavailableDetail': 'Drag-and-drop und die Dateiauswahl benötigen die FLACidal-Desktop-App, eine Browserseite kann diesem Server keine echten Dateipfade übergeben.',
+  'shell.update.title': 'Update erforderlich',
+  'shell.update.body': 'Diese Version von FLACidal ({current}) liegt {behind} Versionen hinter der neuesten Version ({latest}). Aktualisieren Sie jetzt, um die App weiter zu nutzen.',
+  'shell.update.manual': 'Stattdessen manuell herunterladen',
+  'shell.update.quit': 'Beenden',
+  'shell.update.now': 'Jetzt aktualisieren',
+  'shell.update.downloading': 'Update wird heruntergeladen...',
+};

@@ -1,5 +1,12 @@
-export function formatNumber(n: number): string {
-    return n.toLocaleString();
+import { get } from 'svelte/store';
+import { locale as activeLocale } from './i18n';
+
+export function formatNumber(n: number, locale?: string): string {
+    return n.toLocaleString(locale ?? get(activeLocale));
+}
+
+export function formatDate(date: Date, options: Intl.DateTimeFormatOptions, locale?: string): string {
+    return date.toLocaleDateString(locale ?? get(activeLocale), options);
 }
 
 export function formatBytes(bytes: number): string {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { AnalyzeMultiple } from '../lib/api';
+  import { t } from '../lib/i18n';
 
   let { files, onClose }: { files: string[]; onClose: () => void } = $props();
 
@@ -41,7 +42,7 @@
     try {
       results = await AnalyzeMultiple(files);
     } catch (e: any) {
-      error = e.message || 'Analysis failed';
+      error = e.message || $t('modals.analysis.failedFallback');
     } finally {
       isAnalyzing = false;
     }
@@ -90,9 +91,9 @@
 <div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Quality Analysis</h2>
-      <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-      <button class="close-btn" onclick={onClose} disabled={isAnalyzing} aria-label="Close">
+      <h2>{$t('modals.analysis.title')}</h2>
+      <span class="file-count">{$t('modals.fileCount', { count: files.length })}</span>
+      <button class="close-btn" onclick={onClose} disabled={isAnalyzing} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -103,8 +104,8 @@
     {#if isAnalyzing}
       <div class="loading-state">
         <div class="loader"></div>
-        <p>Analyzing audio files...</p>
-        <span class="loading-hint">Checking spectrum and quality indicators</span>
+        <p>{$t('modals.analysis.analyzing')}</p>
+        <span class="loading-hint">{$t('modals.analysis.analyzingHint')}</span>
       </div>
     {:else if error}
       <div class="error-state">
@@ -113,7 +114,7 @@
           <line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <h3>Analysis Failed</h3>
+        <h3>{$t('modals.analysis.failedTitle')}</h3>
         <p>{error}</p>
       </div>
     {:else}
@@ -122,27 +123,27 @@
         <div class="summary-section">
           <div class="summary-item lossless">
             <span class="summary-count">{summary.lossless}</span>
-            <span class="summary-label">Lossless</span>
+            <span class="summary-label">{$t('modals.analysis.lossless')}</span>
           </div>
           <div class="summary-item warning">
             <span class="summary-count">{summary.likelyUpscaled}</span>
-            <span class="summary-label">Likely Upscaled</span>
+            <span class="summary-label">{$t('modals.analysis.likelyUpscaled')}</span>
           </div>
           <div class="summary-item danger">
             <span class="summary-count">{summary.upscaled}</span>
-            <span class="summary-label">Upscaled</span>
+            <span class="summary-label">{$t('modals.analysis.upscaled')}</span>
           </div>
           {#if summary.unknown > 0}
             <div class="summary-item unknown">
               <span class="summary-count">{summary.unknown}</span>
-              <span class="summary-label">Unknown</span>
+              <span class="summary-label">{$t('modals.analysis.unknown')}</span>
             </div>
           {/if}
         </div>
 
         <!-- Results List -->
         <div class="results-section">
-          <span class="section-label">Results</span>
+          <span class="section-label">{$t('modals.analysis.results')}</span>
           <div class="results-list">
             {#each results as result}
               <div class="result-item">
@@ -165,7 +166,7 @@
 
                 <div class="result-details">
                   <div class="detail-row">
-                    <span class="detail-label">Confidence</span>
+                    <span class="detail-label">{$t('modals.analysis.confidence')}</span>
                     <div class="confidence-bar">
                       <div
                         class="confidence-fill"
@@ -176,14 +177,14 @@
                   </div>
 
                   <div class="detail-row">
-                    <span class="detail-label">Spectrum</span>
+                    <span class="detail-label">{$t('modals.analysis.spectrum')}</span>
                     <span class="detail-value">
                       {formatFrequency(result.spectrumCutoff)} / {formatFrequency(result.expectedCutoff)}
                     </span>
                   </div>
 
                   <div class="detail-row">
-                    <span class="detail-label">Format</span>
+                    <span class="detail-label">{$t('modals.analysis.format')}</span>
                     <span class="detail-value">
                       {result.sampleRate / 1000} kHz / {result.bitDepth}-bit
                     </span>
@@ -212,12 +213,12 @@
             <line x1="12" y1="16" x2="12" y2="12"/>
             <line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
-          <span>Analysis detects frequency cutoffs to identify files transcoded from lossy sources (MP3, AAC, etc.)</span>
+          <span>{$t('modals.analysis.info')}</span>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button class="btn-primary" onclick={onClose}>Close</button>
+        <button class="btn-primary" onclick={onClose}>{$t('common.close')}</button>
       </div>
     {/if}
   </div>

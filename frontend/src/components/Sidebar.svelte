@@ -5,6 +5,7 @@
     AudioWaveform, SlidersHorizontal, FileAudio, FolderCog, Bug, Music2,
     ArrowLeft, ArrowRight, RotateCw
   } from 'lucide-svelte';
+  import { t, type MessageKey } from '../lib/i18n';
 
   let {
     activePage = 'home',
@@ -30,26 +31,28 @@
 
   let showToolsFlyout = $state(false);
 
-  const navItems = [
-    { id: 'home',    label: 'Home',    Icon: Home },
-    { id: 'search',  label: 'Search',  Icon: Search },
-    { id: 'queue',   label: 'Queue',   Icon: Download },
-    { id: 'files',   label: 'Files',   Icon: FolderOpen },
-    { id: 'history', label: 'History', Icon: Clock },
+  type NavItem = { id: string; labelKey: MessageKey; Icon: typeof Home };
+
+  const navItems: NavItem[] = [
+    { id: 'home',    labelKey: 'nav.home', Icon: Home },
+    { id: 'search',  labelKey: 'nav.search', Icon: Search },
+    { id: 'queue',   labelKey: 'nav.queue', Icon: Download },
+    { id: 'files',   labelKey: 'nav.files', Icon: FolderOpen },
+    { id: 'history', labelKey: 'nav.history', Icon: Clock },
   ];
 
-  const toolItems = [
-    { id: 'tool-analyzer',    label: 'Audio Quality Analyzer', Icon: AudioWaveform },
-    { id: 'tool-resampler',   label: 'Audio Resampler',        Icon: SlidersHorizontal },
-    { id: 'tool-converter',   label: 'Audio Converter',        Icon: FileAudio },
-    { id: 'tool-filemanager',    label: 'File Manager',           Icon: FolderCog },
-    { id: 'tool-lyricsmanager', label: 'Lyrics Manager',         Icon: Music2 },
+  const toolItems: NavItem[] = [
+    { id: 'tool-analyzer',    labelKey: 'nav.analyzer', Icon: AudioWaveform },
+    { id: 'tool-resampler',   labelKey: 'nav.resampler', Icon: SlidersHorizontal },
+    { id: 'tool-converter',   labelKey: 'nav.converter', Icon: FileAudio },
+    { id: 'tool-filemanager',    labelKey: 'nav.fileManager', Icon: FolderCog },
+    { id: 'tool-lyricsmanager', labelKey: 'nav.lyricsManager', Icon: Music2 },
   ];
 
-  const bottomItems = [
-    { id: 'settings', label: 'Settings', Icon: Settings },
-    { id: 'terminal', label: 'Terminal', Icon: Terminal },
-    { id: 'about',    label: 'About',    Icon: Info },
+  const bottomItems: NavItem[] = [
+    { id: 'settings', labelKey: 'nav.settings', Icon: Settings },
+    { id: 'terminal', labelKey: 'nav.terminal', Icon: Terminal },
+    { id: 'about',    labelKey: 'nav.about', Icon: Info },
   ];
 
   function toggleToolsFlyout() {
@@ -90,13 +93,13 @@
 
   <!-- Back / Forward / Reload -->
   <nav class="nav-history">
-    <button class="nav-item" onclick={onBack} disabled={!canBack} title="Back" aria-label="Back">
+    <button class="nav-item" onclick={onBack} disabled={!canBack} title={$t('nav.back')} aria-label={$t('nav.back')}>
       <ArrowLeft size={18} />
     </button>
-    <button class="nav-item" onclick={onForward} disabled={!canForward} title="Forward" aria-label="Forward">
+    <button class="nav-item" onclick={onForward} disabled={!canForward} title={$t('nav.forward')} aria-label={$t('nav.forward')}>
       <ArrowRight size={18} />
     </button>
-    <button class="nav-item" onclick={onReload} title="Reload" aria-label="Reload">
+    <button class="nav-item" onclick={onReload} title={$t('nav.reload')} aria-label={$t('nav.reload')}>
       <RotateCw size={18} />
     </button>
   </nav>
@@ -108,8 +111,8 @@
         class="nav-item"
         class:active={activePage === item.id}
         onclick={() => onNavigate(item.id)}
-        title={item.label}
-        aria-label={item.label}
+        title={$t(item.labelKey)}
+        aria-label={$t(item.labelKey)}
         aria-current={activePage === item.id ? 'page' : undefined}
       >
         <item.Icon size={20} />
@@ -128,15 +131,15 @@
         class="nav-item"
         class:active={showToolsFlyout || ['tool-analyzer','tool-resampler','tool-converter','tool-filemanager','tool-lyricsmanager'].includes(activePage)}
         onclick={toggleToolsFlyout}
-        title="Tools"
-        aria-label="Tools"
+        title={$t('nav.tools')}
+        aria-label={$t('nav.tools')}
       >
         <LayoutGrid size={20} />
       </button>
 
       {#if showToolsFlyout}
         <div class="flyout">
-          <div class="flyout-title">Tools</div>
+          <div class="flyout-title">{$t('nav.tools')}</div>
           {#each toolItems as tool}
             <button
               class="flyout-item"
@@ -144,7 +147,7 @@
               onclick={() => navigateTool(tool.id)}
             >
               <tool.Icon size={16} />
-              <span>{tool.label}</span>
+              <span>{$t(tool.labelKey)}</span>
             </button>
           {/each}
         </div>
@@ -156,8 +159,8 @@
         class="nav-item"
         class:active={activePage === item.id}
         onclick={() => onNavigate(item.id)}
-        title={item.label}
-        aria-label={item.label}
+        title={$t(item.labelKey)}
+        aria-label={$t(item.labelKey)}
         aria-current={activePage === item.id ? 'page' : undefined}
       >
         <item.Icon size={20} />
@@ -168,8 +171,8 @@
     <button
       class="nav-item"
       onclick={handleBugReport}
-      title="Report a Bug"
-      aria-label="Report a Bug"
+      title={$t('nav.reportBug')}
+      aria-label={$t('nav.reportBug')}
     >
       <Bug size={20} />
     </button>

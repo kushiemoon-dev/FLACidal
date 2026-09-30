@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { IsConverterAvailable, GetConversionFormats, ConvertFiles, GetFFmpegInfo } from '../lib/api';
   import { formatBytes } from '../lib/format';
+  import { t } from '../lib/i18n';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
@@ -60,7 +61,7 @@
         }
       }
     } catch (e: any) {
-      error = e.message || 'Failed to check FFmpeg';
+      error = e.message || $t('modals.convert.checkFailedFallback');
     } finally {
       isLoading = false;
     }
@@ -76,7 +77,7 @@
       results = await ConvertFiles(files, selectedFormat, selectedQuality, '', deleteSource);
       showResults = true;
     } catch (e: any) {
-      error = e.message || 'Conversion failed';
+      error = e.message || $t('modals.convert.failedFallback');
     } finally {
       isConverting = false;
     }
@@ -101,7 +102,7 @@
 
   function getQualityLabel(quality: string): string {
     if (quality.startsWith('V')) return `VBR ${quality}`;
-    if (quality.startsWith('q')) return `Quality ${quality.slice(1)}`;
+    if (quality.startsWith('q')) return $t('modals.convert.quality', { level: quality.slice(1) });
     if (quality.includes(':')) {
       const [sr, bits] = quality.split(':');
       const khz = (parseInt(sr) / 1000).toFixed(1).replace('.0', '');
@@ -116,9 +117,9 @@
 <div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Convert Files</h2>
-      <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-      <button class="close-btn" onclick={onClose} disabled={isConverting} aria-label="Close">
+      <h2>{$t('modals.convert.title')}</h2>
+      <span class="file-count">{$t('modals.fileCount', { count: files.length })}</span>
+      <button class="close-btn" onclick={onClose} disabled={isConverting} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -129,7 +130,7 @@
     {#if isLoading}
       <div class="loading-state">
         <div class="loader"></div>
-        <p>Checking FFmpeg...</p>
+        <p>{$t('modals.convert.checking')}</p>
       </div>
     {:else if !ffmpegAvailable}
       <div class="unavailable-state">
@@ -138,8 +139,8 @@
           <line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <h3>FFmpeg Not Found</h3>
-        <p>Audio conversion requires FFmpeg to be installed on your system.</p>
+        <h3>{$t('modals.convert.notFound')}</h3>
+        <p>{$t('modals.convert.notFoundHint')}</p>
         <div class="install-hint">
           <code>sudo pacman -S ffmpeg</code>
         </div>
@@ -155,7 +156,7 @@
                   <polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
               </div>
-              <p>All files converted successfully!</p>
+              <p>{$t('modals.convert.allSuccess')}</p>
             {:else}
               <div class="partial-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -164,7 +165,7 @@
                   <line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
               </div>
-              <p>{results.filter(r => r.success).length} of {results.length} files converted</p>
+              <p>{$t('modals.convert.partial', { done: results.filter(r => r.success).length, total: results.length })}</p>
             {/if}
           </div>
 
@@ -201,7 +202,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-primary" onclick={handleDone}>Done</button>
+        <button class="btn-primary" onclick={handleDone}>{$t('modals.convert.done')}</button>
       </div>
     {:else}
       <div class="modal-body">
@@ -209,12 +210,12 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
-          <span>FFmpeg {ffmpegVersion.split(' ')[0] || 'available'}</span>
+          <span>{$t('modals.convert.ffmpegVersion', { version: ffmpegVersion.split(' ')[0] || $t('modals.convert.available') })}</span>
         </div>
 
         <!-- Format Selection -->
         <div class="format-section">
-          <span class="section-label">Output Format</span>
+          <span class="section-label">{$t('modals.convert.outputFormat')}</span>
           <div class="format-grid">
             {#each formats as format}
               <button
@@ -231,7 +232,7 @@
 
         <!-- Quality Selection -->
         <div class="quality-section">
-          <span class="section-label">Quality</span>
+          <span class="section-label">{$t('modals.convert.qualityLabel')}</span>
           <div class="quality-options">
             {#each qualities as quality}
               <label class="quality-option" class:selected={selectedQuality === quality}>
@@ -252,7 +253,7 @@
           <label class="option-toggle">
             <input type="checkbox" bind:checked={deleteSource} />
             <span class="toggle-switch"></span>
-            <span class="option-label">Delete source files after conversion</span>
+            <span class="option-label">{$t('modals.convert.deleteSource')}</span>
           </label>
         </div>
 
@@ -269,13 +270,13 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" onclick={onClose} disabled={isConverting}>Cancel</button>
+        <button class="btn-secondary" onclick={onClose} disabled={isConverting}>{$t('common.cancel')}</button>
         <button class="btn-primary" onclick={handleConvert} disabled={isConverting}>
           {#if isConverting}
             <span class="spinner"></span>
-            Converting...
+            {$t('modals.convert.converting')}
           {:else}
-            Convert to {currentFormat?.name || 'MP3'}
+            {$t('modals.convert.convertTo', { format: currentFormat?.name || 'MP3' })}
           {/if}
         </button>
       </div>

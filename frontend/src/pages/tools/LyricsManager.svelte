@@ -5,6 +5,7 @@
   import DropZone from '../../components/DropZone.svelte';
   import { FileAudio, Music2, X, CheckCircle, AlertCircle, Loader } from 'lucide-svelte';
   import { toastStore } from '../../stores/toast';
+  import { t } from '../../lib/i18n';
 
   let files: string[] = $state([]);
   let fetching = $state(false);
@@ -35,7 +36,7 @@
         results = [];
       }
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to select files', 'error');
+      toastStore.show(err?.message || $t('tools.lyrics.selectFilesFailed'), 'error');
     }
   }
 
@@ -67,7 +68,7 @@
         error:     r.error,
       })) : [];
     } catch (err: any) {
-      results = files.map(f => ({ filePath: f, success: false, error: err?.message || 'Failed' }));
+      results = files.map(f => ({ filePath: f, success: false, error: err?.message || $t('tools.lyrics.failed') }));
     } finally {
       fetching = false;
     }
@@ -76,8 +77,8 @@
 
 <div class="page">
   <header class="page-header">
-    <h1>Lyrics Manager</h1>
-    <p class="page-subtitle">Fetch and embed lyrics into FLAC files via LRCLIB</p>
+    <h1>{$t('tools.lyrics.title')}</h1>
+    <p class="page-subtitle">{$t('tools.lyrics.subtitle')}</p>
   </header>
 
   {#if files.length === 0}
@@ -88,10 +89,10 @@
   {:else}
     <div class="file-list-section">
       <div class="file-list-header">
-        <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''} selected</span>
+        <span class="file-count">{$t('tools.lyrics.filesSelected', { count: files.length })}</span>
         <div class="file-list-actions">
-          <button class="btn btn-outline btn-sm" onclick={selectFiles}>Add More</button>
-          <button class="btn btn-outline btn-sm" onclick={clearFiles}>Clear All</button>
+          <button class="btn btn-outline btn-sm" onclick={selectFiles}>{$t('tools.lyrics.addMore')}</button>
+          <button class="btn btn-outline btn-sm" onclick={clearFiles}>{$t('tools.lyrics.clearAll')}</button>
         </div>
       </div>
 
@@ -100,7 +101,7 @@
           <div class="file-item">
             <FileAudio size={16} strokeWidth={1.5} />
             <span class="file-name">{getFileName(file)}</span>
-            <button class="btn-icon" onclick={() => removeFile(i)} aria-label="Remove file">
+            <button class="btn-icon" onclick={() => removeFile(i)} aria-label={$t('tools.lyrics.removeFile')}>
               <X size={14} />
             </button>
           </div>
@@ -116,10 +117,10 @@
       >
         {#if fetching}
           <Loader size={16} class="spin" />
-          Fetching lyrics...
+          {$t('tools.lyrics.fetching')}
         {:else}
           <Music2 size={16} />
-          Fetch & Embed Lyrics
+          {$t('tools.lyrics.fetchAndEmbed')}
         {/if}
       </button>
     </div>
@@ -127,7 +128,7 @@
 
   {#if results.length > 0}
     <div class="results-section">
-      <h3 class="section-title">Results</h3>
+      <h3 class="section-title">{$t('tools.lyrics.results')}</h3>
       <div class="results-list">
         {#each results as result (result.filePath)}
           <div class="result-item" class:success={result.success} class:failure={!result.success}>
@@ -139,7 +140,7 @@
             <span class="result-name">{getFileName(result.filePath)}</span>
             {#if result.success}
               <span class="result-meta">
-                {result.hasSynced ? 'LRC + plain' : result.hasPlain ? 'plain' : ''}
+                {result.hasSynced ? $t('tools.lyrics.lrcPlain') : result.hasPlain ? $t('tools.lyrics.plain') : ''}
               </span>
             {/if}
             {#if result.error}

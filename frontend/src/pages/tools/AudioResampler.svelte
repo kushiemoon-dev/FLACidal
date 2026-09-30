@@ -4,6 +4,8 @@
   import { ConvertFiles, OpenFLACFilesDialog, SelectDownloadFolder } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { SlidersHorizontal, CheckCircle, XCircle } from 'lucide-svelte';
+  import { t, locale } from '../../lib/i18n';
+  import { formatNumber } from '../../lib/format';
 
   let files: string[] = $state([]);
   let results: any[] = $state([]);
@@ -80,21 +82,21 @@
   <div class="page-header">
     <div class="header-title">
       <SlidersHorizontal size={28} strokeWidth={1.5} />
-      <h1>Audio Resampler</h1>
+      <h1>{$t('tools.resampler.title')}</h1>
     </div>
     {#if files.length > 0}
-      <button class="btn-reset" onclick={reset}>Start Over</button>
+      <button class="btn-reset" onclick={reset}>{$t('tools.resampler.startOver')}</button>
     {/if}
   </div>
 
   {#if isResampling}
     <div class="resampling-state">
       <div class="loader"></div>
-      <p>Resampling {files.length} file{files.length !== 1 ? 's' : ''}...</p>
+      <p>{$t('tools.resampler.resampling', { count: files.length })}</p>
     </div>
   {:else if results.length > 0}
     <div class="results-section">
-      <h2>Results</h2>
+      <h2>{$t('tools.resampler.results')}</h2>
       <div class="results-list">
         {#each results as result}
           <div class="result-row" class:success={result.success} class:error={!result.success}>
@@ -114,23 +116,23 @@
   {:else if files.length > 0}
     <div class="options-section">
       <div class="file-summary">
-        <p>{files.length} file{files.length !== 1 ? 's' : ''} selected</p>
+        <p>{$t('tools.resampler.filesSelected', { count: files.length })}</p>
       </div>
 
       <div class="options-grid">
         <div class="option">
-          <label for="sample-rate">Sample Rate</label>
+          <label for="sample-rate">{$t('tools.resampler.sampleRate')}</label>
           <select id="sample-rate" bind:value={sampleRate}>
-            <option value="44100">44,100 Hz</option>
-            <option value="48000">48,000 Hz</option>
-            <option value="88200">88,200 Hz</option>
-            <option value="96000">96,000 Hz</option>
-            <option value="192000">192,000 Hz</option>
+            <option value="44100">{formatNumber(44100, $locale)} Hz</option>
+            <option value="48000">{formatNumber(48000, $locale)} Hz</option>
+            <option value="88200">{formatNumber(88200, $locale)} Hz</option>
+            <option value="96000">{formatNumber(96000, $locale)} Hz</option>
+            <option value="192000">{formatNumber(192000, $locale)} Hz</option>
           </select>
         </div>
 
         <div class="option">
-          <label for="bit-depth">Bit Depth</label>
+          <label for="bit-depth">{$t('tools.resampler.bitDepth')}</label>
           <select id="bit-depth" bind:value={bitDepth}>
             <option value="16">16-bit</option>
             <option value="24">24-bit</option>
@@ -138,10 +140,10 @@
         </div>
 
         <div class="option output-option">
-          <span class="option-label">Output Folder</span>
+          <span class="option-label">{$t('tools.resampler.outputFolder')}</span>
           <div class="output-row">
-            <span class="output-path">{outputDir || 'Not selected'}</span>
-            <button class="btn-browse" onclick={selectOutputDir}>Browse</button>
+            <span class="output-path">{outputDir || $t('tools.resampler.notSelected')}</span>
+            <button class="btn-browse" onclick={selectOutputDir}>{$t('tools.resampler.browse')}</button>
           </div>
         </div>
       </div>
@@ -151,7 +153,7 @@
         onclick={resample}
         disabled={!outputDir}
       >
-        Resample
+        {$t('tools.resampler.resample')}
       </button>
     </div>
   {:else}

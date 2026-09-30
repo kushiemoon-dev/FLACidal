@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { GetDownloadHistoryFiltered, DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory } from '../lib/api';
   import TabBar from '../components/TabBar.svelte';
+  import { formatDate } from '../lib/format';
+  import { t, locale } from '../lib/i18n';
   import { Clock, Search, Trash2, RefreshCw, ExternalLink, ArrowUpDown, X } from 'lucide-svelte';
 
   interface DownloadRecord {
@@ -36,10 +38,10 @@
   const pageSize = 20;
 
   let activeTab = $state('downloads');
-  const tabs = [
-    { id: 'downloads', label: 'Downloads' },
-    { id: 'fetches', label: 'Fetches' },
-  ];
+  const tabs = $derived([
+    { id: 'downloads', label: $t('history.tab.downloads') },
+    { id: 'fetches', label: $t('history.tab.fetches') },
+  ]);
 
   // Fetches tab state
   let fetches: RecentFetch[] = $state([]);
@@ -83,15 +85,16 @@
     onNavigateHome(url);
   }
 
-  function formatFetchDate(timestamp: number): string {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+
+  function formatFetchDate(timestamp: number, loc: string): string {
+    return formatDate(new Date(timestamp), dateOptions, loc);
   }
 
   async function loadHistory() {
@@ -126,23 +129,16 @@
     }
   }
 
-  function formatDate(dateStr: string): string {
+  function formatRecordDate(dateStr: string, loc: string): string {
     if (!dateStr) return '--';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDate(new Date(dateStr), dateOptions, loc);
   }
 
   function getContentTypeLabel(type: string): string {
     switch (type) {
-      case 'playlist': return 'Playlist';
-      case 'album': return 'Album';
-      case 'track': return 'Track';
+      case 'playlist': return $t('history.type.playlist');
+      case 'album': return $t('history.type.album');
+      case 'track': return $t('history.type.track');
       default: return type;
     }
   }
@@ -159,7 +155,7 @@
   }
 
   async function handleDelete(record: DownloadRecord) {
-    if (!confirm(`Are you sure you want to delete "${record.tidalContentName}" from history?`)) return;
+    if (!confirm($t('history.confirmDelete', { name: record.tidalContentName }))) return;
 
     try {
       await DeleteHistoryRecord(record.id);
@@ -170,7 +166,7 @@
   }
 
   async function handleClearAll() {
-    if (!confirm('Are you sure you want to clear all download history? This cannot be undone.')) return;
+    if (!confirm($t('history.confirmClear'))) return;
 
     try {
       await ClearDownloadHistory();
@@ -214,7 +210,7 @@
 
 <div class="history-page">
   <div class="history-header">
-    <h1>History</h1>
+    <h1>{$t('history.title')}</h1>
   </div>
 
   <TabBar {tabs} bind:activeTab />
@@ -226,68 +222,68 @@
           <Search size={16} />
           <input
             type="text"
-            placeholder="Search by name..."
+            placeholder={$t('history.searchByName')}
             bind:value={searchQuery}
             onkeydown={(e) => e.key === 'Enter' && handleSearch()}
           />
           {#if searchQuery}
-            <button class="clear-search" onclick={() => { searchQuery = ''; handleSearch(); }} aria-label="Clear search">
+            <button class="clear-search" onclick={() => { searchQuery = ''; handleSearch(); }} aria-label={$t('history.clearSearch')}>
               <X size={14} />
             </button>
           {/if}
         </div>
 
         <select bind:value={contentTypeFilter} onchange={handleFilterChange}>
-          <option value="">All Types</option>
-          <option value="playlist">Playlists</option>
-          <option value="album">Albums</option>
-          <option value="track">Tracks</option>
+          <option value="">{$t('history.filter.all')}</option>
+          <option value="playlist">{$t('history.filter.playlists')}</option>
+          <option value="album">{$t('history.filter.albums')}</option>
+          <option value="track">{$t('history.filter.tracks')}</option>
         </select>
 
         <div class="sort-dropdown">
           <ArrowUpDown size={14} />
           <select bind:value={sortBy} onchange={handleSortChange}>
-            <option value="default">Default</option>
-            <option value="date">Date</option>
-            <option value="name">Name</option>
-            <option value="failed">Failed Downloads</option>
+            <option value="default">{$t('history.sort.default')}</option>
+            <option value="date">{$t('history.sort.date')}</option>
+            <option value="name">{$t('history.sort.name')}</option>
+            <option value="failed">{$t('history.sort.failed')}</option>
           </select>
         </div>
       </div>
 
       <div class="toolbar-right">
-        <button class="icon-btn" onclick={loadHistory} title="Refresh">
+        <button class="icon-btn" onclick={loadHistory} title={$t('history.refresh')}>
           <RefreshCw size={16} />
         </button>
         {#if records.length > 0}
-          <button class="icon-btn danger" onclick={handleClearAll} title="Clear all history">
+          <button class="icon-btn danger" onclick={handleClearAll} title={$t('history.clearAll')}>
             <Trash2 size={16} />
           </button>
         {/if}
       </div>
     </div>
 
-    <p class="record-count">{total} records</p>
+    <p class="record-count">{$t('history.records', { count: total })}</p>
 
     {#if isLoading}
       <div class="loading-state">
         <div class="loader"></div>
-        <p>Loading history...</p>
+        <p>{$t('history.loading')}</p>
       </div>
     {:else if records.length === 0}
       <div class="empty-state">
         <Clock size={48} strokeWidth={1} />
-        <p>No download history</p>
-        <span class="hint">Your downloaded tracks will appear here.</span>
+        <p>{$t('history.empty')}</p>
+        <span class="hint">{$t('history.emptyHint')}</span>
       </div>
     {:else}
       <div class="history-table">
         <div class="table-header">
-          <span class="th">Name</span>
-          <span class="th">Type</span>
-          <span class="th">Tracks</span>
-          <span class="th">Last Download</span>
-          <span class="th">Actions</span>
+          <span class="th">{$t('history.col.name')}</span>
+          <span class="th">{$t('history.col.type')}</span>
+          <span class="th">{$t('history.col.tracks')}</span>
+          <span class="th">{$t('history.col.lastDownload')}</span>
+          <span class="th">{$t('history.col.actions')}</span>
         </div>
 
         <div class="table-body">
@@ -328,15 +324,15 @@
                 <span class="tracks-separator">/</span>
                 <span class="tracks-total">{record.tracksTotal}</span>
                 {#if record.tracksFailed > 0}
-                  <span class="tracks-failed">({record.tracksFailed} failed)</span>
+                  <span class="tracks-failed">({$t('history.tracksFailed', { count: record.tracksFailed })})</span>
                 {/if}
               </div>
-              <span class="cell date">{formatDate(record.lastDownloadAt)}</span>
+              <span class="cell date">{formatRecordDate(record.lastDownloadAt, $locale)}</span>
               <div class="cell actions">
                 <button
                   class="action-icon-btn primary"
                   onclick={() => handleRefetch(record)}
-                  title="Re-download"
+                  title={$t('history.redownload')}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -347,7 +343,7 @@
                 <button
                   class="action-icon-btn danger"
                   onclick={() => handleDelete(record)}
-                  title="Delete from history"
+                  title={$t('history.deleteFromHistory')}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -363,11 +359,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Previous
+            {$t('history.prev')}
           </button>
-          <span class="page-info">Page {currentPage} of {totalPages}</span>
+          <span class="page-info">{$t('history.page', { current: currentPage, total: totalPages })}</span>
           <button class="page-btn" onclick={nextPage} disabled={currentPage >= totalPages}>
-            Next
+            {$t('history.next')}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
@@ -383,18 +379,18 @@
           <Search size={16} />
           <input
             type="text"
-            placeholder="Search fetches..."
+            placeholder={$t('history.searchFetches')}
             bind:value={fetchSearchQuery}
           />
           {#if fetchSearchQuery}
-            <button class="clear-search" onclick={() => { fetchSearchQuery = ''; }} aria-label="Clear search">
+            <button class="clear-search" onclick={() => { fetchSearchQuery = ''; }} aria-label={$t('history.clearSearch')}>
               <X size={14} />
             </button>
           {/if}
         </div>
       </div>
       <div class="toolbar-right">
-        <button class="icon-btn" onclick={loadFetches} title="Refresh">
+        <button class="icon-btn" onclick={loadFetches} title={$t('history.refresh')}>
           <RefreshCw size={16} />
         </button>
       </div>
@@ -403,8 +399,8 @@
     {#if filteredFetches.length === 0}
       <div class="empty-state">
         <ExternalLink size={48} strokeWidth={1} />
-        <p>No fetch history</p>
-        <span class="hint">URLs you fetch will appear here.</span>
+        <p>{$t('history.fetches.empty')}</p>
+        <span class="hint">{$t('history.fetches.emptyHint')}</span>
       </div>
     {:else}
       <div class="fetches-list">
@@ -422,7 +418,7 @@
               <span class="fetch-meta">
                 {#if fetch.creator}{fetch.creator} &middot; {/if}
                 <span class="fetch-type">{fetch.type}</span>
-                &middot; {formatFetchDate(fetch.timestamp)}
+                &middot; {formatFetchDate(fetch.timestamp, $locale)}
               </span>
               <span class="fetch-url">{fetch.url}</span>
             </div>
@@ -430,14 +426,14 @@
               <button
                 class="action-icon-btn primary"
                 onclick={() => refetchUrl(fetch.url)}
-                title="Re-fetch"
+                title={$t('history.refetch')}
               >
                 <RefreshCw size={16} />
               </button>
               <button
                 class="action-icon-btn danger"
                 onclick={() => deleteFetch(fetch.url)}
-                title="Remove from history"
+                title={$t('history.removeFromHistory')}
               >
                 <Trash2 size={16} />
               </button>

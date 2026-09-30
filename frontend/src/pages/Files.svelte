@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { downloadFolder } from '../stores/queue';
-  import { formatNumber, formatBytes } from '../lib/format';
+  import { formatNumber, formatBytes, formatDate } from '../lib/format';
+  import { t, locale } from '../lib/i18n';
   import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion, isWailsRuntime } from '../lib/api';
   import { onNativeFileDrop } from '../lib/runtime';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
@@ -206,13 +207,12 @@
     }
   }
 
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
+  function formatFileDate(dateStr: string, loc: string): string {
+    return formatDate(new Date(dateStr), {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
-    });
+    }, loc);
   }
 
   async function openInFileManager(path: string) {
@@ -285,7 +285,7 @@
   ondragover={handleDragOver}
   ondrop={handleDrop}
   role="region"
-  aria-label="Files"
+  aria-label={$t('files.aria')}
 >
   {#if isDragOver}
     <div class="drop-overlay">
@@ -293,36 +293,36 @@
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
         </svg>
-        <p>Drop FLAC files to analyze</p>
+        <p>{$t('files.dropToAnalyze')}</p>
       </div>
     </div>
   {/if}
   <div class="files-header">
     <div class="header-left">
-      <h1>Downloaded Files</h1>
-      <p class="folder-path">{$downloadFolder || 'No folder selected'}</p>
+      <h1>{$t('files.title')}</h1>
+      <p class="folder-path">{$downloadFolder || $t('files.noFolder')}</p>
     </div>
     <div class="header-actions">
       {#if someSelected}
-        <span class="selection-count">{selectedFiles.size} selected</span>
+        <span class="selection-count">{$t('files.selected', { count: selectedFiles.size })}</span>
         <button class="action-btn" onclick={clearSelection}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
-          Clear
+          {$t('files.clear')}
         </button>
-        <button class="action-btn" onclick={() => showAnalysisModal = true} title="Analyze quality">
+        <button class="action-btn" onclick={() => showAnalysisModal = true} title={$t('files.analyzeQuality')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
-          Analyze
+          {$t('files.analyze')}
         </button>
         <button
           class="action-btn"
           onclick={handleFetchLyrics}
           disabled={isFetchingLyrics}
-          title="Fetch and embed lyrics"
+          title={$t('files.fetchLyricsTitle')}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18V5l12-2v13"/>
@@ -330,19 +330,19 @@
             <circle cx="18" cy="16" r="3"/>
           </svg>
           {#if isFetchingLyrics}
-            Fetching...
+            {$t('files.fetching')}
           {:else}
-            Get Lyrics
+            {$t('files.getLyrics')}
           {/if}
         </button>
         {#if converterAvailable}
-          <button class="action-btn" onclick={() => showConvertModal = true} title="Convert to lossy format">
+          <button class="action-btn" onclick={() => showConvertModal = true} title={$t('files.convertTitle')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            Convert
+            {$t('files.convert')}
           </button>
         {/if}
         <button class="action-btn primary" onclick={() => showRenameModal = true}>
@@ -350,7 +350,7 @@
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-          Rename
+          {$t('files.rename')}
         </button>
       {:else}
         <button class="action-btn" onclick={loadFiles}>
@@ -360,29 +360,29 @@
             <path d="M3 22v-6h6"/>
             <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
           </svg>
-          Refresh
+          {$t('files.refresh')}
         </button>
-        <button class="action-btn" onclick={openAnalyzeDialog} title="Pick FLAC files to analyze">
+        <button class="action-btn" onclick={openAnalyzeDialog} title={$t('files.pickToAnalyze')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
-          Analyze Files...
+          {$t('files.analyzeFiles')}
         </button>
         {#if converterAvailable}
-          <button class="action-btn" onclick={openConvertFolderDialog} title="Convert all FLAC files in a folder">
+          <button class="action-btn" onclick={openConvertFolderDialog} title={$t('files.convertFolderTitle')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            Convert Folder...
+            {$t('files.convertFolder')}
           </button>
         {/if}
         <button class="action-btn primary" onclick={openFolder}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
-          Open Folder
+          {$t('files.openFolder')}
         </button>
       {/if}
     </div>
@@ -397,11 +397,11 @@
       </svg>
       <span>
         {#if lyricsResults.success > 0}
-          Lyrics embedded: {lyricsResults.success} file{lyricsResults.success !== 1 ? 's' : ''}
+          {$t('files.lyricsEmbedded', { count: lyricsResults.success })}
         {/if}
         {#if lyricsResults.failed > 0}
           {#if lyricsResults.success > 0}, {/if}
-          Not found: {lyricsResults.failed}
+          {$t('files.lyricsNotFound', { count: lyricsResults.failed })}
         {/if}
       </span>
     </div>
@@ -410,15 +410,15 @@
   {#if isLoading}
     <div class="loading-state">
       <div class="loader"></div>
-      <p>Loading files...</p>
+      <p>{$t('files.loading')}</p>
     </div>
   {:else if files.length === 0}
     <div class="empty-state">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg>
-      <p>No downloaded files</p>
-      <span class="hint">Downloaded FLAC files will appear here</span>
+      <p>{$t('files.empty')}</p>
+      <span class="hint">{$t('files.emptyHint')}</span>
     </div>
   {:else}
     <div class="files-table">
@@ -438,7 +438,7 @@
           </span>
         </label>
         <button class="th sortable" onclick={() => sortFiles('name')}>
-          Name
+          {$t('files.col.name')}
           {#if sortBy === 'name'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
@@ -449,10 +449,10 @@
             </svg>
           {/if}
         </button>
-        <span class="th">Artist</span>
-        <span class="th">Album</span>
+        <span class="th">{$t('files.col.artist')}</span>
+        <span class="th">{$t('files.col.album')}</span>
         <button class="th sortable" onclick={() => sortFiles('size')}>
-          Size
+          {$t('files.col.size')}
           {#if sortBy === 'size'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
@@ -464,7 +464,7 @@
           {/if}
         </button>
         <button class="th sortable" onclick={() => sortFiles('date')}>
-          Date
+          {$t('files.col.date')}
           {#if sortBy === 'date'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
@@ -475,7 +475,7 @@
             </svg>
           {/if}
         </button>
-        <span class="th">Actions</span>
+        <span class="th">{$t('files.col.actions')}</span>
       </div>
 
       <div class="table-body">
@@ -505,12 +505,12 @@
             <span class="cell">{file.artist || '--'}</span>
             <span class="cell">{file.album || '--'}</span>
             <span class="cell size">{formatBytes(file.size)}</span>
-            <span class="cell date">{formatDate(file.modTime)}</span>
+            <span class="cell date">{formatFileDate(file.modTime, $locale)}</span>
             <div class="cell actions">
               <button
                 class="file-btn info"
                 onclick={() => metadataFilePath = file.path}
-                title="View metadata"
+                title={$t('files.viewMetadata')}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
@@ -521,7 +521,7 @@
               <button
                 class="file-btn"
                 onclick={() => openInFileManager(file.path)}
-                title="Show in folder"
+                title={$t('files.showInFolder')}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -530,7 +530,7 @@
               <button
                 class="file-btn danger"
                 onclick={() => deleteFileHandler(file.path)}
-                title="Delete"
+                title={$t('common.delete')}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18"/>
@@ -545,8 +545,8 @@
     </div>
 
     <div class="files-footer">
-      <span class="total-count">{formatNumber(files.length)} files</span>
-      <span class="total-size">{formatBytes(files.reduce((acc, f) => acc + f.size, 0))} total</span>
+      <span class="total-count">{$t('files.totalCount', { count: files.length, formatted: formatNumber(files.length, $locale) })}</span>
+      <span class="total-size">{$t('files.totalSize', { size: formatBytes(files.reduce((acc, f) => acc + f.size, 0)) })}</span>
     </div>
   {/if}
 </div>
@@ -580,9 +580,9 @@
 
 {#if deleteConfirmPath}
   <ConfirmDialog
-    title="Delete File"
-    message="Are you sure you want to delete this file? This cannot be undone."
-    confirmText="Delete"
+    title={$t('files.deleteConfirm.title')}
+    message={$t('files.deleteConfirm.message')}
+    confirmText={$t('common.delete')}
     variant="danger"
     onConfirm={confirmDelete}
     onCancel={() => deleteConfirmPath = null}

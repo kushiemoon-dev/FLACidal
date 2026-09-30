@@ -5,6 +5,7 @@
   import TabBar from '../../components/TabBar.svelte';
   import { toastStore } from '../../stores/toast';
   import { FolderOpen, RefreshCw, Eye, Pencil } from 'lucide-svelte';
+  import { t } from '../../lib/i18n';
 
   interface FileEntry {
     path: string;
@@ -32,9 +33,9 @@
   let selectedTemplate = $state('{title} - {artist}');
 
   let tabs = $derived([
-    { id: 'tracks', label: `Track (${files.length})` },
-    { id: 'lyrics', label: `Lyric (0)` },
-    { id: 'covers', label: `Cover (0)` },
+    { id: 'tracks', label: $t('tools.files.tabTracks', { count: files.length }) },
+    { id: 'lyrics', label: $t('tools.files.tabLyrics', { count: 0 }) },
+    { id: 'covers', label: $t('tools.files.tabCovers', { count: 0 }) },
   ]);
 
   function toggleSelectAll() {
@@ -63,7 +64,7 @@
         await loadFiles();
       }
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to load download folder', 'error');
+      toastStore.show(err?.message || $t('tools.files.loadFolderFailed'), 'error');
     }
   });
 
@@ -75,7 +76,7 @@
         await loadFiles();
       }
     } catch (err: any) {
-      toastStore.show(err?.message || 'Failed to browse folder', 'error');
+      toastStore.show(err?.message || $t('tools.files.browseFailed'), 'error');
     }
   }
 
@@ -113,10 +114,10 @@
       } else if (Array.isArray(result) && result.length > 0) {
         previewResult = result.map((r: any) => r.newName || r).join('\n');
       } else {
-        previewResult = 'No preview available';
+        previewResult = $t('tools.files.noPreview');
       }
     } catch (err: any) {
-      previewResult = err?.message || 'Preview failed';
+      previewResult = err?.message || $t('tools.files.previewFailed');
     } finally {
       previewing = false;
     }
@@ -131,7 +132,7 @@
       await loadFiles();
       previewResult = '';
     } catch (err: any) {
-      toastStore.show(err?.message || 'Rename failed', 'error');
+      toastStore.show(err?.message || $t('tools.files.renameFailed'), 'error');
     }
     renaming = false;
   }
@@ -139,15 +140,15 @@
 
 <div class="page">
   <header class="page-header">
-    <h1>File Manager</h1>
-    <p class="page-subtitle">Browse and rename your downloaded files</p>
+    <h1>{$t('tools.files.title')}</h1>
+    <p class="page-subtitle">{$t('tools.files.subtitle')}</p>
   </header>
 
   <div class="folder-bar">
-    <input type="text" class="input folder-input" value={currentFolder} readonly placeholder="No folder selected" />
+    <input type="text" class="input folder-input" value={currentFolder} readonly placeholder={$t('tools.files.noFolder')} />
     <button class="btn btn-accent" onclick={browseFolder}>
       <FolderOpen size={16} />
-      Browse
+      {$t('tools.files.browse')}
     </button>
     <button class="btn btn-outline" onclick={loadFiles} disabled={loading || !currentFolder}>
       <RefreshCw size={16} />
@@ -158,7 +159,7 @@
 
   {#if activeTab === 'tracks'}
     <div class="rename-section">
-      <h3 class="section-title">Rename Format</h3>
+      <h3 class="section-title">{$t('tools.files.renameFormat')}</h3>
       <div class="rename-controls">
         <select class="select" bind:value={selectedTemplate}>
           {#each renameTemplates as tmpl}
@@ -168,7 +169,7 @@
       </div>
       {#if previewResult}
         <div class="preview-box">
-          <span class="preview-label">Preview:</span>
+          <span class="preview-label">{$t('tools.files.previewLabel')}</span>
           <span class="preview-text">{previewResult}</span>
         </div>
       {/if}
@@ -178,9 +179,9 @@
       <div class="file-list-left">
         <label class="checkbox-label">
           <input type="checkbox" checked={selectAll} onchange={toggleSelectAll} />
-          Select All
+          {$t('tools.files.selectAll')}
         </label>
-        <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+        <span class="file-count">{$t('tools.files.fileCount', { count: files.length })}</span>
       </div>
       <div class="file-list-actions">
         <button
@@ -189,7 +190,7 @@
           disabled={previewing || getSelectedFiles().length === 0}
         >
           <Eye size={14} />
-          Preview
+          {$t('tools.files.preview')}
         </button>
         <button
           class="btn btn-accent btn-sm"
@@ -197,15 +198,15 @@
           disabled={renaming || getSelectedFiles().length === 0}
         >
           <Pencil size={14} />
-          Rename
+          {$t('tools.files.rename')}
         </button>
       </div>
     </div>
 
     {#if loading}
-      <div class="empty-state">Loading files...</div>
+      <div class="empty-state">{$t('tools.files.loading')}</div>
     {:else if files.length === 0}
-      <div class="empty-state">No track files found</div>
+      <div class="empty-state">{$t('tools.files.noTracks')}</div>
     {:else}
       <div class="file-list">
         {#each files as file, i (file.path)}
@@ -220,7 +221,7 @@
       </div>
     {/if}
   {:else}
-    <div class="empty-state">No {activeTab === 'lyrics' ? 'lyric' : 'cover'} files found</div>
+    <div class="empty-state">{activeTab === 'lyrics' ? $t('tools.files.noLyrics') : $t('tools.files.noCovers')}</div>
   {/if}
 </div>
 

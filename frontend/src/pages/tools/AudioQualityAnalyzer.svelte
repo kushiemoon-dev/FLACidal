@@ -4,6 +4,7 @@
   import { AnalyzeMultiple, OpenFLACFilesDialog, SelectFolderForAnalysis } from '../../lib/api';
   import DropZone from '../../components/DropZone.svelte';
   import { FileSearch, CheckCircle, AlertTriangle, XCircle } from 'lucide-svelte';
+  import { t, locale } from '../../lib/i18n';
 
   let files: string[] = $state([]);
   let results: any[] = $state([]);
@@ -48,9 +49,9 @@
 
   function verdictLabel(verdict: string): string {
     switch (verdict) {
-      case 'lossless': return 'Lossless';
-      case 'likely_upscaled': return 'Likely Upscaled';
-      case 'upscaled': return 'Upscaled';
+      case 'lossless': return $t('tools.analyzer.lossless');
+      case 'likely_upscaled': return $t('tools.analyzer.likelyUpscaled');
+      case 'upscaled': return $t('tools.analyzer.upscaled');
       default: return verdict;
     }
   }
@@ -83,28 +84,28 @@
   <div class="page-header">
     <div class="header-title">
       <FileSearch size={28} strokeWidth={1.5} />
-      <h1>Audio Quality Analyzer</h1>
+      <h1>{$t('tools.analyzer.title')}</h1>
     </div>
     {#if results.length > 0}
-      <button class="btn-reset" onclick={reset}>Analyze More</button>
+      <button class="btn-reset" onclick={reset}>{$t('tools.analyzer.analyzeMore')}</button>
     {/if}
   </div>
 
   {#if isAnalyzing}
     <div class="analyzing-state">
       <div class="loader"></div>
-      <p>Analyzing {files.length} file{files.length !== 1 ? 's' : ''}...</p>
+      <p>{$t('tools.analyzer.analyzing', { count: files.length })}</p>
     </div>
   {:else if results.length > 0}
     <div class="results-table">
       <div class="table-header">
-        <span class="th file-col">File</span>
-        <span class="th verdict-col">Verdict</span>
-        <span class="th confidence-col">Confidence</span>
-        <span class="th rate-col">Sample Rate</span>
-        <span class="th depth-col">Bit Depth</span>
+        <span class="th file-col">{$t('tools.analyzer.file')}</span>
+        <span class="th verdict-col">{$t('tools.analyzer.verdict')}</span>
+        <span class="th confidence-col">{$t('tools.analyzer.confidence')}</span>
+        <span class="th rate-col">{$t('tools.analyzer.sampleRate')}</span>
+        <span class="th depth-col">{$t('tools.analyzer.bitDepth')}</span>
         <span class="th bpm-col">BPM</span>
-        <span class="th key-col">Key</span>
+        <span class="th key-col">{$t('tools.analyzer.key')}</span>
       </div>
       <div class="table-body">
         {#each results as result}
@@ -123,7 +124,7 @@
               </span>
             </div>
             <span class="cell confidence-col">{Math.round(result.confidence)}%</span>
-            <span class="cell rate-col mono">{(result.sampleRate / 1000).toFixed(1)} kHz</span>
+            <span class="cell rate-col mono">{(result.sampleRate / 1000).toLocaleString($locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kHz</span>
             <span class="cell depth-col mono">{result.bitDepth}-bit</span>
             <span class="cell bpm-col mono">{result.bpm > 0 ? Math.round(result.bpm) : '—'}</span>
             <span class="cell key-col mono">{result.musicalKey || '—'}</span>

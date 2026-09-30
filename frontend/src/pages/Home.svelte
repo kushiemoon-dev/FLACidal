@@ -23,6 +23,7 @@
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalTrack } from '../stores/queue';
   import { toastStore } from '../stores/toast';
   import { formatBytes, formatDuration } from '../lib/format';
+  import { t, type MessageKey } from '../lib/i18n';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
   import ContextMenu from '../components/ContextMenu.svelte';
 
@@ -51,18 +52,18 @@
     GetRecentAlbums(24).then(albums => {
       recentAlbums = albums ?? [];
     }).catch((e: any) => {
-      error = e?.message || 'Failed to load recent albums';
+      error = e?.message || $t('home.error.loadRecent');
     });
   });
 
   async function redownloadAlbum(album: any) {
-    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
     try {
       if (album.content_type !== 'track') {
         await QueueArtistAlbum(album.content_id, album.artist, $downloadFolder);
       }
     } catch(e: any) {
-      error = e.message || 'Failed to queue album';
+      error = e.message || $t('home.error.queueAlbum');
     }
   }
 
@@ -133,11 +134,11 @@
 
   function getContextMenuItems(track: TidalTrack) {
     return [
-      { label: 'Download Track', icon: '\u2B07', action: () => downloadSingleTrack(track) },
-      { label: 'Copy Track URL', icon: '\uD83D\uDD17', action: () => navigator.clipboard.writeText(track.tidalUrl) },
-      { label: 'Copy ISRC', icon: '\uD83C\uDFAB', action: () => navigator.clipboard.writeText(track.isrc), disabled: !track.isrc },
+      { label: $t('home.menu.downloadTrack'), icon: '\u2B07', action: () => downloadSingleTrack(track) },
+      { label: $t('home.menu.copyTrackUrl'), icon: '\uD83D\uDD17', action: () => navigator.clipboard.writeText(track.tidalUrl) },
+      { label: $t('home.menu.copyIsrc'), icon: '\uD83C\uDFAB', action: () => navigator.clipboard.writeText(track.isrc), disabled: !track.isrc },
       { label: '', action: () => {}, divider: true },
-      { label: 'Open on Tidal', icon: '\uD83C\uDF10', action: () => OpenExternalURL(track.tidalUrl) },
+      { label: $t('home.menu.openOnTidal'), icon: '\uD83C\uDF10', action: () => OpenExternalURL(track.tidalUrl) },
     ];
   }
 
@@ -254,10 +255,10 @@
     try {
       const queued = await QueueDiscographyAlbums(discographyAlbums, $downloadFolder);
       if (queued === 0) {
-        error = 'No albums could be matched on Tidal. Check that Tidal is available.';
+        error = $t('home.error.noAlbumsMatched');
       }
     } catch (e: any) {
-      error = e.message || 'Failed to queue discography';
+      error = e.message || $t('home.error.queueDiscography');
     }
     discographyAlbums = null;
     discographyConfirmLoading = false;
@@ -279,7 +280,7 @@
         const albums = await ExpandDiscographyURL(tidalUrl);
         discographyAlbums = albums;
       } catch (e: any) {
-        error = e.message || 'Failed to expand discography';
+        error = e.message || $t('home.error.expandDiscography');
       }
       discographyPending = false;
       return;
@@ -295,7 +296,7 @@
       // Use multi-source fetch if a source is detected, otherwise fall back to Tidal validation
       if (detectedSource) {
         if (!detectedSource.available) {
-          throw new Error(`${detectedSource.displayName} is not available. Check your settings.`);
+          throw new Error($t('home.error.sourceUnavailable', { name: detectedSource.displayName }));
         }
         const result = await FetchContentFromURL(tidalUrl);
         currentContent.set({
@@ -327,7 +328,7 @@
             artistId: result.artistId
           });
           if (result.resolvedVia === 'odesli') {
-            toastStore.show(`Resolved via song.link → ${result.source}`, 'info');
+            toastStore.show($t('home.toast.resolvedViaOdesli', { source: result.source }), 'info');
           }
         } catch {
           const validation = await ValidateTidalURL(tidalUrl);
@@ -361,7 +362,7 @@
         });
       }
     } catch (e: any) {
-      error = e.message || (typeof e === 'string' ? e : 'Failed to fetch content');
+      error = e.message || (typeof e === 'string' ? e : $t('home.error.fetchContent'));
     }
 
     loading = false;
@@ -375,7 +376,7 @@
         await SetDownloadFolder(selected);
       }
     } catch (e: any) {
-      error = e.message || 'Failed to select folder';
+      error = e.message || $t('home.error.selectFolder');
     }
   }
 
@@ -387,7 +388,7 @@
 
   async function downloadSingleTrack(track: TidalTrack) {
     if (!$downloadFolder) {
-      error = 'Please select a download folder first';
+      error = $t('home.error.selectFolderFirst');
       return;
     }
 
@@ -407,7 +408,7 @@
 
   async function downloadAllTracks() {
     if (!$downloadFolder) {
-      error = 'Please select a download folder first';
+      error = $t('home.error.selectFolderFirst');
       return;
     }
     if (!content?.tracks?.length) return;
@@ -434,7 +435,7 @@
         await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
       }
     } catch (e: any) {
-      error = e.message || 'Failed to queue downloads';
+      error = e.message || $t('home.error.queueDownloads');
     }
   }
 
@@ -443,16 +444,22 @@
 
   function getContentTypeLabel(type: string): string {
     switch (type) {
-      case 'playlist': return 'Playlist';
-      case 'album': return 'Album';
-      case 'track': return 'Track';
-      case 'artist': return 'Artist';
-      default: return 'Content';
+      case 'playlist': return $t('home.type.playlist');
+      case 'album': return $t('home.type.album');
+      case 'track': return $t('home.type.track');
+      case 'artist': return $t('home.type.artist');
+      default: return $t('home.type.content');
     }
   }
 
   // Artist discography state
   let albumTypeFilter = $state('all');
+  const albumFilters: { val: string; labelKey: MessageKey }[] = [
+    { val: 'all', labelKey: 'home.filter.all' },
+    { val: 'albums', labelKey: 'home.filter.albums' },
+    { val: 'epssingles', labelKey: 'home.filter.epsSingles' },
+    { val: 'compilations', labelKey: 'home.filter.compilations' },
+  ];
 
   // Track sort state
   let sortByPopularity = $state(false);
@@ -478,25 +485,25 @@
 
   function getAlbumTypeLabel(type: string): string {
     switch (type?.toUpperCase()) {
-      case 'ALBUM': return 'Album';
+      case 'ALBUM': return $t('home.type.album');
       case 'EP': return 'EP';
-      case 'SINGLE': return 'Single';
-      case 'COMPILATION': return 'Compilation';
-      default: return 'Album';
+      case 'SINGLE': return $t('home.type.single');
+      case 'COMPILATION': return $t('home.type.compilation');
+      default: return $t('home.type.album');
     }
   }
 
   async function downloadArtistAlbum(albumId: number) {
-    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
     try {
       await QueueArtistAlbum(String(albumId), content?.title || '', $downloadFolder);
     } catch (e: any) {
-      error = e.message || 'Failed to queue album';
+      error = e.message || $t('home.error.queueAlbum');
     }
   }
 
   async function downloadAllFilteredAlbums() {
-    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
     const albums = filteredAlbums();
     for (const album of albums) {
       await downloadArtistAlbum(album.id);
@@ -563,16 +570,16 @@
   let assetsResult = $state('');
 
   async function downloadArtistAssetsHandler() {
-    if (!$downloadFolder) { error = 'Please select a download folder first'; return; }
+    if (!$downloadFolder) { error = $t('home.error.selectFolderFirst'); return; }
     const artistId = String(content?.artistId || '');
-    if (!artistId) { error = 'No artist ID available'; return; }
+    if (!artistId) { error = $t('home.error.noArtistId'); return; }
     downloadingAssets = true;
     assetsResult = '';
     try {
       const count = await DownloadArtistAssets(artistId, content?.title || '', $downloadFolder);
-      assetsResult = `${count} image${count !== 1 ? 's' : ''} saved`;
+      assetsResult = $t('home.assetsSaved', { count });
     } catch (e: any) {
-      error = e.message || 'Failed to download artist assets';
+      error = e.message || $t('home.error.artistAssets');
     }
     downloadingAssets = false;
   }
@@ -587,10 +594,10 @@
     <div class="title-row">
       <h1>FLACidal</h1>
       {#if version}
-        <span class="version-badge">v{version}</span>
+        <span class="version-badge">{`v${version}`}</span>
       {/if}
     </div>
-    <p class="subtitle">Lossless music from Tidal, Qobuz & Soulseek, cascades automatically, no account required</p>
+    <p class="subtitle">{$t('home.subtitle')}</p>
   </header>
 
   <!-- URL Input -->
@@ -601,7 +608,7 @@
           type="text"
           bind:value={tidalUrl}
           bind:this={urlInputEl}
-          placeholder={placeholderText || 'Paste a Tidal or Qobuz URL...'}
+          placeholder={placeholderText || $t('home.urlPlaceholder')}
           onkeydown={(e) => e.key === 'Enter' && fetchContent()}
           class="url-input"
         />
@@ -609,7 +616,7 @@
           <button
             class="clear-input-btn"
             onclick={() => { tidalUrl = ''; urlInputEl?.focus(); }}
-            aria-label="Clear URL"
+            aria-label={$t('home.clearUrl')}
             tabindex="-1"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -631,7 +638,7 @@
             {/if}
             <span>{detectedSource.displayName}</span>
             {#if !detectedSource.available}
-              <span class="unavailable-text">(unavailable)</span>
+              <span class="unavailable-text">{$t('home.unavailable')}</span>
             {/if}
           </div>
         {:else if detectingSource}
@@ -640,10 +647,10 @@
           </div>
         {/if}
         {#if detectedSource && !detectedSource.available}
-          <p class="unavailable-hint">{detectedSource.displayName} unavailable, use <strong>Universal</strong> search (Deezer) to download via Soulseek.</p>
+          <p class="unavailable-hint">{$t('home.unavailableHint.prefix', { name: detectedSource.displayName })} <strong>{$t('home.unavailableHint.universal')}</strong> {$t('home.unavailableHint.suffix')}</p>
         {/if}
       </div>
-      <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label="Select region">
+      <select class="region-select" value={selectedRegion} onchange={onRegionChange} aria-label={$t('home.selectRegion')}>
         {#each regionCountries as country}
           <option value={country.code}>{country.flag} {country.code}</option>
         {/each}
@@ -653,7 +660,7 @@
           <span class="spinner"></span>
         {:else}
           <Search size={18} />
-          Fetch
+          {$t('home.fetch')}
         {/if}
       </button>
     </div>
@@ -668,7 +675,7 @@
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <span>{error}</span>
-      <button class="btn-icon" onclick={() => error = ''} aria-label="Dismiss error">
+      <button class="btn-icon" onclick={() => error = ''} aria-label={$t('home.dismissError')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -681,20 +688,20 @@
   {#if discographyPending}
     <div class="discography-banner">
       <span class="spinner small"></span>
-      <span>Discography detected. Loading albums...</span>
+      <span>{$t('home.discography.loading')}</span>
     </div>
   {:else if discographyAlbums !== null}
     <div class="discography-confirm">
-      <p><strong>{discographyAlbums.length} album{discographyAlbums.length !== 1 ? 's' : ''}</strong> found. Download all?</p>
+      <p><strong>{$t('home.discography.count', { count: discographyAlbums.length })}</strong> {$t('home.discography.found', { count: discographyAlbums.length })}</p>
       <div class="discography-actions">
         <button class="btn-primary" onclick={confirmDiscography} disabled={discographyConfirmLoading || !$downloadFolder}>
           {#if discographyConfirmLoading}<span class="spinner small"></span>{/if}
-          Confirm
+          {$t('common.confirm')}
         </button>
-        <button class="btn-secondary" onclick={cancelDiscography} disabled={discographyConfirmLoading}>Cancel</button>
+        <button class="btn-secondary" onclick={cancelDiscography} disabled={discographyConfirmLoading}>{$t('common.cancel')}</button>
       </div>
       {#if !$downloadFolder}
-        <p class="discography-warn">Select a download folder first.</p>
+        <p class="discography-warn">{$t('home.discography.selectFolder')}</p>
       {/if}
     </div>
   {/if}
@@ -705,9 +712,9 @@
       <div class="recent-header">
         <div class="recent-title">
           <Clock size={16} />
-          <span>Recent Fetches</span>
+          <span>{$t('home.recentFetches')}</span>
         </div>
-        <button class="btn-ghost" onclick={clearRecentFetches}>Clear</button>
+        <button class="btn-ghost" onclick={clearRecentFetches}>{$t('home.clear')}</button>
       </div>
       <div class="recent-grid">
         {#each recentFetches as recent}
@@ -722,7 +729,7 @@
             <span class="recent-card-title">{recent.title}</span>
             <span class="recent-card-artist">{recent.creator}</span>
             <span class="recent-type-badge" class:type-album={recent.type === 'album'} class:type-track={recent.type === 'track'} class:type-playlist={recent.type === 'playlist'} class:type-artist={recent.type === 'artist'}>
-              {recent.type}
+              {getContentTypeLabel(recent.type)}
             </span>
           </button>
         {/each}
@@ -733,7 +740,7 @@
   <!-- Recent Albums -->
   {#if recentAlbums.length > 0 && !content && !loading}
   <section class="recent-albums">
-    <h3>Recently Downloaded</h3>
+    <h3>{$t('home.recentlyDownloaded')}</h3>
     <div class="albums-grid">
       {#each recentAlbums as album}
       <div class="album-card" title="{album.artist ? album.artist + ', ' : ''}{album.title}"
@@ -763,7 +770,7 @@
       <div class="content-header">
         {#if content.coverUrl}
           <div class="cover-wrapper">
-            <img src={content.coverUrl} alt="Cover" class="cover-art" />
+            <img src={content.coverUrl} alt={$t('home.cover')} class="cover-art" />
           </div>
         {/if}
         <div class="content-info">
@@ -780,10 +787,10 @@
           <h2>{content.title}</h2>
           <p class="creator">{content.creator}</p>
           {#if content.type === 'artist'}
-            <p class="track-count">{(content as any).albums?.length || 0} albums</p>
+            <p class="track-count">{$t('home.albumCount', { count: (content as any).albums?.length || 0 })}</p>
           {:else}
             {@const totalMin = Math.round((content.tracks || []).reduce((sum: number, t: TidalTrack) => sum + (t.duration || 0), 0) / 60)}
-            <p class="track-count">{content.tracks?.length || 0} tracks · {totalMin} min</p>
+            <p class="track-count">{$t('home.trackSummary', { count: content.tracks?.length || 0, minutes: totalMin })}</p>
           {/if}
         </div>
         <div class="folder-section">
@@ -791,10 +798,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
-            {folder ? folder.split('/').pop() : 'Select Folder'}
+            {folder ? folder.split('/').pop() : $t('home.selectFolder')}
           </button>
           {#if folder}
-            <button class="btn-ghost" onclick={openFolder}>Open</button>
+            <button class="btn-ghost" onclick={openFolder}>{$t('home.openFolder')}</button>
           {/if}
         </div>
       </div>
@@ -802,12 +809,12 @@
       {#if content.type === 'artist'}
         <!-- Artist Album Type Filter -->
         <div class="album-filter-bar">
-          {#each [['all','All'],['albums','Albums'],['epssingles','EPs & Singles'],['compilations','Compilations']] as [val, label]}
+          {#each albumFilters as { val, labelKey }}
             <button
               class="filter-btn"
               class:active={albumTypeFilter === val}
               onclick={() => albumTypeFilter = val}
-            >{label}</button>
+            >{$t(labelKey)}</button>
           {/each}
         </div>
 
@@ -816,7 +823,7 @@
           {#each filteredAlbums() as album}
             <div class="album-row">
               {#if album.coverUrl}
-                <img src={album.coverUrl} alt="Cover" class="album-thumb" />
+                <img src={album.coverUrl} alt={$t('home.cover')} class="album-thumb" />
               {:else}
                 <div class="album-thumb placeholder"></div>
               {/if}
@@ -825,13 +832,13 @@
                 <span class="album-meta">
                   {album.artist}
                   {#if album.releaseDate}· {album.releaseDate.slice(0,4)}{/if}
-                  {#if album.trackCount > 0}· {album.trackCount} tracks{/if}
+                  {#if album.trackCount > 0}· {$t('home.trackCount', { count: album.trackCount })}{/if}
                 </span>
               </div>
               {#if album.albumType}
                 <span class="album-type-badge">{getAlbumTypeLabel(album.albumType)}</span>
               {/if}
-              <button class="btn-icon download" onclick={() => downloadArtistAlbum(album.id)} disabled={!folder} aria-label="Download album">
+              <button class="btn-icon download" onclick={() => downloadArtistAlbum(album.id)} disabled={!folder} aria-label={$t('home.downloadAlbum')}>
                 <Download size={16} />
               </button>
             </div>
@@ -842,19 +849,19 @@
         <div class="download-section">
           <button class="btn-primary btn-large" onclick={downloadAllFilteredAlbums} disabled={!folder}>
             <Download size={20} />
-            Download All {albumTypeFilter === 'all' ? '' : getContentTypeLabel(albumTypeFilter)} Albums
+            {albumTypeFilter === 'all' ? $t('home.downloadAllAlbums') : $t('home.downloadAllTypedAlbums', { type: getContentTypeLabel(albumTypeFilter) })}
           </button>
           <button class="btn-secondary" onclick={downloadArtistAssetsHandler} disabled={!folder || downloadingAssets}>
             {#if downloadingAssets}
               <span class="spinner small"></span>
-              Downloading...
+              {$t('home.downloading')}
             {:else}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-              Download Artist Images
+              {$t('home.downloadArtistImages')}
             {/if}
           </button>
           {#if assetsResult}
@@ -869,7 +876,7 @@
             class="sort-btn"
             class:active={sortByPopularity}
             onclick={() => sortByPopularity = !sortByPopularity}
-            title={sortByPopularity ? 'Switch to track order' : 'Sort by popularity'}
+            title={sortByPopularity ? $t('home.sort.toTrackOrder') : $t('home.sort.byPopularity')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="22 7 13 7 13 2"/>
@@ -877,7 +884,7 @@
               <path d="M22 7L11 18"/>
               <path d="M2 17L13 6"/>
             </svg>
-            {sortByPopularity ? 'By Popularity' : 'Track Order'}
+            {sortByPopularity ? $t('home.sort.popularityLabel') : $t('home.sort.trackOrderLabel')}
           </button>
         </div>
 
@@ -891,17 +898,17 @@
                 <div class="title-row">
                   <span class="track-title">{track.title}</span>
                   {#if track.explicit}
-                    <span class="explicit-badge" title="Explicit content">E</span>
+                    <span class="explicit-badge" title={$t('home.explicit.title')}>{$t('home.explicit.badge')}</span>
                   {/if}
                 </div>
                 <span class="track-artist">{track.artists}</span>
                 {#if track.available === false}
-                  <span class="unavailable-label" title="Not available for streaming in your region">Unavailable</span>
+                  <span class="unavailable-label" title={$t('home.track.unavailableTitle')}>{$t('home.track.unavailable')}</span>
                 {/if}
               </div>
               <span class="track-duration">{formatDuration(track.duration)}</span>
               {#if track.popularity > 0}
-                <span class="popularity-badge" title="Popularity: {track.popularity}/100">
+                <span class="popularity-badge" title={$t('home.track.popularityTitle', { value: track.popularity })}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
                   </svg>
@@ -913,8 +920,8 @@
                   class="btn-icon preview-btn"
                   class:active={previewingTrackId === track.id}
                   onclick={() => togglePreview(track)}
-                  title={previewingTrackId === track.id && previewPlaying ? 'Pause preview' : 'Play 30s preview'}
-                  aria-label={previewingTrackId === track.id && previewPlaying ? 'Pause preview' : 'Play preview'}
+                  title={previewingTrackId === track.id && previewPlaying ? $t('home.preview.pause') : $t('home.preview.play30')}
+                  aria-label={previewingTrackId === track.id && previewPlaying ? $t('home.preview.pause') : $t('home.preview.play')}
                 >
                   {#if previewingTrackId === track.id && previewPlaying}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -939,20 +946,20 @@
                 {:else if status?.status === 'downloading'}
                   <span class="status-badge downloading">
                     <span class="spinner small"></span>
-                    Downloading
+                    {$t('home.status.downloading')}
                   </span>
                 {:else if status?.status === 'queued'}
-                  <span class="status-badge queued">Queued</span>
+                  <span class="status-badge queued">{$t('home.status.queued')}</span>
                 {:else if status?.status === 'error'}
-                  <span class="status-badge error">Failed</span>
-                  <button class="btn-icon" onclick={() => downloadSingleTrack(track)} aria-label="Retry download">
+                  <span class="status-badge error">{$t('home.status.failed')}</span>
+                  <button class="btn-icon" onclick={() => downloadSingleTrack(track)} aria-label={$t('home.retryDownload')}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="23 4 23 10 17 10"/>
                       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                     </svg>
                   </button>
                 {:else}
-                  <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder} aria-label="Download track">
+                  <button class="btn-icon download" onclick={() => downloadSingleTrack(track)} disabled={!folder} aria-label={$t('home.downloadTrack')}>
                     <Download size={16} />
                   </button>
                 {/if}
@@ -967,13 +974,13 @@
               class="btn-secondary pagination-btn"
               onclick={() => currentPage = Math.max(1, currentPage - 1)}
               disabled={currentPage <= 1}
-            >Previous</button>
-            <span class="pagination-info">Page {currentPage} of {totalPages}</span>
+            >{$t('home.pagination.previous')}</button>
+            <span class="pagination-info">{$t('home.pagination.info', { current: currentPage, total: totalPages })}</span>
             <button
               class="btn-secondary pagination-btn"
               onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
               disabled={currentPage >= totalPages}
-            >Next</button>
+            >{$t('home.pagination.next')}</button>
           </div>
         {/if}
 
@@ -982,9 +989,9 @@
           {#if stats.total > 0}
             <div class="progress-container">
               <div class="progress-info">
-                <span>{stats.completed}/{stats.total} tracks</span>
+                <span>{$t('home.progress', { count: stats.total, completed: stats.completed, total: stats.total })}</span>
                 {#if stats.failed > 0}
-                  <span class="error">{stats.failed} failed</span>
+                  <span class="error">{$t('home.progressFailed', { count: stats.failed })}</span>
                 {/if}
               </div>
               <div class="progress-bar">
@@ -996,15 +1003,15 @@
           <button class="btn-primary btn-large" onclick={downloadAllTracks} disabled={stats.downloading > 0 || !folder}>
             {#if stats.downloading > 0}
               <span class="spinner"></span>
-              Downloading...
+              {$t('home.downloading')}
             {:else if stats.completed === content.tracks?.length}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              All Downloaded
+              {$t('home.allDownloaded')}
             {:else}
               <Download size={20} />
-              Download All FLAC
+              {$t('home.downloadAllFlac')}
             {/if}
           </button>
         </div>
@@ -1020,14 +1027,14 @@
           <circle cx="18" cy="16" r="3"/>
         </svg>
       </div>
-      <h3>Ready to Download</h3>
-      <p>Paste a link above, FLACidal tries each source automatically until one works</p>
+      <h3>{$t('home.empty.title')}</h3>
+      <p>{$t('home.empty.body')}</p>
       <div class="source-chips">
-        <span class="source-chip">Tidal HiFi</span>
+        <span class="source-chip">{$t('home.chip.tidal')}</span>
         <span class="source-chip">Qobuz</span>
-        <span class="source-chip">Bandcamp</span>
-        <span class="source-chip source-chip-p2p">Soulseek P2P</span>
-        <span class="source-chip source-chip-spotify">Spotify → FLAC</span>
+        <span class="source-chip">{$t('home.chip.bandcamp')}</span>
+        <span class="source-chip source-chip-p2p">{$t('home.chip.soulseek')}</span>
+        <span class="source-chip source-chip-spotify">{$t('home.chip.spotify')}</span>
       </div>
     </div>
   {/if}

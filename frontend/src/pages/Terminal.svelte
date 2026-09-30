@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { EventsOn } from '../lib/websocket';
   import { GetLogs, ClearLogs } from '../lib/api';
+  import { t } from '../lib/i18n';
 
   interface LogEntry {
     timestamp: string;
@@ -68,18 +69,18 @@
 <div class="terminal-page">
   <div class="terminal-header">
     <div class="header-left">
-      <h1>Terminal</h1>
-      <p class="subtitle">Application logs and activity</p>
+      <h1>{$t('terminal.title')}</h1>
+      <p class="subtitle">{$t('terminal.subtitle')}</p>
     </div>
     <div class="header-actions">
-      <span class="log-count">{logs.length} entries</span>
+      <span class="log-count">{$t('terminal.entries', { count: logs.length })}</span>
       <button class="action-btn" onclick={handleClear} disabled={logs.length === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 6h18"/>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
           <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
         </svg>
-        Clear Logs
+        {$t('terminal.clearLogs')}
       </button>
     </div>
   </div>
@@ -92,13 +93,13 @@
           <span class="btn yellow"></span>
           <span class="btn green"></span>
         </div>
-        <span class="terminal-title">flacidal - logs</span>
+        <span class="terminal-title">{$t('terminal.windowTitle')}</span>
       </div>
 
       <div class="terminal-content" bind:this={terminalContent}>
         {#if logs.length === 0}
           <div class="empty-terminal">
-            <span class="prompt">$</span> No logs yet...
+            <span class="prompt">$</span> {$t('terminal.empty')}
           </div>
         {:else}
           {#each logs as log}

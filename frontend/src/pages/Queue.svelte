@@ -2,6 +2,7 @@
   import { queueItems, queueStats, queueStore, downloadFolder, queuePaused } from '../stores/queue';
   import { QueueSingleDownload, RetryAllFailed, CancelDownload, PauseDownloads, ResumeDownloads, ExportFailedDownloads } from '../lib/api';
   import { formatNumber } from '../lib/format';
+  import { t, locale, type MessageKey } from '../lib/i18n';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
 
   let showClearAllConfirm = $state(false);
@@ -86,13 +87,13 @@
   let statusFilter = $state('all');
   let sortMode = $state<'default' | 'status'>('default');
 
-  const filters: { value: string; label: string }[] = [
-    { value: 'all',        label: 'All' },
-    { value: 'queued',     label: 'Queued' },
-    { value: 'downloading',label: 'Downloading' },
-    { value: 'completed',  label: 'Completed' },
-    { value: 'error',      label: 'Failed' },
-    { value: 'cancelled',  label: 'Cancelled' },
+  const filters: { value: string; labelKey: MessageKey }[] = [
+    { value: 'all',        labelKey: 'queue.filter.all' },
+    { value: 'queued',     labelKey: 'queue.filter.queued' },
+    { value: 'downloading',labelKey: 'queue.filter.downloading' },
+    { value: 'completed',  labelKey: 'queue.filter.completed' },
+    { value: 'error',      labelKey: 'queue.filter.failed' },
+    { value: 'cancelled',  labelKey: 'queue.filter.cancelled' },
   ];
 
   const statusPriority: Record<string, number> = {
@@ -129,33 +130,33 @@
 <div class="queue-page">
   <div class="queue-header">
     <div class="header-left">
-      <h1>Download Queue</h1>
+      <h1>{$t('queue.title')}</h1>
       <div class="stats">
         {#if $queuePaused}
           <span class="stat paused-indicator">
-            <span class="stat-value paused">PAUSED</span>
-            <span class="stat-label">Status</span>
+            <span class="stat-value paused">{$t('queue.paused')}</span>
+            <span class="stat-label">{$t('queue.stat.status')}</span>
           </span>
         {/if}
         <span class="stat">
-          <span class="stat-value">{formatNumber($queueStats.total)}</span>
-          <span class="stat-label">Total</span>
+          <span class="stat-value">{formatNumber($queueStats.total, $locale)}</span>
+          <span class="stat-label">{$t('queue.stat.total')}</span>
         </span>
         <span class="stat">
-          <span class="stat-value downloading">{formatNumber($queueStats.downloading)}</span>
-          <span class="stat-label">Downloading</span>
+          <span class="stat-value downloading">{formatNumber($queueStats.downloading, $locale)}</span>
+          <span class="stat-label">{$t('queue.stat.downloading')}</span>
         </span>
         <span class="stat">
-          <span class="stat-value pending">{formatNumber($queueStats.pending)}</span>
-          <span class="stat-label">Pending</span>
+          <span class="stat-value pending">{formatNumber($queueStats.pending, $locale)}</span>
+          <span class="stat-label">{$t('queue.stat.pending')}</span>
         </span>
         <span class="stat">
-          <span class="stat-value completed">{formatNumber($queueStats.completed)}</span>
-          <span class="stat-label">Completed</span>
+          <span class="stat-value completed">{formatNumber($queueStats.completed, $locale)}</span>
+          <span class="stat-label">{$t('queue.stat.completed')}</span>
         </span>
         <span class="stat">
-          <span class="stat-value failed">{formatNumber($queueStats.failed)}</span>
-          <span class="stat-label">Failed</span>
+          <span class="stat-value failed">{formatNumber($queueStats.failed, $locale)}</span>
+          <span class="stat-label">{$t('queue.stat.failed')}</span>
         </span>
       </div>
     </div>
@@ -170,13 +171,13 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
-          Resume
+          {$t('queue.resume')}
         {:else}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="6" y="4" width="4" height="16"/>
             <rect x="14" y="4" width="4" height="16"/>
           </svg>
-          Pause
+          {$t('queue.pause')}
         {/if}
       </button>
       <button
@@ -189,7 +190,7 @@
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        Clean &amp; Retry
+        {$t('queue.cleanRetry')}
       </button>
       <button class="action-btn retry-all" onclick={retryAllFailedDownloads} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -198,7 +199,7 @@
           <path d="M3 22v-6h6"/>
           <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
         </svg>
-        Retry Failed ({$queueStats.failed})
+        {$t('queue.retryFailed', { count: $queueStats.failed })}
       </button>
       <button class="action-btn" onclick={() => exportFailed('txt')} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -206,13 +207,13 @@
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Export Failed
+        {$t('queue.exportFailed')}
       </button>
       <button class="action-btn" onclick={queueStore.clearCompleted} disabled={$queueStats.completed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        Clear Completed
+        {$t('queue.clearCompleted')}
       </button>
       <button class="action-btn" onclick={queueStore.clearFailed} disabled={$queueStats.failed === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -220,7 +221,7 @@
           <line x1="15" y1="9" x2="9" y2="15"/>
           <line x1="9" y1="9" x2="15" y2="15"/>
         </svg>
-        Clear Failed
+        {$t('queue.clearFailed')}
       </button>
       <button class="action-btn danger" onclick={() => showClearAllConfirm = true} disabled={$queueStats.total === 0}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -228,7 +229,7 @@
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
           <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
         </svg>
-        Clear All
+        {$t('queue.clearAll')}
       </button>
     </div>
   </div>
@@ -241,15 +242,15 @@
             class="filter-btn"
             class:active={statusFilter === f.value}
             onclick={() => statusFilter = f.value}
-          >{f.label}</button>
+          >{$t(f.labelKey)}</button>
         {/each}
       </div>
       <select
         class="sort-select"
         bind:value={sortMode}
       >
-        <option value="default">Default order</option>
-        <option value="status">Sort by status</option>
+        <option value="default">{$t('queue.sort.default')}</option>
+        <option value="status">{$t('queue.sort.status')}</option>
       </select>
     </div>
   {/if}
@@ -261,8 +262,8 @@
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      <p>No downloads in queue</p>
-      <span class="hint">Add tracks from Home or Search to start downloading</span>
+      <p>{$t('queue.empty')}</p>
+      <span class="hint">{$t('queue.emptyHint')}</span>
     </div>
   {:else if filteredItems.length === 0}
     <div class="empty-state">
@@ -270,8 +271,8 @@
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <p>No {filters.find(f => f.value === statusFilter)?.label.toLowerCase()} items</p>
-      <span class="hint">Try a different filter</span>
+      <p>{$t('queue.noFilterItems', { filter: $t(filters.find(f => f.value === statusFilter)?.labelKey ?? 'queue.filter.all').toLowerCase() })}</p>
+      <span class="hint">{$t('queue.noFilterItemsHint')}</span>
     </div>
   {:else}
     <div class="queue-list">
@@ -312,7 +313,7 @@
               {/if}
               {#if item.status === 'completed' && item.attempts && item.attempts.length > 1}
                 {@const failed = item.attempts.slice(0, -1)}
-                <span class="cascade-badge" title="{failed.join(', ')} unavailable">via {item.source}, {failed.join('/')} unavailable</span>
+                <span class="cascade-badge" title={$t('queue.unavailable', { failed: failed.join(', ') })}>{$t('queue.viaUnavailable', { source: item.source ?? '', failed: failed.join('/') })}</span>
               {/if}
               {#if item.status === 'completed' && item.analysis}
                 <span
@@ -331,7 +332,7 @@
               <button
                 class="item-btn cancel"
                 onclick={() => cancelDownload(item.trackId)}
-                title="Cancel"
+                title={$t('queue.cancel')}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="6" y="6" width="12" height="12" rx="2"/>
@@ -342,7 +343,7 @@
               <button
                 class="item-btn retry"
                 onclick={() => retryFailed(item.trackId)}
-                title="Retry"
+                title={$t('queue.retry')}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 2v6h-6"/>
@@ -355,7 +356,7 @@
             <button
               class="item-btn remove"
               onclick={() => removeItem(item.trackId)}
-              title="Remove"
+              title={$t('queue.remove')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
@@ -371,9 +372,9 @@
 
 {#if showClearAllConfirm}
   <ConfirmDialog
-    title="Clear All Downloads"
-    message="Are you sure you want to clear all items from the queue?"
-    confirmText="Clear All"
+    title={$t('queue.clearAllConfirm.title')}
+    message={$t('queue.clearAllConfirm.message')}
+    confirmText={$t('queue.clearAll')}
     variant="danger"
     onConfirm={() => { queueStore.clearAll(); showClearAllConfirm = false; }}
     onCancel={() => showClearAllConfirm = false}

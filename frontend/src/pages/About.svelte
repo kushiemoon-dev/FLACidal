@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { GetAppVersion } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
+  import { t, type MessageKey } from '../lib/i18n';
   import { Heart, ExternalLink, LayoutGrid, Star, GitFork } from 'lucide-svelte';
   import kofiLogo from '../assets/logos/kofi-logo.png';
   import flacidalLogo from '../assets/logos/flacidal.png';
@@ -14,7 +15,7 @@
   interface Project {
     name: string;
     repo: string;
-    description: string;
+    descriptionKey: MessageKey;
     logo: string;
     color: string;
     tag: string;
@@ -28,7 +29,7 @@
     {
       name: 'FLACidal Mobile',
       repo: 'kushiemoon-dev/FLACidal-Mobile',
-      description: 'FLACidal on the go, download lossless FLAC from your phone',
+      descriptionKey: 'about.desc.mobile',
       logo: flacidalLogo,
       color: '#f472b6',
       tag: 'flutter',
@@ -38,7 +39,7 @@
     {
       name: 'YouFLAC',
       repo: 'kushiemoon-dev/YouFLAC',
-      description: 'YouTube video + lossless FLAC audio, create high-quality music videos',
+      descriptionKey: 'about.desc.youflac',
       logo: youflacLogo,
       color: '#ef4444',
       tag: 'go',
@@ -48,7 +49,7 @@
     {
       name: 'OpenDrop VJ',
       repo: 'kushiemoon-dev/OpenDrop-VJ',
-      description: 'Open-source multi-deck audio visualizer with MilkDrop presets and MIDI control',
+      descriptionKey: 'about.desc.opendrop',
       logo: opendropLogo,
       color: '#38bdf8',
       tag: 'rust',
@@ -63,11 +64,11 @@
     if (!dateStr) return '';
     const diff = Date.now() - new Date(dateStr).getTime();
     const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'today';
-    if (days === 1) return '1 day ago';
-    if (days < 30) return `${days} days ago`;
+    if (days === 0) return $t('about.today');
+    if (days === 1) return $t('about.daysAgo', { count: 1 });
+    if (days < 30) return $t('about.daysAgo', { count: days });
     const months = Math.floor(days / 30);
-    return months === 1 ? '1 month ago' : `${months} months ago`;
+    return $t('about.monthsAgo', { count: months });
   }
 
   onMount(async () => {
@@ -103,7 +104,7 @@
 
 <div class="about-page">
   <div class="about-header">
-    <h1>About</h1>
+    <h1>{$t('about.title')}</h1>
   </div>
 
   <div class="tab-row">
@@ -114,7 +115,7 @@
       onclick={() => activeTab = 'projects'}
     >
       <LayoutGrid size={14} />
-      Other Projects
+      {$t('about.tabProjects')}
     </button>
     <button
       class="tab-badge"
@@ -123,7 +124,7 @@
       onclick={() => activeTab = 'support'}
     >
       <Heart size={14} />
-      Support Me
+      {$t('about.tabSupport')}
     </button>
   </div>
 
@@ -141,7 +142,7 @@
           <span class="project-tag" style="background: {project.color}20; color: {project.color}; border-color: {project.color}40">
             {project.tag}
           </span>
-          <p class="project-desc">{project.description}</p>
+          <p class="project-desc">{$t(project.descriptionKey)}</p>
           <div class="project-footer">
             <div class="project-stats">
               <span class="stat"><Star size={12} /> {project.stars}</span>
@@ -164,13 +165,13 @@
         </div>
 
         <div class="kofi-content">
-          <h3 class="support-subtitle">Support via Ko-fi</h3>
+          <h3 class="support-subtitle">{$t('about.supportKofi')}</h3>
           <p class="support-desc">
-            Enjoying the project? You can support ongoing development by buying me a coffee.
+            {$t('about.supportDesc')}
           </p>
           <button class="kofi-btn" onclick={() => openURL(kofiUrl)}>
             <Heart size={16} />
-            Support me on Ko-fi
+            {$t('about.supportButton')}
           </button>
         </div>
       </div>

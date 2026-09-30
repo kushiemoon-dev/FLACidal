@@ -1,0 +1,17 @@
+export const shell = {
+  'shell.endpointsCooldown': 'Tous les endpoints Tidal sont en cooldown, file d\'attente en pause',
+  'shell.downloadFailed': 'Échec du téléchargement',
+  'shell.dropZone.label': 'Zone de dépôt de fichiers',
+  'shell.dropZone.hint': 'Glissez-déposez des fichiers audio ici, ou cliquez sur le bouton ci-dessous pour les sélectionner',
+  'shell.dropZone.selectFiles': 'Sélectionner des fichiers',
+  'shell.dropZone.selectFolder': 'Sélectionner un dossier',
+  'shell.dropZone.supportedFormats': 'Formats pris en charge : {formats}',
+  'shell.dropZone.unavailable': 'La sélection de fichiers n\'est pas disponible en mode navigateur',
+  'shell.dropZone.unavailableDetail': 'Le glisser-déposer et le sélecteur de fichiers nécessitent l\'application de bureau FLACidal, une page de navigateur ne peut pas transmettre de vrais chemins de fichiers à ce serveur.',
+  'shell.update.title': 'Mise à jour requise',
+  'shell.update.body': 'Cette version de FLACidal ({current}) a {behind} versions de retard sur la dernière version ({latest}). Mettez à jour maintenant pour continuer à utiliser l\'application.',
+  'shell.update.manual': 'Télécharger manuellement à la place',
+  'shell.update.quit': 'Quitter',
+  'shell.update.now': 'Mettre à jour',
+  'shell.update.downloading': 'Téléchargement de la mise à jour...',
+};

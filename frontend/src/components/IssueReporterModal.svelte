@@ -1,5 +1,6 @@
 <script lang="ts">
   import { OpenExternalURL } from '../lib/runtime';
+  import { t } from '../lib/i18n';
 
   let { isOpen = $bindable(false), repoUrl }: { isOpen: boolean; repoUrl: string } = $props();
 
@@ -23,20 +24,20 @@
 {#if isOpen}
 <div class="modal-overlay" onclick={handleOverlayClick}>
   <div class="modal-card">
-    <h2 class="modal-title">Before Opening GitHub Issues</h2>
+    <h2 class="modal-title">{$t('modals.issue.title')}</h2>
 
     <div class="warning-box">
-      <strong>Important:</strong> Search existing issues first and use the issue template when opening a new report or request.
+      <strong>{$t('modals.issue.important')}</strong> {$t('modals.issue.warning')}
     </div>
 
     <label class="checkbox-row">
       <input type="checkbox" bind:checked={acknowledged} />
-      <span>I understand that I should use the issue template and avoid duplicate issues.</span>
+      <span>{$t('modals.issue.acknowledge')}</span>
     </label>
 
     <div class="modal-actions">
-      <button class="btn-cancel" onclick={close}>Cancel</button>
-      <button class="btn-open" disabled={!acknowledged} onclick={openIssues}>Open Issues</button>
+      <button class="btn-cancel" onclick={close}>{$t('modals.issue.cancel')}</button>
+      <button class="btn-open" disabled={!acknowledged} onclick={openIssues}>{$t('modals.issue.open')}</button>
     </div>
   </div>
 </div>

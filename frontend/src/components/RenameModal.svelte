@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { GetRenameTemplates, PreviewRename, RenameFiles } from '../lib/api';
+  import { t } from '../lib/i18n';
 
   let { files, onClose, onComplete }: { files: string[]; onClose: () => void; onComplete: () => void } = $props();
 
@@ -43,7 +44,7 @@
         await updatePreview();
       }
     } catch (e: any) {
-      error = e.message || 'Failed to load templates';
+      error = e.message || $t('modals.rename.loadFailedFallback');
     } finally {
       isLoading = false;
     }
@@ -58,7 +59,7 @@
     try {
       previews = await PreviewRename(files, activeTemplate);
     } catch (e: any) {
-      error = e.message || 'Failed to generate preview';
+      error = e.message || $t('modals.rename.previewFailedFallback');
     }
   }
 
@@ -73,13 +74,13 @@
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0) {
-        error = `${failed.length} file(s) failed to rename`;
+        error = $t('modals.rename.someFailed', { count: failed.length });
       }
 
       onComplete();
       onClose();
     } catch (e: any) {
-      error = e.message || 'Rename failed';
+      error = e.message || $t('modals.rename.failedFallback');
     } finally {
       isRenaming = false;
     }
@@ -111,9 +112,9 @@
 <div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Rename Files</h2>
-      <span class="file-count">{files.length} file{files.length !== 1 ? 's' : ''} selected</span>
-      <button class="close-btn" onclick={onClose} aria-label="Close">
+      <h2>{$t('modals.rename.title')}</h2>
+      <span class="file-count">{$t('modals.rename.fileCountSelected', { count: files.length })}</span>
+      <button class="close-btn" onclick={onClose} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -124,13 +125,13 @@
     {#if isLoading}
       <div class="loading-state">
         <div class="loader"></div>
-        <p>Loading...</p>
+        <p>{$t('common.loading')}</p>
       </div>
     {:else}
       <div class="modal-body">
         <!-- Template Selection -->
         <div class="template-section">
-          <span class="section-label">Rename Template</span>
+          <span class="section-label">{$t('modals.rename.template')}</span>
 
           <div class="template-options">
             {#each templates as tmpl}
@@ -155,12 +156,12 @@
                 checked={useCustom}
                 onchange={() => { useCustom = true; handleTemplateChange(); }}
               />
-              <span class="template-name">Custom</span>
+              <span class="template-name">{$t('modals.rename.custom')}</span>
               {#if useCustom}
                 <input
                   type="text"
                   class="custom-input"
-                  placeholder="e.g. {'{'}artist{'}'} - {'{'}title{'}'}"
+                  placeholder={$t('modals.rename.customPlaceholder', { example: '{artist} - {title}' })}
                   bind:value={customTemplate}
                   oninput={handleCustomTemplateInput}
                 />
@@ -169,7 +170,7 @@
           </div>
 
           <div class="template-vars">
-            <span class="vars-label">Available:</span>
+            <span class="vars-label">{$t('modals.rename.available')}</span>
             <code>{`{title}`}</code>
             <code>{`{artist}`}</code>
             <code>{`{album}`}</code>
@@ -181,7 +182,7 @@
 
         <!-- Preview Section -->
         <div class="preview-section">
-          <span class="section-label">Preview</span>
+          <span class="section-label">{$t('modals.rename.preview')}</span>
 
           <div class="preview-list">
             {#each previews as preview}
@@ -222,13 +223,13 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" onclick={onClose}>Cancel</button>
+        <button class="btn-secondary" onclick={onClose}>{$t('common.cancel')}</button>
         <button class="btn-primary" onclick={handleRename} disabled={!canRename || isRenaming}>
           {#if isRenaming}
             <span class="spinner"></span>
-            Renaming...
+            {$t('modals.rename.renaming')}
           {:else}
-            Rename {files.length} File{files.length !== 1 ? 's' : ''}
+            {$t('modals.rename.renameFiles', { count: files.length })}
           {/if}
         </button>
       </div>

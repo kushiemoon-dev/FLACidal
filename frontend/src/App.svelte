@@ -13,6 +13,8 @@
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused } from './stores/queue';
   import { toastStore } from './stores/toast';
+  import { get } from 'svelte/store';
+  import { initLanguage, t } from './lib/i18n';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import { createNavHistory, navigateTo, goBack, goForward, canGoBack, canGoForward, currentPage } from './lib/navHistory';
@@ -105,6 +107,7 @@
       } else {
         themeStore.initialize('system');
       }
+      initLanguage(config?.language ?? '');
       // Initialize accent color
       initializeAccentColor(config?.accentColor || '#f472b6');
       // Initialize audio settings
@@ -115,6 +118,7 @@
       }
     } catch {
       themeStore.initialize('system');
+      initLanguage('');
       initializeAccentColor('#f472b6');
       initializeAudioSettings(false, 70);
     }
@@ -141,7 +145,7 @@
     // Listen for endpoint cooldown (all Tidal endpoints dead, queue auto-paused)
     unsubscribeCooldown = EventsOn('endpoint-cooldown', (data: any) => {
       queuePaused.set(true);
-      const msg = data?.result?.error || 'All Tidal endpoints in cooldown, queue paused';
+      const msg = data?.result?.error || get(t)('shell.endpointsCooldown');
       toastStore.show(msg, 'error', 6000);
     });
 
@@ -169,7 +173,7 @@
       } else if (status === 'error') {
         queueStore.updateItem(trackId, {
           status: 'error',
-          error: result?.error || 'Download failed'
+          error: result?.error || get(t)('shell.downloadFailed')
         });
         // Play error sound
         playSound('error');

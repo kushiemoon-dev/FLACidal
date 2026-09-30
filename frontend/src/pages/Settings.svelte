@@ -5,6 +5,7 @@
   import { updateAudioSettings, testSound } from '../stores/audio';
   import { toastStore } from '../stores/toast';
   import TabBar from '../components/TabBar.svelte';
+  import { t, setLanguage, type MessageKey } from '../lib/i18n';
   import { FolderOpen } from 'lucide-svelte';
   import {
     GetConfig,
@@ -40,6 +41,7 @@
     saveFolderCover: true,
     fileNameFormat: '{artist} - {title}',
     theme: 'system' as ThemeMode,
+    language: '',
     accentColor: '#f472b6',
     dateFormat: 'full',
     soundEffects: false,
@@ -134,15 +136,15 @@
     sourceOrder = newOrder;
     dragIndex = null;
     SetSourceOrder(newOrder).catch(() => {
-      toastStore.show('Failed to save source order', 'error');
+      toastStore.show($t('settings.toast.sourceOrderFailed'), 'error');
     });
   }
 
-  const settingsTabs = [
-    { id: 'general', label: 'General' },
-    { id: 'file-management', label: 'File Management' },
-    { id: 'status', label: 'Status' },
-  ];
+  const settingsTabs = $derived([
+    { id: 'general', label: $t('settings.tabs.general') },
+    { id: 'file-management', label: $t('settings.tabs.fileManagement') },
+    { id: 'status', label: $t('settings.tabs.status') },
+  ]);
 
   const folderPresets = [
     '{artist}/{album}',
@@ -175,42 +177,42 @@
   // into subfolders. A template here must never contain '/': it names one file,
   // and the download engine strips slashes from it (SanitizeFileName).
   const namingPresets = [
-    { name: 'Simple', template: '{artist} - {title}' },
-    { name: 'Title - Artist', template: '{title} - {artist}' },
-    { name: 'Numbered', template: '{track}. {title}' },
-    { name: 'Numbered with Artist', template: '{track}. {artist} - {title}' },
-    { name: 'Album Organized', template: '{track} - {title}' },
-    { name: 'Multi-disc', template: '{discnumber}-{track} - {title}' },
-    { name: 'ISRC', template: '{isrc} - {title}' },
+    { labelKey: 'settings.naming.simple' as MessageKey, template: '{artist} - {title}' },
+    { labelKey: 'settings.naming.titleArtist' as MessageKey, template: '{title} - {artist}' },
+    { labelKey: 'settings.naming.numbered' as MessageKey, template: '{track}. {title}' },
+    { labelKey: 'settings.naming.numberedArtist' as MessageKey, template: '{track}. {artist} - {title}' },
+    { labelKey: 'settings.naming.albumOrganized' as MessageKey, template: '{track} - {title}' },
+    { labelKey: 'settings.naming.multiDisc' as MessageKey, template: '{discnumber}-{track} - {title}' },
+    { labelKey: 'settings.naming.isrc' as MessageKey, template: '{isrc} - {title}' },
   ];
 
   const artistSeparators = [
-    { label: 'Semicolon (;)', value: '; ' },
-    { label: 'Comma (,)', value: ', ' },
-    { label: 'Slash (/)', value: ' / ' },
-    { label: 'Ampersand (&)', value: ' & ' },
-    { label: 'feat.', value: ' feat. ' },
+    { labelKey: 'settings.sep.semicolon' as MessageKey, value: '; ' },
+    { labelKey: 'settings.sep.comma' as MessageKey, value: ', ' },
+    { labelKey: 'settings.sep.slash' as MessageKey, value: ' / ' },
+    { labelKey: 'settings.sep.ampersand' as MessageKey, value: ' & ' },
+    { labelKey: 'settings.sep.feat' as MessageKey, value: ' feat. ' },
   ];
 
   const countries = [
-    { code: 'US', name: 'United States' },
-    { code: 'GB', name: 'United Kingdom' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'JP', name: 'Japan' },
-    { code: 'BR', name: 'Brazil' },
-    { code: 'AU', name: 'Australia' },
-    { code: 'CA', name: 'Canada' },
-    { code: 'SE', name: 'Sweden' },
-    { code: 'NO', name: 'Norway' },
-    { code: 'DK', name: 'Denmark' },
-    { code: 'NL', name: 'Netherlands' },
-    { code: 'ES', name: 'Spain' },
-    { code: 'IT', name: 'Italy' },
-    { code: 'PL', name: 'Poland' },
-    { code: 'KR', name: 'South Korea' },
-    { code: 'MX', name: 'Mexico' },
-    { code: 'AR', name: 'Argentina' },
+    { code: 'US', labelKey: 'settings.country.us' as MessageKey },
+    { code: 'GB', labelKey: 'settings.country.gb' as MessageKey },
+    { code: 'DE', labelKey: 'settings.country.de' as MessageKey },
+    { code: 'FR', labelKey: 'settings.country.fr' as MessageKey },
+    { code: 'JP', labelKey: 'settings.country.jp' as MessageKey },
+    { code: 'BR', labelKey: 'settings.country.br' as MessageKey },
+    { code: 'AU', labelKey: 'settings.country.au' as MessageKey },
+    { code: 'CA', labelKey: 'settings.country.ca' as MessageKey },
+    { code: 'SE', labelKey: 'settings.country.se' as MessageKey },
+    { code: 'NO', labelKey: 'settings.country.no' as MessageKey },
+    { code: 'DK', labelKey: 'settings.country.dk' as MessageKey },
+    { code: 'NL', labelKey: 'settings.country.nl' as MessageKey },
+    { code: 'ES', labelKey: 'settings.country.es' as MessageKey },
+    { code: 'IT', labelKey: 'settings.country.it' as MessageKey },
+    { code: 'PL', labelKey: 'settings.country.pl' as MessageKey },
+    { code: 'KR', labelKey: 'settings.country.kr' as MessageKey },
+    { code: 'MX', labelKey: 'settings.country.mx' as MessageKey },
+    { code: 'AR', labelKey: 'settings.country.ar' as MessageKey },
   ];
 
   async function checkAPI() {
@@ -246,10 +248,10 @@
   async function exportConfig() {
     try {
       await ExportConfig();
-      toastStore.show('Config exported!');
+      toastStore.show($t('settings.toast.configExported'));
     } catch (e) {
       console.error('Failed to export config:', e);
-      toastStore.show('Error exporting config', 'error');
+      toastStore.show($t('settings.toast.configExportError'), 'error');
     }
   }
 
@@ -258,11 +260,11 @@
       const result = await ImportConfig();
       if (result) {
         await loadConfig();
-        toastStore.show('Config imported!');
+        toastStore.show($t('settings.toast.configImported'));
       }
     } catch (e) {
       console.error('Failed to import config:', e);
-      toastStore.show('Error importing config', 'error');
+      toastStore.show($t('settings.toast.configImportError'), 'error');
     }
   }
 
@@ -316,6 +318,12 @@
     themeStore.setTheme(newTheme);
   }
 
+  function handleLanguageChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    config.language = value;
+    setLanguage(value);
+  }
+
   function handleAccentColorChange(color: string) {
     config.accentColor = color;
     accentColor.set(color);
@@ -366,6 +374,8 @@
         config.embedCover = result.embedCover !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
+        config.language = result.language ?? '';
+        setLanguage(config.language);
         config.accentColor = result.accentColor || '#f472b6';
         config.soundEffects = result.soundEffects || false;
         config.soundVolume = result.soundVolume || 70;
@@ -462,7 +472,7 @@
       const result = await TestSoulseekConnection(config.soulseekUsername, config.soulseekPassword);
       soulseekLoginResult = { success: result.success, message: result.message };
     } catch (e) {
-      soulseekLoginResult = { success: false, message: 'Error running test' };
+      soulseekLoginResult = { success: false, message: $t('settings.soulseek.testError') };
     } finally {
       testingLogin = false;
     }
@@ -477,6 +487,7 @@
       await SaveConfig({
         ...fullConfig,
         theme: config.theme,
+        language: config.language,
         accentColor: config.accentColor,
         dateFormat: config.dateFormat,
         downloadFolder: config.downloadFolder,
@@ -533,10 +544,10 @@
         config.saveCoverFile,
         config.autoAnalyze
       );
-      toastStore.show('Settings saved!');
+      toastStore.show($t('settings.toast.saved'));
     } catch (error) {
       console.error('Error saving config:', error);
-      toastStore.show('Error saving settings', 'error');
+      toastStore.show($t('settings.toast.saveError'), 'error');
     } finally {
       isSaving = false;
     }
@@ -553,6 +564,8 @@
         config.saveFolderCover = result.saveFolderCover !== false;
         config.fileNameFormat = result.fileNameFormat || '{artist} - {title}';
         config.theme = (result.theme as ThemeMode) || 'system';
+        config.language = result.language ?? '';
+        setLanguage(config.language);
         config.accentColor = result.accentColor || '#f472b6';
         config.dateFormat = result.dateFormat === 'year' ? 'year' : 'full';
         config.soundEffects = result.soundEffects || false;
@@ -594,11 +607,11 @@
         // Note: download folder and Qobuz credentials are preserved
         themeStore.setTheme(config.theme);
         handleAccentColorChange(config.accentColor);
-        toastStore.show('Settings reset to defaults!');
+        toastStore.show($t('settings.toast.reset'));
       }
     } catch (error) {
       console.error('Error resetting:', error);
-      toastStore.show('Error resetting settings', 'error');
+      toastStore.show($t('settings.toast.resetError'), 'error');
     } finally {
       isResetting = false;
       showResetConfirm = false;
@@ -608,27 +621,27 @@
 
 <div class="settings-page">
   <div class="settings-header">
-    <h1>Settings</h1>
+    <h1>{$t('settings.title')}</h1>
     <div class="header-actions">
       <button class="btn-secondary" onclick={openConfig}>
         <FolderOpen size={16} />
-        Open Config Folder
+        {$t('settings.header.openConfigFolder')}
       </button>
       <button class="btn-secondary" onclick={exportConfig}>
-        Export Config
+        {$t('settings.header.exportConfig')}
       </button>
       <button class="btn-secondary" onclick={importConfig}>
-        Import Config
+        {$t('settings.header.importConfig')}
       </button>
       <button class="btn-secondary" onclick={() => showResetConfirm = true} disabled={isResetting}>
-        Reset to Default
+        {$t('settings.header.reset')}
       </button>
       <button class="btn-accent" onclick={saveConfig} disabled={isSaving}>
         {#if isSaving}
           <div class="spinner"></div>
-          Saving...
+          {$t('settings.header.saving')}
         {:else}
-          Save Changes
+          {$t('settings.header.save')}
         {/if}
       </button>
     </div>
@@ -642,12 +655,12 @@
     <div class="settings-grid">
       <!-- Left Column -->
       <div class="settings-column">
-        <div class="group-title">Downloads &amp; Appearance</div>
+        <div class="group-title">{$t('settings.group.downloadsAppearance')}</div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="download-folder">Download Path</label>
-            <span class="setting-desc">Where your FLAC files will be saved</span>
+            <label for="download-folder">{$t('settings.download.path')}</label>
+            <span class="setting-desc">{$t('settings.download.pathDesc')}</span>
           </div>
           <div class="setting-control folder-control">
             <input
@@ -655,41 +668,57 @@
               id="download-folder"
               bind:value={config.downloadFolder}
               readonly
-              placeholder="Select a folder..."
+              placeholder={$t('settings.download.selectFolder')}
               class="setting-input folder-input"
             />
             <button class="browse-btn" onclick={selectFolder}>
               <FolderOpen size={16} />
-              Browse
+              {$t('settings.download.browse')}
             </button>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="theme">Mode</label>
-            <span class="setting-desc">Color scheme</span>
+            <label for="theme">{$t('settings.theme.mode')}</label>
+            <span class="setting-desc">{$t('settings.theme.modeDesc')}</span>
           </div>
           <div class="setting-control">
             <select id="theme" value={config.theme} onchange={handleThemeChange} class="setting-select">
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">System</option>
+              <option value="dark">{$t('settings.theme.dark')}</option>
+              <option value="light">{$t('settings.theme.light')}</option>
+              <option value="system">{$t('settings.theme.system')}</option>
             </select>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Accent Color</span>
+            <label for="language">{$t('settings.language.label')}</label>
+            <span class="setting-desc">{$t('settings.language.description')}</span>
           </div>
-          <div class="accent-swatches" role="radiogroup" aria-label="Accent color selection">
+          <div class="setting-control">
+            <select id="language" value={config.language} onchange={handleLanguageChange} class="setting-select">
+              <option value="">{$t('settings.language.system')}</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">{$t('settings.accent.label')}</span>
+          </div>
+          <div class="accent-swatches" role="radiogroup" aria-label={$t('settings.accent.groupLabel')}>
             {#each accentPresets as preset}
               <button
                 class="swatch"
                 class:active={config.accentColor === preset.color}
                 style="background-color: {preset.color}"
-                title={preset.name}
+                title={$t(preset.labelKey)}
+                aria-label={$t(preset.labelKey)}
                 onclick={() => handleAccentColorChange(preset.color)}
               ></button>
             {/each}
@@ -698,11 +727,11 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="font-family">Font</label>
+            <label for="font-family">{$t('settings.font.label')}</label>
           </div>
           <div class="setting-control">
             <select id="font-family" value={config.fontFamily} onchange={handleFontChange} class="setting-select">
-              <option value="">System Default</option>
+              <option value="">{$t('settings.font.default')}</option>
               {#each fontPresets as font}
                 <option value={font.value}>{font.name}</option>
               {/each}
@@ -712,15 +741,15 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="sound-effects">Sound Effects</label>
-            <span class="setting-desc">Play sounds on download events</span>
+            <label for="sound-effects">{$t('settings.sound.label')}</label>
+            <span class="setting-desc">{$t('settings.sound.desc')}</span>
           </div>
           <div class="setting-control sound-control">
             <label class="toggle">
               <input type="checkbox" bind:checked={config.soundEffects} />
               <span class="toggle-slider"></span>
             </label>
-            <button class="test-sound-btn" onclick={testSound} title="Test sound">
+            <button class="test-sound-btn" onclick={testSound} title={$t('settings.sound.test')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -733,7 +762,7 @@
         {#if config.soundEffects}
           <div class="setting-item">
             <div class="setting-info">
-              <label for="sound-volume">Volume</label>
+              <label for="sound-volume">{$t('settings.sound.volume')}</label>
               <span class="setting-desc">{config.soundVolume}%</span>
             </div>
             <div class="setting-control volume-control">
@@ -749,31 +778,31 @@
           </div>
         {/if}
 
-        <div class="group-title" style="margin-top:1.5rem">Soulseek (Fallback P2P)</div>
+        <div class="group-title" style="margin-top:1.5rem">{$t('settings.soulseek.group')}</div>
 
         <div class="soulseek-info-box">
-          <p>Soulseek is a free P2P music network. FLACidal uses <code>sldl</code> in the background to find and download FLAC files when all streaming sources fail.</p>
-          <p>Already using <strong>Nicotine+</strong>? Enter the same credentials below, it's the same account.</p>
-          <p>No account yet? <a href="https://www.slsknet.org/news/node/1" target="_blank" rel="noopener">Create one free at slsknet.org</a> or through Nicotine+.</p>
+          <p>{$t('settings.soulseek.info1a')} <code>sldl</code> {$t('settings.soulseek.info1b')}</p>
+          <p>{$t('settings.soulseek.info2a')} <strong>Nicotine+</strong>{$t('settings.soulseek.info2b')}</p>
+          <p>{$t('settings.soulseek.info3a')} <a href="https://www.slsknet.org/news/node/1" target="_blank" rel="noopener">{$t('settings.soulseek.info3link')}</a> {$t('settings.soulseek.info3b')}</p>
           {#if sldlStatus}
             {#if sldlStatus.installed}
-              <p class="sldl-status sldl-ok">✓ sldl {sldlStatus.version} installed</p>
+              <p class="sldl-status sldl-ok">✓ {$t('settings.soulseek.installed', { version: sldlStatus.version })}</p>
             {:else}
-              <p class="sldl-status sldl-missing">✗ sldl not found at <code>{sldlStatus.path}</code></p>
+              <p class="sldl-status sldl-missing">✗ {$t('settings.soulseek.notFoundAt')} <code>{sldlStatus.path}</code></p>
               {#if installingSldl}
                 <div class="ffmpeg-progress" style="margin-top:0.5rem">
                   <div class="ffmpeg-progress-bar">
                     <div class="ffmpeg-progress-fill" style="width: {sldlInstallProgress.percent}%"></div>
                   </div>
                   <span class="ffmpeg-progress-text">
-                    {sldlInstallProgress.stage === 'downloading' ? `Downloading... ${Math.round(sldlInstallProgress.percent)}%` : ''}
-                    {sldlInstallProgress.stage === 'extracting' ? 'Extracting...' : ''}
-                    {sldlInstallProgress.stage === 'complete' ? 'Done!' : ''}
-                    {sldlInstallProgress.stage === 'error' ? 'Failed' : ''}
+                    {sldlInstallProgress.stage === 'downloading' ? $t('settings.progress.downloading', { percent: Math.round(sldlInstallProgress.percent) }) : ''}
+                    {sldlInstallProgress.stage === 'extracting' ? $t('settings.progress.extracting') : ''}
+                    {sldlInstallProgress.stage === 'complete' ? $t('settings.progress.done') : ''}
+                    {sldlInstallProgress.stage === 'error' ? $t('settings.progress.failed') : ''}
                   </span>
                 </div>
               {:else}
-                <button class="btn-accent" style="margin-top:0.5rem" onclick={installSldlHandler}>Install sldl</button>
+                <button class="btn-accent" style="margin-top:0.5rem" onclick={installSldlHandler}>{$t('settings.soulseek.install')}</button>
               {/if}
             {/if}
           {/if}
@@ -781,8 +810,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Enable Soulseek</span>
-            <span class="setting-desc">Last-resort FLAC source via P2P, independent of streaming proxies</span>
+            <span class="setting-label">{$t('settings.soulseek.enable')}</span>
+            <span class="setting-desc">{$t('settings.soulseek.enableDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -795,23 +824,23 @@
         {#if config.soulseekEnabled}
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Soulseek Username</span>
-            <span class="setting-desc">Same account as Nicotine+</span>
+            <span class="setting-label">{$t('settings.soulseek.username')}</span>
+            <span class="setting-desc">{$t('settings.soulseek.usernameDesc')}</span>
           </div>
           <div class="setting-control wide">
             <input
               type="text"
               class="setting-input"
               bind:value={config.soulseekUsername}
-              placeholder="your-soulseek-username"
+              placeholder={$t('settings.soulseek.usernamePlaceholder')}
             />
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Soulseek Password</span>
-            <span class="setting-desc">Same password as Nicotine+</span>
+            <span class="setting-label">{$t('settings.soulseek.password')}</span>
+            <span class="setting-desc">{$t('settings.soulseek.passwordDesc')}</span>
           </div>
           <div class="setting-control wide">
             <input
@@ -829,22 +858,22 @@
             onclick={testSoulseekLogin}
             disabled={testingLogin || !config.soulseekUsername || !config.soulseekPassword}
           >
-            {testingLogin ? 'Connecting...' : 'Login'}
+            {testingLogin ? $t('settings.soulseek.connecting') : $t('settings.soulseek.login')}
           </button>
           {#if soulseekLoginResult}
             <span class="soulseek-login-result" class:ok={soulseekLoginResult.success} class:fail={!soulseekLoginResult.success}>
               {soulseekLoginResult.success ? '✓' : '✗'} {soulseekLoginResult.message}
-              {#if soulseekLoginResult.success}<span class="save-hint">, Save to confirm</span>{/if}
+              {#if soulseekLoginResult.success}<span class="save-hint">{$t('settings.soulseek.saveHint')}</span>{/if}
             </span>
           {/if}
         </div>
-        <p class="firewall-hint">Windows/macOS: allow <code>sldl</code> through the firewall for reliable downloads.</p>
+        <p class="firewall-hint">{$t('settings.soulseek.firewallA')} <code>sldl</code> {$t('settings.soulseek.firewallB')}</p>
         {/if}
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Enable Jellyfin Scan Trigger</span>
-            <span class="setting-desc">Ask Jellyfin to rescan its library a few seconds after downloads finish</span>
+            <span class="setting-label">{$t('settings.jellyfin.enable')}</span>
+            <span class="setting-desc">{$t('settings.jellyfin.enableDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -857,23 +886,23 @@
         {#if config.jellyfinEnabled}
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Jellyfin Server URL</span>
-            <span class="setting-desc">Server root, e.g. http://localhost:8096</span>
+            <span class="setting-label">{$t('settings.jellyfin.url')}</span>
+            <span class="setting-desc">{$t('settings.jellyfin.urlDesc')}</span>
           </div>
           <div class="setting-control wide">
             <input
               type="text"
               class="setting-input"
               bind:value={config.jellyfinUrl}
-              placeholder="http://localhost:8096"
+              placeholder={'http://localhost:8096'}
             />
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Jellyfin API Key</span>
-            <span class="setting-desc">Dashboard -> API Keys</span>
+            <span class="setting-label">{$t('settings.jellyfin.apiKey')}</span>
+            <span class="setting-desc">{$t('settings.jellyfin.apiKeyDesc')}</span>
           </div>
           <div class="setting-control wide">
             <input
@@ -889,10 +918,10 @@
 
       <!-- Right Column -->
       <div class="settings-column">
-        <div class="group-title">Sources &amp; Quality</div>
+        <div class="group-title">{$t('settings.group.sourcesQuality')}</div>
 
         <div class="settings-section">
-          <p class="settings-hint">Drag to reorder. The first available source is used first.</p>
+          <p class="settings-hint">{$t('settings.sources.dragHint')}</p>
           <div class="source-priority-list">
             {#each sourceOrder as source, i}
               <div
@@ -913,37 +942,37 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="preferred-source">Source Mode</label>
-            <span class="setting-desc">Primary download source</span>
+            <label for="preferred-source">{$t('settings.sources.mode')}</label>
+            <span class="setting-desc">{$t('settings.sources.modeDesc')}</span>
           </div>
           <div class="setting-control">
             <select id="preferred-source" bind:value={config.preferredSource} class="setting-select">
               <option value="tidal">Tidal</option>
               <option value="qobuz">Qobuz</option>
-              <option value="auto">Auto</option>
+              <option value="auto">{$t('settings.sources.auto')}</option>
             </select>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="download-quality">Quality</label>
-            <span class="setting-desc">Preferred audio quality tier</span>
+            <label for="download-quality">{$t('settings.quality.label')}</label>
+            <span class="setting-desc">{$t('settings.quality.desc')}</span>
           </div>
           <div class="setting-control">
             <select id="download-quality" bind:value={config.downloadQuality} class="setting-select">
-              <option value="HI_RES">Hi-Res (24-bit/48kHz+)</option>
-              <option value="LOSSLESS">Lossless (16-bit/44.1kHz)</option>
-              <option value="HIGH">High (320kbps)</option>
-              <option value="ATMOS">Dolby Atmos (lossy, .m4a, Tidal only)</option>
+              <option value="HI_RES">{$t('settings.quality.hiRes')}</option>
+              <option value="LOSSLESS">{$t('settings.quality.lossless')}</option>
+              <option value="HIGH">{$t('settings.quality.high')}</option>
+              <option value="ATMOS">{$t('settings.quality.atmos')}</option>
             </select>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Allow Quality Fallback</label>
-            <span class="setting-desc">Retry with lower quality when unavailable</span>
+            <label>{$t('settings.quality.fallback')}</label>
+            <span class="setting-desc">{$t('settings.quality.fallbackDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -956,7 +985,7 @@
         <div class="setting-item">
           <div class="setting-info">
             <label>ReplayGain</label>
-            <span class="setting-desc">Measure loudness and tag tracks for volume-normalized playback (adds an ffmpeg pass per download)</span>
+            <span class="setting-desc">{$t('settings.replayGain.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -968,13 +997,13 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="country-code">Region</label>
-            <span class="setting-desc">Country code for API (affects availability)</span>
+            <label for="country-code">{$t('settings.region.label')}</label>
+            <span class="setting-desc">{$t('settings.region.desc')}</span>
           </div>
           <div class="setting-control">
             <select id="country-code" bind:value={config.countryCode} class="setting-select">
               {#each countries as c}
-                <option value={c.code}>{c.name} ({c.code})</option>
+                <option value={c.code}>{$t(c.labelKey)} ({c.code})</option>
               {/each}
             </select>
           </div>
@@ -983,7 +1012,7 @@
         <div class="setting-item">
           <div class="setting-info">
             <label>Tidal</label>
-            <span class="setting-desc">Enable Tidal source</span>
+            <span class="setting-desc">{$t('settings.tidal.enableDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -995,8 +1024,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Skip Existing Files</label>
-            <span class="setting-desc">Skip files already on disk (matched by ISRC)</span>
+            <label>{$t('settings.skipExisting.label')}</label>
+            <span class="setting-desc">{$t('settings.skipExisting.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1008,8 +1037,8 @@
 
         <div class="setting-item setting-item-stack">
           <div class="setting-info">
-            <span class="setting-label">External Library Paths</span>
-            <span class="setting-desc">Also check these folders for ISRC matches (e.g. a Navidrome/Jellyfin library), one path per line</span>
+            <span class="setting-label">{$t('settings.externalLibs.label')}</span>
+            <span class="setting-desc">{$t('settings.externalLibs.desc')}</span>
           </div>
           <div class="setting-control wide">
             <textarea
@@ -1028,8 +1057,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Skip Unavailable Tracks</label>
-            <span class="setting-desc">Skip tracks not available for streaming</span>
+            <label>{$t('settings.skipUnavailable.label')}</label>
+            <span class="setting-desc">{$t('settings.skipUnavailable.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1041,8 +1070,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Auto-Stop on Cooldown</label>
-            <span class="setting-desc">Pause queue when all Tidal endpoints are in cooldown</span>
+            <label>{$t('settings.autoStop.label')}</label>
+            <span class="setting-desc">{$t('settings.autoStop.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1054,8 +1083,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="concurrent">Concurrent Downloads</label>
-            <span class="setting-desc">Simultaneous downloads</span>
+            <label for="concurrent">{$t('settings.concurrent.label')}</label>
+            <span class="setting-desc">{$t('settings.concurrent.desc')}</span>
           </div>
           <div class="setting-control">
             <select id="concurrent" bind:value={config.concurrentDownloads} class="setting-select">
@@ -1071,52 +1100,50 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">HTTP / SOCKS5 Proxy</span>
-            <span class="setting-desc">Route requests through a proxy</span>
+            <span class="setting-label">{$t('settings.proxy.label')}</span>
+            <span class="setting-desc">{$t('settings.proxy.desc')}</span>
           </div>
           <div class="setting-control wide">
             <input
               type="text"
               class="setting-input"
               bind:value={config.proxyUrl}
-              placeholder="e.g. socks5://127.0.0.1:1080"
+              placeholder={$t('settings.proxy.placeholder')}
             />
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Log file</span>
-            <span class="setting-desc log-path">{logFilePath || 'Unavailable'}</span>
+            <span class="setting-label">{$t('settings.logFile.label')}</span>
+            <span class="setting-desc log-path">{logFilePath || $t('settings.logFile.unavailable')}</span>
           </div>
           {#if isWailsRuntime()}
             <div class="setting-control">
-              <button class="btn-secondary" onclick={openConfig}>Open folder</button>
+              <button class="btn-secondary" onclick={openConfig}>{$t('settings.logFile.open')}</button>
             </div>
           {/if}
         </div>
 
         <div class="setting-item setting-item-stack">
           <div class="setting-info">
-            <span class="setting-label">Self-hosted instances</span>
+            <span class="setting-label">{$t('settings.selfHosted.label')}</span>
             <span class="setting-desc">
-              The community pool is shared by every user, so rate limits and cooldowns hit everyone at
-              once. Point FLACidal at your own Tidal/Qobuz/Amazon proxy and it's tried first, before the
-              shared pool.
-              <a href="https://github.com/kushiemoon-dev/FLACidal#self-hosted--private-endpoints" target="_blank" rel="noopener">How to set one up →</a>
+              {$t('settings.selfHosted.descA')}
+              <a href="https://github.com/kushiemoon-dev/FLACidal#self-hosted--private-endpoints" target="_blank" rel="noopener">{$t('settings.selfHosted.howTo')}</a>
             </span>
           </div>
         </div>
 
         <details class="advanced-instances">
-          <summary>Advanced: self-hosted instance URLs</summary>
+          <summary>{$t('settings.selfHosted.advanced')}</summary>
 
           <div class="setting-item setting-item-stack">
             <div class="setting-info">
               <span class="setting-label">
                 Tidal HiFi
                 {#if config.tidalPriorityEndpoints.length > 0}
-                  <span class="status-badge ok status-badge-sm">{config.tidalPriorityEndpoints.length} configured</span>
+                  <span class="status-badge ok status-badge-sm">{$t('settings.selfHosted.configured', { n: config.tidalPriorityEndpoints.length })}</span>
                 {/if}
               </span>
             </div>
@@ -1140,7 +1167,7 @@
               <span class="setting-label">
                 Qobuz
                 {#if config.qobuzPriorityEndpoints.length > 0}
-                  <span class="status-badge ok status-badge-sm">{config.qobuzPriorityEndpoints.length} configured</span>
+                  <span class="status-badge ok status-badge-sm">{$t('settings.selfHosted.configured', { n: config.qobuzPriorityEndpoints.length })}</span>
                 {/if}
               </span>
             </div>
@@ -1164,7 +1191,7 @@
               <span class="setting-label">
                 Amazon
                 {#if config.amazonPriorityEndpoints.length > 0}
-                  <span class="status-badge ok status-badge-sm">{config.amazonPriorityEndpoints.length} configured</span>
+                  <span class="status-badge ok status-badge-sm">{$t('settings.selfHosted.configured', { n: config.amazonPriorityEndpoints.length })}</span>
                 {/if}
               </span>
             </div>
@@ -1192,12 +1219,12 @@
     <div class="settings-grid">
       <!-- Left Column -->
       <div class="settings-column">
-        <div class="group-title">File Naming</div>
+        <div class="group-title">{$t('settings.group.fileNaming')}</div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="naming-preset">Naming Preset</label>
-            <span class="setting-desc">Quick-select a naming template</span>
+            <label for="naming-preset">{$t('settings.naming.preset')}</label>
+            <span class="setting-desc">{$t('settings.naming.presetDesc')}</span>
           </div>
           <div class="setting-control">
             <select
@@ -1205,9 +1232,9 @@
               class="setting-select"
               onchange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) config.fileNameFormat = v; }}
             >
-              <option value="">Custom...</option>
+              <option value="">{$t('settings.naming.custom')}</option>
               {#each namingPresets as preset}
-                <option value={preset.template} selected={config.fileNameFormat === preset.template}>{preset.name}: {preset.template}</option>
+                <option value={preset.template} selected={config.fileNameFormat === preset.template}>{$t(preset.labelKey)}: {preset.template}</option>
               {/each}
             </select>
           </div>
@@ -1215,8 +1242,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="file-naming">Template</label>
-            <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{discnumber}'}, {'{year}'}, {'{isrc}'}</span>
+            <label for="file-naming">{$t('settings.naming.template')}</label>
+            <span class="setting-desc">{$t('settings.naming.templateVars')} {'{artist}'}, {'{albumartist}'}, {'{title}'}, {'{album}'}, {'{track}'}, {'{discnumber}'}, {'{year}'}, {'{isrc}'}</span>
           </div>
           <div class="setting-control wide">
             <input
@@ -1231,26 +1258,26 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="date-format">Date Format</label>
-            <span class="setting-desc">Format of the DATE tag. ORIGINALDATE always keeps the full date.</span>
+            <label for="date-format">{$t('settings.naming.dateFormat')}</label>
+            <span class="setting-desc">{$t('settings.naming.dateFormatDesc')}</span>
           </div>
           <div class="setting-control">
             <select id="date-format" bind:value={config.dateFormat} class="setting-select">
-              <option value="full">Full date (YYYY-MM-DD)</option>
-              <option value="year">Year only (YYYY)</option>
+              <option value="full">{$t('settings.naming.dateFormatFull')}</option>
+              <option value="year">{$t('settings.naming.dateFormatYear')}</option>
             </select>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="artist-separator">Artist Separator</label>
-            <span class="setting-desc">How multiple artists are joined</span>
+            <label for="artist-separator">{$t('settings.naming.artistSeparator')}</label>
+            <span class="setting-desc">{$t('settings.naming.artistSeparatorDesc')}</span>
           </div>
           <div class="setting-control">
             <select id="artist-separator" bind:value={config.artistSeparator} class="setting-select">
               {#each artistSeparators as sep}
-                <option value={sep.value}>{sep.label}</option>
+                <option value={sep.value}>{$t(sep.labelKey)}</option>
               {/each}
             </select>
           </div>
@@ -1258,8 +1285,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="folder-template">Folder Structure</label>
-            <span class="setting-desc">Organize downloads into subfolders</span>
+            <label for="folder-template">{$t('settings.folder.label')}</label>
+            <span class="setting-desc">{$t('settings.folder.desc')}</span>
           </div>
           <div class="setting-control">
             <select
@@ -1268,20 +1295,20 @@
               value={folderTemplatePreset}
               onchange={handleFolderTemplateChange}
             >
-              <option value="">No organization</option>
-              <option value={'{artist}/{album}'}>Artist / Album</option>
-              <option value={'{albumartist}/{album}'}>Album Artist / Album</option>
-              <option value={'{artist}/{year} - {album}'}>Artist / Year - Album</option>
-              <option value={'{year}/{artist}/{album}'}>Year / Artist / Album</option>
-              <option value="custom">Custom template...</option>
+              <option value="">{$t('settings.folder.none')}</option>
+              <option value={'{artist}/{album}'}>{$t('settings.folder.artistAlbum')}</option>
+              <option value={'{albumartist}/{album}'}>{$t('settings.folder.albumArtistAlbum')}</option>
+              <option value={'{artist}/{year} - {album}'}>{$t('settings.folder.artistYearAlbum')}</option>
+              <option value={'{year}/{artist}/{album}'}>{$t('settings.folder.yearArtistAlbum')}</option>
+              <option value="custom">{$t('settings.folder.customOption')}</option>
             </select>
           </div>
         </div>
         {#if folderTemplatePreset === 'custom'}
           <div class="setting-item">
             <div class="setting-info">
-              <label for="folder-template-custom">Custom Template</label>
-              <span class="setting-desc">Variables: {'{artist}'}, {'{albumartist}'}, {'{album}'}, {'{year}'}, {'{label}'}</span>
+              <label for="folder-template-custom">{$t('settings.folder.customLabel')}</label>
+              <span class="setting-desc">{$t('settings.naming.templateVars')} {'{artist}'}, {'{albumartist}'}, {'{album}'}, {'{year}'}, {'{label}'}</span>
             </div>
             <div class="setting-control wide">
               <input
@@ -1297,8 +1324,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Playlist Subfolder</label>
-            <span class="setting-desc">Create subfolder for playlist downloads</span>
+            <label>{$t('settings.playlistSubfolder.label')}</label>
+            <span class="setting-desc">{$t('settings.playlistSubfolder.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1310,8 +1337,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Generate M3U8 Playlist</label>
-            <span class="setting-desc">Create .m3u8 after batch downloads</span>
+            <label>{$t('settings.m3u8.label')}</label>
+            <span class="setting-desc">{$t('settings.m3u8.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1324,12 +1351,12 @@
 
       <!-- Right Column -->
       <div class="settings-column">
-        <div class="group-title">Metadata &amp; Tags</div>
+        <div class="group-title">{$t('settings.group.metadataTags')}</div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Embed Lyrics</label>
-            <span class="setting-desc">Fetch and embed lyrics during download</span>
+            <label>{$t('settings.lyrics.embed')}</label>
+            <span class="setting-desc">{$t('settings.lyrics.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1342,8 +1369,8 @@
         {#if config.embedLyrics}
           <div class="setting-item">
             <div class="setting-info">
-              <label>Prefer Synced Lyrics</label>
-              <span class="setting-desc">Prioritize time-synced (LRC) lyrics</span>
+              <label>{$t('settings.lyrics.synced')}</label>
+              <span class="setting-desc">{$t('settings.lyrics.syncedDesc')}</span>
             </div>
             <div class="setting-control">
               <label class="toggle">
@@ -1355,8 +1382,8 @@
 
           <div class="setting-item">
             <div class="setting-info">
-              <label>Save Lyrics File</label>
-              <span class="setting-desc">Save .lrc or .txt alongside FLAC</span>
+              <label>{$t('settings.lyrics.saveFile')}</label>
+              <span class="setting-desc">{$t('settings.lyrics.saveFileDesc')}</span>
             </div>
             <div class="setting-control">
               <label class="toggle">
@@ -1369,8 +1396,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Embed Cover Art</label>
-            <span class="setting-desc">Include album artwork in FLAC files</span>
+            <label>{$t('settings.cover.embed')}</label>
+            <span class="setting-desc">{$t('settings.cover.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1382,8 +1409,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Save Cover as File</label>
-            <span class="setting-desc">Save album artwork as .jpg next to each track</span>
+            <label>{$t('settings.cover.saveFile')}</label>
+            <span class="setting-desc">{$t('settings.cover.saveFileDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1395,8 +1422,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Save Folder Cover</label>
-            <span class="setting-desc">Save folder.jpg in album directories (Plex, Jellyfin)</span>
+            <label>{$t('settings.cover.saveFolder')}</label>
+            <span class="setting-desc">{$t('settings.cover.saveFolderDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1408,8 +1435,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>First Artist Only</label>
-            <span class="setting-desc">Use only primary artist in tags and filenames</span>
+            <label>{$t('settings.firstArtist.label')}</label>
+            <span class="setting-desc">{$t('settings.firstArtist.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1421,8 +1448,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Embed Genre</label>
-            <span class="setting-desc">Include genre tag in downloaded files</span>
+            <label>{$t('settings.genre.embed')}</label>
+            <span class="setting-desc">{$t('settings.genre.embedDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1434,8 +1461,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Use Single Genre</label>
-            <span class="setting-desc">Use only the primary genre instead of all</span>
+            <label>{$t('settings.genre.single')}</label>
+            <span class="setting-desc">{$t('settings.genre.singleDesc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1447,8 +1474,8 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Auto-analyze Downloads</label>
-            <span class="setting-desc">Detect upscaled files after download</span>
+            <label>{$t('settings.autoAnalyze.label')}</label>
+            <span class="setting-desc">{$t('settings.autoAnalyze.desc')}</span>
           </div>
           <div class="setting-control">
             <label class="toggle">
@@ -1464,10 +1491,10 @@
     {:else if activeTab === 'status'}
 
     <section class="settings-section">
-      <div class="group-title">Source Health</div>
+      <div class="group-title">{$t('settings.health.group')}</div>
       <div class="api-status-header">
         <button class="btn-secondary" onclick={checkSourceHealth} disabled={checkingSourceHealth}>
-          {checkingSourceHealth ? 'Checking...' : 'Check Sources'}
+          {checkingSourceHealth ? $t('settings.health.checking') : $t('settings.health.check')}
         </button>
       </div>
       {#if sourceHealth.length > 0}
@@ -1486,12 +1513,12 @@
                     class:ok={displayStatus === 'online'}
                     class:error={displayStatus === 'dead'}
                     class:slow={displayStatus === 'degraded' || displayStatus === 'untested'}
-                    title={displayStatus !== src.status ? 'Public endpoints are all down, but your self-hosted endpoints are still serving this source' : null}>
+                    title={displayStatus !== src.status ? $t('settings.health.overrideTip') : null}>
                     {displayStatus}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
                   </span>
                   {#if src.tier1}
                     <span class="status-badge status-badge-sm" class:ok={src.tier1.healthy} class:error={!src.tier1.healthy}>
-                      Self-host: {src.tier1.healthy ? 'healthy' : 'unhealthy'}
+                      {src.tier1.healthy ? $t('settings.health.selfHostHealthy') : $t('settings.health.selfHostUnhealthy')}
                     </span>
                   {/if}
                   {#if src.reason}
@@ -1526,10 +1553,10 @@
     </section>
 
     <section class="settings-section">
-      <div class="group-title">API Status</div>
+      <div class="group-title">{$t('settings.api.group')}</div>
       <div class="api-status-header">
         <button class="btn-secondary" onclick={checkAPI} disabled={checkingAPI}>
-          {checkingAPI ? 'Checking...' : 'Check Status'}
+          {checkingAPI ? $t('settings.health.checking') : $t('settings.api.check')}
         </button>
       </div>
       {#if apiStatuses.length > 0}
@@ -1550,14 +1577,14 @@
       <div class="group-title">FFmpeg</div>
       <div class="setting-item">
         <div class="setting-info">
-          <span class="setting-label">FFmpeg Status</span>
-          <span class="setting-desc">Required for audio conversion (FLAC to MP3, AAC, etc.)</span>
+          <span class="setting-label">{$t('settings.ffmpeg.status')}</span>
+          <span class="setting-desc">{$t('settings.ffmpeg.statusDesc')}</span>
         </div>
         <div class="setting-control">
           {#if ffmpegInfo?.available}
-            <span class="status-badge ok">Installed</span>
+            <span class="status-badge ok">{$t('settings.ffmpeg.installed')}</span>
           {:else}
-            <span class="status-badge error">Not Found</span>
+            <span class="status-badge error">{$t('settings.ffmpeg.notFound')}</span>
           {/if}
         </div>
       </div>
@@ -1565,15 +1592,15 @@
       {#if ffmpegInfo?.available}
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Version</span>
-            <span class="setting-desc ffmpeg-version">{ffmpegInfo.version || 'Unknown'}</span>
+            <span class="setting-label">{$t('settings.ffmpeg.version')}</span>
+            <span class="setting-desc ffmpeg-version">{ffmpegInfo.version || $t('settings.ffmpeg.unknown')}</span>
           </div>
         </div>
       {:else}
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">Auto Install</span>
-            <span class="setting-desc">Download a static FFmpeg build to ~/.flacidal/bin/</span>
+            <span class="setting-label">{$t('settings.ffmpeg.autoInstall')}</span>
+            <span class="setting-desc">{$t('settings.ffmpeg.autoInstallDesc')}</span>
           </div>
           <div class="setting-control">
             {#if installingFFmpeg}
@@ -1582,14 +1609,14 @@
                   <div class="ffmpeg-progress-fill" style="width: {ffmpegProgress.percent}%"></div>
                 </div>
                 <span class="ffmpeg-progress-text">
-                  {ffmpegProgress.stage === 'downloading' ? `Downloading... ${Math.round(ffmpegProgress.percent)}%` : ''}
-                  {ffmpegProgress.stage === 'extracting' ? 'Extracting...' : ''}
-                  {ffmpegProgress.stage === 'complete' ? 'Done!' : ''}
-                  {ffmpegProgress.stage === 'error' ? 'Failed' : ''}
+                  {ffmpegProgress.stage === 'downloading' ? $t('settings.progress.downloading', { percent: Math.round(ffmpegProgress.percent) }) : ''}
+                  {ffmpegProgress.stage === 'extracting' ? $t('settings.progress.extracting') : ''}
+                  {ffmpegProgress.stage === 'complete' ? $t('settings.progress.done') : ''}
+                  {ffmpegProgress.stage === 'error' ? $t('settings.progress.failed') : ''}
                 </span>
               </div>
             {:else}
-              <button class="btn-accent" onclick={installFFmpegHandler}>Install FFmpeg</button>
+              <button class="btn-accent" onclick={installFFmpegHandler}>{$t('settings.ffmpeg.install')}</button>
             {/if}
           </div>
         </div>
@@ -1598,7 +1625,7 @@
 
     <!-- About & Updates -->
     <section class="settings-section about">
-      <div class="group-title">About</div>
+      <div class="group-title">{$t('settings.about.group')}</div>
       <div class="about-content">
         <div class="app-info">
           <div class="app-logo">
@@ -1611,19 +1638,19 @@
           </div>
           <div class="app-details">
             <h3>FLACidal</h3>
-            <span class="version">Version {appVersion || '...'}</span>
+            <span class="version">{$t('settings.about.version', { version: appVersion || '...' })}</span>
           </div>
         </div>
-        <p class="app-desc">Lossless FLAC downloader, Tidal, Qobuz, Amazon, Bandcamp, Soulseek.</p>
+        <p class="app-desc">{$t('settings.about.desc')}</p>
         <div class="update-check">
           <button class="btn-secondary" onclick={checkUpdate} disabled={checkingUpdate}>
-            {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+            {checkingUpdate ? $t('settings.health.checking') : $t('settings.about.checkUpdates')}
           </button>
           {#if updateInfo}
             {#if updateInfo.hasUpdate}
-              <span class="update-available">Update available: v{updateInfo.version}, <a href={updateInfo.releaseUrl} target="_blank" rel="noopener">View Release</a></span>
+              <span class="update-available">{$t('settings.about.updateAvailable', { version: updateInfo.version })} <a href={updateInfo.releaseUrl} target="_blank" rel="noopener">{$t('settings.about.viewRelease')}</a></span>
             {:else}
-              <span class="update-current">You're up to date!</span>
+              <span class="update-current">{$t('settings.about.upToDate')}</span>
             {/if}
           {/if}
         </div>
@@ -1645,17 +1672,17 @@
           <path d="M3 3v5h5"/>
         </svg>
       </div>
-      <h3>Reset to Defaults?</h3>
-      <p>This will reset all settings to their default values. Your download folder will be preserved.</p>
+      <h3>{$t('settings.reset.title')}</h3>
+      <p>{$t('settings.reset.body')}</p>
       <div class="modal-actions">
         <button class="modal-btn cancel" onclick={() => showResetConfirm = false}>
-          Cancel
+          {$t('settings.reset.cancel')}
         </button>
         <button class="modal-btn confirm" onclick={handleReset} disabled={isResetting}>
           {#if isResetting}
-            Resetting...
+            {$t('settings.reset.resetting')}
           {:else}
-            Reset Settings
+            {$t('settings.reset.confirm')}
           {/if}
         </button>
       </div>

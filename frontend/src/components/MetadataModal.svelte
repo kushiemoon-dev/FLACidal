@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { GetFileMetadata, GetFileCoverArt } from '../lib/api';
-  import { formatBytes, formatDuration } from '../lib/format';
+  import { formatBytes, formatDuration, formatNumber } from '../lib/format';
+  import { t, locale } from '../lib/i18n';
 
   let { filePath, onClose }: { filePath: string; onClose: () => void } = $props();
 
@@ -55,7 +56,7 @@
         }
       }
     } catch (e: any) {
-      error = e.message || 'Failed to load metadata';
+      error = e.message || $t('modals.metadata.failedFallback');
     } finally {
       loading = false;
     }
@@ -80,8 +81,8 @@
 <div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>File Metadata</h2>
-      <button class="close-btn" onclick={onClose} aria-label="Close">
+      <h2>{$t('modals.metadata.title')}</h2>
+      <button class="close-btn" onclick={onClose} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -92,7 +93,7 @@
     {#if loading}
       <div class="loading-state">
         <div class="loader"></div>
-        <p>Loading metadata...</p>
+        <p>{$t('modals.metadata.loading')}</p>
       </div>
     {:else if error}
       <div class="error-state">
@@ -108,7 +109,7 @@
         <!-- Cover & Basic Info -->
         <div class="info-header">
           {#if coverArt}
-            <img src={coverArt} alt="Cover Art" class="cover-art" />
+            <img src={coverArt} alt={$t('modals.metadata.coverArt')} class="cover-art" />
           {:else}
             <div class="cover-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -119,49 +120,49 @@
             </div>
           {/if}
           <div class="basic-info">
-            <h3>{metadata.title || 'Unknown Title'}</h3>
-            <p class="artist">{metadata.artist || 'Unknown Artist'}</p>
-            <p class="album">{metadata.album || 'Unknown Album'}</p>
+            <h3>{metadata.title || $t('modals.metadata.unknownTitle')}</h3>
+            <p class="artist">{metadata.artist || $t('modals.metadata.unknownArtist')}</p>
+            <p class="album">{metadata.album || $t('modals.metadata.unknownAlbum')}</p>
           </div>
         </div>
 
         <!-- Tags Section -->
         <div class="section">
-          <h4>Tags</h4>
+          <h4>{$t('modals.metadata.tags')}</h4>
           <div class="metadata-grid">
             {#if metadata.title}
               <div class="meta-item">
-                <span class="meta-label">Title</span>
+                <span class="meta-label">{$t('modals.metadata.tagTitle')}</span>
                 <span class="meta-value">{metadata.title}</span>
               </div>
             {/if}
             {#if metadata.artist}
               <div class="meta-item">
-                <span class="meta-label">Artist</span>
+                <span class="meta-label">{$t('modals.metadata.tagArtist')}</span>
                 <span class="meta-value">{metadata.artist}</span>
               </div>
             {/if}
             {#if metadata.album}
               <div class="meta-item">
-                <span class="meta-label">Album</span>
+                <span class="meta-label">{$t('modals.metadata.tagAlbum')}</span>
                 <span class="meta-value">{metadata.album}</span>
               </div>
             {/if}
             {#if metadata.trackNumber}
               <div class="meta-item">
-                <span class="meta-label">Track</span>
+                <span class="meta-label">{$t('modals.metadata.tagTrack')}</span>
                 <span class="meta-value">{metadata.trackNumber}</span>
               </div>
             {/if}
             {#if metadata.date}
               <div class="meta-item">
-                <span class="meta-label">Date</span>
+                <span class="meta-label">{$t('modals.metadata.tagDate')}</span>
                 <span class="meta-value">{metadata.date}</span>
               </div>
             {/if}
             {#if metadata.genre}
               <div class="meta-item">
-                <span class="meta-label">Genre</span>
+                <span class="meta-label">{$t('modals.metadata.tagGenre')}</span>
                 <span class="meta-value">{metadata.genre}</span>
               </div>
             {/if}
@@ -176,27 +177,27 @@
 
         <!-- Audio Properties Section -->
         <div class="section">
-          <h4>Audio Properties</h4>
+          <h4>{$t('modals.metadata.audioProperties')}</h4>
           <div class="metadata-grid">
             <div class="meta-item">
-              <span class="meta-label">Duration</span>
+              <span class="meta-label">{$t('modals.metadata.duration')}</span>
               <span class="meta-value">{formatDuration(metadata.duration)}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Sample Rate</span>
-              <span class="meta-value">{metadata.sampleRate.toLocaleString()} Hz</span>
+              <span class="meta-label">{$t('modals.metadata.sampleRate')}</span>
+              <span class="meta-value">{formatNumber(metadata.sampleRate, $locale)} Hz</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Bit Depth</span>
+              <span class="meta-label">{$t('modals.metadata.bitDepth')}</span>
               <span class="meta-value">{metadata.bitDepth} bit</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Channels</span>
-              <span class="meta-value">{metadata.channels === 2 ? 'Stereo' : metadata.channels === 1 ? 'Mono' : `${metadata.channels} ch`}</span>
+              <span class="meta-label">{$t('modals.metadata.channels')}</span>
+              <span class="meta-value">{metadata.channels === 2 ? $t('modals.metadata.stereo') : metadata.channels === 1 ? $t('modals.metadata.mono') : `${metadata.channels} ch`}</span>
             </div>
             {#if metadata.bitrate > 0}
               <div class="meta-item">
-                <span class="meta-label">Bitrate</span>
+                <span class="meta-label">{$t('modals.metadata.bitrate')}</span>
                 <span class="meta-value">{metadata.bitrate} kbps</span>
               </div>
             {/if}
@@ -205,23 +206,23 @@
 
         <!-- File Info Section -->
         <div class="section">
-          <h4>File Info</h4>
+          <h4>{$t('modals.metadata.fileInfo')}</h4>
           <div class="metadata-grid">
             <div class="meta-item full-width">
-              <span class="meta-label">Path</span>
+              <span class="meta-label">{$t('modals.metadata.path')}</span>
               <span class="meta-value mono path">{metadata.path}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Size</span>
+              <span class="meta-label">{$t('modals.metadata.size')}</span>
               <span class="meta-value">{formatBytes(metadata.size)}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Cover Art</span>
+              <span class="meta-label">{$t('modals.metadata.coverArt')}</span>
               <span class="meta-value">
                 {#if metadata.hasCover}
-                  Yes ({metadata.coverMime}, {formatBytes(metadata.coverSize || 0)})
+                  {$t('modals.metadata.hasCover', { mime: metadata.coverMime ?? '', size: formatBytes(metadata.coverSize || 0) })}
                 {:else}
-                  No
+                  {$t('modals.metadata.noCover')}
                 {/if}
               </span>
             </div>
@@ -231,11 +232,11 @@
         <!-- Quality Badge -->
         <div class="quality-section">
           {#if metadata.bitDepth >= 24 || metadata.sampleRate > 44100}
-            <span class="quality-badge hi-res">Hi-Res</span>
+            <span class="quality-badge hi-res">{$t('modals.metadata.hiRes')}</span>
           {:else if metadata.bitDepth === 16 && metadata.sampleRate === 44100}
-            <span class="quality-badge cd">CD Quality</span>
+            <span class="quality-badge cd">{$t('modals.metadata.cdQuality')}</span>
           {:else}
-            <span class="quality-badge lossless">Lossless</span>
+            <span class="quality-badge lossless">{$t('modals.metadata.lossless')}</span>
           {/if}
           <span class="quality-details">
             {metadata.sampleRate / 1000} kHz / {metadata.bitDepth} bit
@@ -246,13 +247,13 @@
         {#if metadata.hasLyrics}
           <div class="section lyrics-section">
             <button class="lyrics-toggle" onclick={() => showLyrics = !showLyrics}>
-              <h4>Lyrics</h4>
+              <h4>{$t('modals.metadata.lyrics')}</h4>
               <div class="lyrics-badges">
                 {#if metadata.syncedLyrics}
-                  <span class="lyrics-badge synced">Synced</span>
+                  <span class="lyrics-badge synced">{$t('modals.metadata.synced')}</span>
                 {/if}
                 {#if metadata.lyrics}
-                  <span class="lyrics-badge plain">Plain</span>
+                  <span class="lyrics-badge plain">{$t('modals.metadata.plain')}</span>
                 {/if}
               </div>
               <svg class="chevron" class:open={showLyrics} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

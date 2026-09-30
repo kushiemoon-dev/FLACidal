@@ -7,6 +7,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: '../playwright-report', open: 'never' }]],
   use: {
     baseURL: 'http://localhost:5173',
+    locale: 'en-US',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 8000,

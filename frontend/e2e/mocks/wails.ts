@@ -230,7 +230,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       FetchTidalContent_alias: async (..._a: any[]) => ({}),
     }
 
-    ;(window as any).go = { main: { App } }
+    ;(window as any).go = { main: { App }, app: { App } }
 
     const noop = () => {}
     const offFn = () => {}

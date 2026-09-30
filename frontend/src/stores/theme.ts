@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import type { MessageKey } from '../lib/i18n';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
@@ -71,13 +72,13 @@ export const themeStore = createThemeStore();
 export const accentColor = writable<string>('#f472b6');
 
 export const accentPresets = [
-  { name: 'Pink', color: '#f472b6' },
-  { name: 'Purple', color: '#a855f7' },
-  { name: 'Blue', color: '#3b82f6' },
-  { name: 'Cyan', color: '#06b6d4' },
-  { name: 'Green', color: '#10b981' },
-  { name: 'Orange', color: '#f59e0b' },
-  { name: 'Red', color: '#ef4444' }
+  { name: 'Pink', labelKey: 'settings.accent.pink' as MessageKey, color: '#f472b6' },
+  { name: 'Purple', labelKey: 'settings.accent.purple' as MessageKey, color: '#a855f7' },
+  { name: 'Blue', labelKey: 'settings.accent.blue' as MessageKey, color: '#3b82f6' },
+  { name: 'Cyan', labelKey: 'settings.accent.cyan' as MessageKey, color: '#06b6d4' },
+  { name: 'Green', labelKey: 'settings.accent.green' as MessageKey, color: '#10b981' },
+  { name: 'Orange', labelKey: 'settings.accent.orange' as MessageKey, color: '#f59e0b' },
+  { name: 'Red', labelKey: 'settings.accent.red' as MessageKey, color: '#ef4444' }
 ];
 
 export const fontPresets = [

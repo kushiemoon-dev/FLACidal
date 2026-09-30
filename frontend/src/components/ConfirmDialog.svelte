@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { t } from '../lib/i18n';
 
   let {
     title,
     message,
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
+    confirmText,
+    cancelText,
     variant = 'default',
     onConfirm,
     onCancel,
@@ -47,8 +48,8 @@
     <h2 class="dialog-title">{title}</h2>
     <p class="dialog-message">{message}</p>
     <div class="dialog-actions">
-      <button class="btn btn-cancel" onclick={onCancel}>{cancelText}</button>
-      <button class="btn btn-confirm" class:btn-danger={variant === 'danger'} onclick={onConfirm}>{confirmText}</button>
+      <button class="btn btn-cancel" onclick={onCancel}>{cancelText ?? $t('common.cancel')}</button>
+      <button class="btn btn-confirm" class:btn-danger={variant === 'danger'} onclick={onConfirm}>{confirmText ?? $t('common.confirm')}</button>
     </div>
   </div>
 </div>

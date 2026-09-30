@@ -1,5 +1,6 @@
 <script lang="ts">
   import { queueItems } from '../stores/queue';
+  import { t } from '../lib/i18n';
 
   let collapsed = $state(false);
 
@@ -10,8 +11,8 @@
   function statusLabel(status: string): string {
     switch (status) {
       case 'queued':
-      case 'pending': return 'Queued';
-      case 'downloading': return 'Downloading…';
+      case 'pending': return $t('queue.panel.queued');
+      case 'downloading': return $t('queue.panel.downloading');
       default: return status;
     }
   }
@@ -27,7 +28,7 @@
 <div class="queue-panel" class:collapsed>
   <button class="panel-header" onclick={() => (collapsed = !collapsed)}>
     <span class="panel-title">
-      Downloads
+      {$t('queue.panel.title')}
       {#if jobList.length > 0}
         <span class="badge">{jobList.length}</span>
       {/if}
@@ -38,7 +39,7 @@
   {#if !collapsed}
     <div class="panel-body">
       {#if jobList.length === 0}
-        <p class="empty">No downloads in progress</p>
+        <p class="empty">{$t('queue.panel.empty')}</p>
       {:else}
         <ul class="job-list">
           {#each jobList as job (job.trackId)}
