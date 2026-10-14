@@ -14,4 +14,9 @@ export const shell = {
   'shell.update.quit': 'Beenden',
   'shell.update.now': 'Jetzt aktualisieren',
   'shell.update.downloading': 'Update wird heruntergeladen...',
+  'shell.auth.title': "Anmeldung erforderlich",
+  'shell.auth.body': "Dieser FLACidal-Server ist geschützt. Geben Sie das Zugriffstoken ein, um fortzufahren.",
+  'shell.auth.label': "Zugriffstoken",
+  'shell.auth.submit': "Entsperren",
+  'shell.auth.rejected': "Das Token wurde abgelehnt. Prüfen Sie es und versuchen Sie es erneut.",
 };

@@ -21,6 +21,7 @@
   import IssueReporterModal from './components/IssueReporterModal.svelte';
   import QueuePanel from './components/QueuePanel.svelte';
   import UpdateRequiredScreen from './components/UpdateRequiredScreen.svelte';
+  import AuthPrompt from './components/AuthPrompt.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused, GetUpdateStatus, DownloadAndInstallUpdate, type UpdateStatus } from './lib/api';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
@@ -207,6 +208,8 @@
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
+
+<AuthPrompt />
 
 {#if updateStatus?.blocked}
 <UpdateRequiredScreen status={updateStatus} onUpdate={DownloadAndInstallUpdate} />

@@ -14,4 +14,9 @@ export const shell = {
   'shell.update.quit': 'Quitter',
   'shell.update.now': 'Mettre à jour',
   'shell.update.downloading': 'Téléchargement de la mise à jour...',
+  'shell.auth.title': "Authentification requise",
+  'shell.auth.body': "Ce serveur FLACidal est protégé. Saisissez son jeton d'accès pour continuer.",
+  'shell.auth.label': "Jeton d'accès",
+  'shell.auth.submit': "Déverrouiller",
+  'shell.auth.rejected': "Le jeton a été refusé. Vérifiez-le et réessayez.",
 };

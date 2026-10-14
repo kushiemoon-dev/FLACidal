@@ -22,6 +22,7 @@
 
 import { EventsOn as WailsEventsOn, EventsOff as WailsEventsOff } from '../../wailsjs/runtime/runtime.js'
 import { isWailsRuntime } from './api'
+import { getAuthToken, probeAuth } from './auth'
 
 // `never[]` params let callers pass handlers typed for their own payload.
 type EventCallback = (...data: never[]) => void
@@ -38,7 +39,9 @@ function backoffDelayMs(attempt: number): number {
 
 function socketURL(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${proto}//${window.location.host}/ws`
+  const token = getAuthToken()
+  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${proto}//${window.location.host}/ws${query}`
 }
 
 function dispatch(eventName: string, payload: unknown): void {
@@ -79,8 +82,10 @@ function connect(): void {
   if (typeof WebSocket === 'undefined') return
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
 
+  let opened = false
   socket = new WebSocket(socketURL())
   socket.onopen = () => {
+    opened = true
     reconnectAttempt = 0
   }
   socket.onmessage = handleMessage
@@ -88,6 +93,8 @@ function connect(): void {
     socket?.close()
   }
   socket.onclose = () => {
+    // A refused upgrade (401) is invisible to the browser, so ask over HTTP.
+    if (!opened) void probeAuth()
     scheduleReconnect()
   }
 }

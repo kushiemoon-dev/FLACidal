@@ -14,4 +14,9 @@ export const shell = {
   'shell.update.quit': 'Quit',
   'shell.update.now': 'Update Now',
   'shell.update.downloading': 'Downloading update...',
+  'shell.auth.title': "Authentication required",
+  'shell.auth.body': "This FLACidal server is protected. Enter its access token to continue.",
+  'shell.auth.label': "Access token",
+  'shell.auth.submit': "Unlock",
+  'shell.auth.rejected': "The token was rejected. Check it and try again.",
 } as const;

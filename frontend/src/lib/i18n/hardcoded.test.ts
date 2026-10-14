@@ -8,7 +8,7 @@ const MIGRATED: string[] = [
   'App.svelte',
   'components/Sidebar.svelte', 'components/Toast.svelte', 'components/ConfirmDialog.svelte',
   'components/ContextMenu.svelte', 'components/TabBar.svelte', 'components/DropZone.svelte',
-  'components/UpdateRequiredScreen.svelte',
+  'components/UpdateRequiredScreen.svelte', 'components/AuthPrompt.svelte',
   'pages/Home.svelte', 'pages/Search.svelte', 'pages/Queue.svelte', 'components/QueuePanel.svelte',
   'pages/History.svelte', 'pages/Files.svelte', 'pages/Settings.svelte',
   'components/AnalysisModal.svelte', 'components/ConvertModal.svelte',
@@ -27,6 +27,7 @@ const EXCLUDED: Record<string, string> = {};
 const TS_EXCLUDED: Record<string, string> = {
   'lib/api.ts': 'browser-mode developer errors, never shown as product UI',
   'lib/websocket.ts': 'console diagnostics only',
+  'lib/auth.ts': 'HTTP header protocol strings, never shown as product UI',
 };
 
 // TODO(i18n): real leftovers the stricter scanner found in the tree. Fix them in the components, then delete the entry.

@@ -146,7 +146,7 @@ describe('API call routing in browser mode', () => {
     const version = await GetAppVersion()
 
     expect(version).toBe('1.0.0')
-    expect(fetchMock).toHaveBeenCalledWith('/api/version', undefined)
+    expect(fetchMock).toHaveBeenCalledWith('/api/version', expect.objectContaining({ headers: expect.any(Headers) }))
   })
 
   it('IsQueuePaused issues a GET to /api/downloads/paused and unwraps the .paused field', async () => {
@@ -345,5 +345,101 @@ describe('CheckForUpdate in browser mode', () => {
     const info = await CheckForUpdate()
 
     expect(info.url).toBe('https://example.com/release')
+  })
+})
+
+describe('auth token handling in API calls', () => {
+  function stubStorage(token?: string) {
+    const data = new Map<string, string>(token ? [['flacidal.authToken', token]] : [])
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    })
+  }
+  function stubFetch(status = 200, body: unknown = 'ok') {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: status < 400,
+      status,
+      statusText: status === 401 ? 'Unauthorized' : 'OK',
+      json: async () => body,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    clearWailsRuntime()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends Authorization: Bearer when a token is stored', async () => {
+    stubStorage('s3cret')
+    const fetchMock = stubFetch(200, { version: '4.0.0' })
+    const { GetAppVersion } = await import('./api')
+    await GetAppVersion()
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer s3cret')
+  })
+
+  it('apiPost keeps Content-Type and adds the Bearer header', async () => {
+    stubStorage('s3cret')
+    const fetchMock = stubFetch(200, true)
+    const { SetDownloadFolder } = await import('./api')
+    await SetDownloadFolder('/music')
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.get('Content-Type')).toBe('application/json')
+    expect(headers.get('Authorization')).toBe('Bearer s3cret')
+  })
+
+  it('sends no Authorization header without a token', async () => {
+    stubStorage()
+    const fetchMock = stubFetch(200, { version: '4.0.0' })
+    const { GetAppVersion } = await import('./api')
+    await GetAppVersion()
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.has('Authorization')).toBe(false)
+  })
+
+  it('a 401 notifies listeners and still throws', async () => {
+    stubStorage()
+    stubFetch(401, { error: 'unauthorized' })
+    const { onAuthRequired } = await import('./auth')
+    const cb = vi.fn()
+    onAuthRequired(cb)
+    const { GetAppVersion } = await import('./api')
+    await expect(GetAppVersion()).rejects.toThrow('unauthorized')
+    expect(cb).toHaveBeenCalledOnce()
+  })
+
+  it('ExportFailedDownloads sends the token and reports a 401', async () => {
+    stubStorage('s3cret')
+    const fetchMock = stubFetch(401, { error: 'unauthorized' })
+    const { onAuthRequired } = await import('./auth')
+    const cb = vi.fn()
+    onAuthRequired(cb)
+    const { ExportFailedDownloads } = await import('./api')
+    await expect(ExportFailedDownloads('txt')).rejects.toThrow('unauthorized')
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer s3cret')
+    expect(cb).toHaveBeenCalledOnce()
+  })
+
+  it('under Wails there is no fetch and no notification', async () => {
+    setWailsRuntime()
+    stubStorage('s3cret')
+    wailsMock.GetAppVersion.mockResolvedValue('4.0.0')
+    const fetchMock = stubFetch(401)
+    const { onAuthRequired } = await import('./auth')
+    const cb = vi.fn()
+    onAuthRequired(cb)
+    const { GetAppVersion } = await import('./api')
+    await GetAppVersion()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(cb).not.toHaveBeenCalled()
   })
 })

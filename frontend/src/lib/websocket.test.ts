@@ -156,3 +156,97 @@ describe('EventsOn/EventsOff over websocket (browser mode)', () => {
     expect(socket).toHaveLength(1)
   })
 })
+
+describe('websocket auth token (browser mode)', () => {
+  function stubStorage(token?: string) {
+    const data = new Map<string, string>(token ? [['flacidal.authToken', token]] : [])
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    })
+  }
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    clearWailsRuntime()
+    MockWebSocket.instances = []
+    vi.stubGlobal('WebSocket', MockWebSocket)
+    // Keep the reconnect backoff timer from firing into later tests.
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('connects to /ws without a query when no token is stored', async () => {
+    stubStorage()
+    const { EventsOn } = await import('./websocket')
+    EventsOn('download-progress', vi.fn())
+    expect(MockWebSocket.instances[0].url).toMatch(/^wss?:\/\/[^?]+\/ws$/)
+  })
+
+  it('appends the URL-encoded token as ?token=', async () => {
+    stubStorage('s3cret/x y')
+    const { EventsOn } = await import('./websocket')
+    EventsOn('download-progress', vi.fn())
+    expect(MockWebSocket.instances[0].url.endsWith('/ws?token=s3cret%2Fx%20y')).toBe(true)
+  })
+
+  it('probes /api/version and notifies when the socket closes before ever opening', async () => {
+    stubStorage()
+    const fetchMock = vi.fn().mockResolvedValue({ status: 401 })
+    vi.stubGlobal('fetch', fetchMock)
+    const { onAuthRequired } = await import('./auth')
+    const cb = vi.fn()
+    onAuthRequired(cb)
+    const { EventsOn } = await import('./websocket')
+    EventsOn('download-progress', vi.fn())
+
+    MockWebSocket.instances[0].close()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(cb).toHaveBeenCalledOnce()
+  })
+
+  it('does not probe when the socket had opened before closing', async () => {
+    stubStorage()
+    const fetchMock = vi.fn().mockResolvedValue({ status: 401 })
+    vi.stubGlobal('fetch', fetchMock)
+    const { EventsOn } = await import('./websocket')
+    EventsOn('download-progress', vi.fn())
+
+    const socket = MockWebSocket.instances[0]
+    socket.onopen?.()
+    socket.close()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('websocket auth token (Wails mode)', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    setWailsRuntime()
+    MockWebSocket.instances = []
+    vi.stubGlobal('WebSocket', MockWebSocket)
+  })
+  afterEach(() => {
+    clearWailsRuntime()
+    vi.unstubAllGlobals()
+  })
+
+  it('opens no socket and sends no probe', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { EventsOn } = await import('./websocket')
+    EventsOn('download-progress', vi.fn())
+    expect(MockWebSocket.instances).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})

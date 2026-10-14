@@ -13,6 +13,7 @@
 // reaching into 'wailsjs/go/app/App.js' directly.
 
 import * as Wails from '../../wailsjs/go/app/App.js'
+import { authHeaders, notifyAuthRequired } from './auth'
 
 let cachedIsWails: boolean | null = null
 
@@ -33,8 +34,11 @@ type WailsResult<K extends keyof typeof Wails> = Awaited<ReturnType<(typeof Wail
 const API_BASE = '/api'
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init)
+  const headers = new Headers(init?.headers)
+  for (const [k, v] of Object.entries(authHeaders())) headers.set(k, v)
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
   if (!res.ok) {
+    if (res.status === 401 && !isWailsRuntime()) notifyAuthRequired()
     let message = `${res.status} ${res.statusText}`
     try {
       const body = await res.json()
@@ -236,8 +240,11 @@ export async function ExportFailedDownloads(format: 'txt' | 'csv'): Promise<stri
     return Wails.ExportFailedDownloads(format)
   }
 
-  const res = await fetch(`${API_BASE}/downloads/export?format=${encodeURIComponent(format)}`)
+  const res = await fetch(`${API_BASE}/downloads/export?format=${encodeURIComponent(format)}`, {
+    headers: authHeaders(),
+  })
   if (!res.ok) {
+    if (res.status === 401) notifyAuthRequired()
     const body = await res.json().catch(() => null)
     throw new Error(body?.error || `${res.status} ${res.statusText}`)
   }
