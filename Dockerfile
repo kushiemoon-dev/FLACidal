@@ -51,6 +51,7 @@ USER flacidal
 WORKDIR /app
 ENV HOME=/home/flacidal \
     PORT=8080 \
+    LISTEN_HOST=0.0.0.0 \
     FRONTEND_DIST_DIR=/app/frontend/dist
 
 COPY --from=backend --chown=flacidal:flacidal /out/flacidal-server /app/flacidal-server

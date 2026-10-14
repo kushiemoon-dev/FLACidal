@@ -62,7 +62,9 @@ func TestHandleGetMetadata_MissingPath(t *testing.T) {
 func TestHandleGetMetadata_InvalidFile(t *testing.T) {
 	s := newTestServer(t)
 
-	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
+	dir := t.TempDir()
+	s.config.DownloadFolder = dir
+	path := filepath.Join(dir, "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("not actually flac data"), 0644); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
@@ -95,7 +97,9 @@ func TestHandleGetCoverArt_MissingPath(t *testing.T) {
 func TestHandleGetCoverArt_InvalidFile(t *testing.T) {
 	s := newTestServer(t)
 
-	path := filepath.Join(t.TempDir(), "not-a-real-flac.flac")
+	dir := t.TempDir()
+	s.config.DownloadFolder = dir
+	path := filepath.Join(dir, "not-a-real-flac.flac")
 	if err := os.WriteFile(path, []byte("not actually flac data"), 0644); err != nil {
 		t.Fatalf("setup: %v", err)
 	}

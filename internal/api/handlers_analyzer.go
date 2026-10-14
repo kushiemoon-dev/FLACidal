@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,9 +17,9 @@ type analyzeRequest struct {
 }
 
 func (s *Server) handleAnalyzeFileImpl(c *fiber.Ctx) error {
-	filePath, tempPath, err := resolveAnalyzePath(c)
+	filePath, tempPath, err := s.resolveAnalyzePath(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return analyzePathError(c, err)
 	}
 	if tempPath != "" {
 		defer cleanupTemp(tempPath)
@@ -43,7 +44,20 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "at least one path is required in the paths array"})
 	}
 
-	results := core.AnalyzeMultiple(req.Paths)
+	results := make([]core.AnalysisResult, len(req.Paths))
+	var valid []string
+	var validIdx []int
+	for i, p := range req.Paths {
+		if err := s.confine(p); err != nil {
+			results[i] = core.AnalysisResult{FilePath: p, FileName: filepath.Base(p), Verdict: "error", VerdictLabel: "Error", Details: err.Error()}
+			continue
+		}
+		valid = append(valid, p)
+		validIdx = append(validIdx, i)
+	}
+	for j, r := range core.AnalyzeMultiple(valid) {
+		results[validIdx[j]] = r
+	}
 
 	responses := make([]fiber.Map, 0, len(results))
 	for _, r := range results {
@@ -54,9 +68,9 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleQuickAnalyzeImpl(c *fiber.Ctx) error {
-	filePath, tempPath, err := resolveAnalyzePath(c)
+	filePath, tempPath, err := s.resolveAnalyzePath(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return analyzePathError(c, err)
 	}
 	if tempPath != "" {
 		defer cleanupTemp(tempPath)
@@ -89,7 +103,7 @@ var supportedAnalyzeExtensions = map[string]bool{
 
 // When a multipart upload was used, the caller is responsible for deleting
 // the temp file that gets written to /tmp.
-func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
+func (s *Server) resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 	file, uploadErr := c.FormFile("file")
 	if uploadErr == nil {
 		ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -113,7 +127,18 @@ func resolveAnalyzePath(c *fiber.Ctx) (filePath, tempPath string, err error) {
 	if !filepath.IsAbs(req.Path) {
 		return "", "", fmt.Errorf("path must be absolute")
 	}
+	if err := s.confine(req.Path); err != nil {
+		return "", "", err
+	}
 	return req.Path, "", nil
+}
+
+// analyzePathError keeps 400 for bad requests and uses 403 for confinement.
+func analyzePathError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, errPathOutside) {
+		return pathError(c, err)
+	}
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 }
 
 func buildAnalyzeResponse(r *core.AnalysisResult) fiber.Map {

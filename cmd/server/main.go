@@ -26,6 +26,16 @@ var version = "dev"
 func main() {
 	log.Println("Starting FLACidal Server...")
 
+	listen, err := resolveListenSettings(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if listen.Token == "" {
+		log.Println("WARNING: no AUTH_TOKEN set, authentication is disabled (loopback only); any local process can use the API")
+	} else {
+		log.Println("Authentication enabled")
+	}
+
 	// Kick off a background refresh of Tidal endpoints from the gist before the downloader initializes.
 	core.InitTidalEndpoints()
 
@@ -126,6 +136,10 @@ func main() {
 		Context:         ctx,
 		FrontendFS:      frontendFS,
 		FrontendDir:     os.Getenv("FRONTEND_DIST_DIR"),
+
+		AuthToken:        listen.Token,
+		EnforceLocalHost: listen.Loopback && listen.Token == "",
+		CORSOrigins:      listen.CORSOrigins,
 	})
 
 	downloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
@@ -152,13 +166,8 @@ func main() {
 		_ = server.Shutdown()
 	}()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("Listening on :%s", port)
-	if err := server.Listen(":" + port); err != nil {
+	log.Printf("Listening on %s", listen.Addr)
+	if err := server.Listen(listen.Addr); err != nil {
 		log.Fatalf("Server error: %v", err) //nolint:gocritic // exiting anyway; the deferred cancel() has nothing left to clean up
 	}
 }

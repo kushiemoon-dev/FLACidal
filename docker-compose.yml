@@ -8,6 +8,8 @@ services:
     volumes:
       - flacidal-config:/home/flacidal/.flacidal
       - ./music:/home/flacidal/Music
+    environment:
+      - AUTH_TOKEN=${FLACIDAL_AUTH_TOKEN:?set FLACIDAL_AUTH_TOKEN in your environment or .env file}
     restart: unless-stopped
 
 volumes:

@@ -2,9 +2,10 @@ package api
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -28,6 +29,18 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	var config core.Config
 	if err := c.BodyParser(&config); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	folder, err := validateDownloadFolder(config.DownloadFolder)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	libraries, err := validateLibraryPaths(config.ExternalLibraryPaths)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	config.DownloadFolder = folder
+	if config.ExternalLibraryPaths != nil {
+		config.ExternalLibraryPaths = libraries
 	}
 	if err := core.SaveConfig(&config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -514,7 +527,14 @@ func (s *Server) handleDeleteFile(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
 	}
 
-	if err := os.Remove(path); err != nil {
+	if err := s.confine(path); err != nil {
+		return pathError(c, err)
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".flac") {
+		return c.Status(400).JSON(fiber.Map{"error": "only FLAC files can be deleted"})
+	}
+
+	if err := core.DeleteFile(path); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -525,6 +545,10 @@ func (s *Server) handleGetMetadata(c *fiber.Ctx) error {
 	path := c.Query("path")
 	if path == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
+	}
+
+	if err := s.confine(path); err != nil {
+		return pathError(c, err)
 	}
 
 	meta, err := core.ReadFLACMetadata(path)
@@ -539,6 +563,10 @@ func (s *Server) handleGetCoverArt(c *fiber.Ctx) error {
 	path := c.Query("path")
 	if path == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "a path is required"})
+	}
+
+	if err := s.confine(path); err != nil {
+		return pathError(c, err)
 	}
 
 	base64Data, mimeType, err := core.GetCoverArtBase64(path)
@@ -562,7 +590,11 @@ func (s *Server) handlePreviewRename(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	previews := core.PreviewRename(req.Files, req.Template)
+	previews := make([]core.RenamePreview, 0, len(req.Files))
+	for _, f := range req.Files {
+		p := s.previewConfined(f, req.Template)
+		previews = append(previews, p)
+	}
 	return c.JSON(previews)
 }
 
@@ -575,8 +607,35 @@ func (s *Server) handleRenameFiles(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	results := core.RenameFiles(req.Files, req.Template)
+	results := make([]core.RenameResult, 0, len(req.Files))
+	for _, f := range req.Files {
+		p := s.previewConfined(f, req.Template)
+		if p.HasError {
+			results = append(results, core.RenameResult{OldPath: f, NewPath: f, Error: p.Error})
+			continue
+		}
+		results = append(results, core.RenameFiles([]string{f}, req.Template)[0])
+	}
 	return c.JSON(results)
+}
+
+// previewConfined previews one rename and also checks the destination (which
+// may include sub-folders to create) against the allowed roots.
+func (s *Server) previewConfined(f, template string) core.RenamePreview {
+	fail := func(msg string) core.RenamePreview {
+		return core.RenamePreview{OldPath: f, OldName: filepath.Base(f), NewName: filepath.Base(f), NewPath: f, HasError: true, Error: msg}
+	}
+	if err := s.confine(f); err != nil {
+		return fail(err.Error())
+	}
+	p := core.PreviewRename([]string{f}, template)[0]
+	if p.HasError {
+		return p
+	}
+	if err := s.confine(p.NewPath); err != nil {
+		return fail(err.Error())
+	}
+	return p
 }
 
 func (s *Server) handleIsConverterAvailable(c *fiber.Ctx) error {
@@ -607,12 +666,29 @@ func (s *Server) handleConvertFiles(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	if req.OutputDir != "" {
+		if err := s.confine(req.OutputDir); err != nil {
+			return pathError(c, err)
+		}
+	}
+
+	results := make([]core.ConversionResult, len(req.Files))
+	var valid []string
+	var validIdx []int
+	for i, f := range req.Files {
+		if err := s.confine(f); err != nil {
+			results[i] = core.ConversionResult{SourcePath: f, Error: err.Error()}
+			continue
+		}
+		valid = append(valid, f)
+		validIdx = append(validIdx, i)
+	}
+
 	conv := core.GetConverter()
 	if conv == nil {
-		results := make([]core.ConversionResult, len(req.Files))
-		for i, f := range req.Files {
+		for _, i := range validIdx {
 			results[i] = core.ConversionResult{
-				SourcePath: f,
+				SourcePath: req.Files[i],
 				Error:      "FFmpeg not available",
 			}
 		}
@@ -626,7 +702,10 @@ func (s *Server) handleConvertFiles(c *fiber.Ctx) error {
 		DeleteSource: req.DeleteSource,
 	}
 
-	return c.JSON(conv.ConvertMultiple(req.Files, opts))
+	for j, r := range conv.ConvertMultiple(valid, opts) {
+		results[validIdx[j]] = r
+	}
+	return c.JSON(results)
 }
 
 func (s *Server) handleFetchLyrics(c *fiber.Ctx) error {
@@ -656,6 +735,9 @@ func (s *Server) handleFetchLyricsForFile(c *fiber.Ctx) error {
 	if req.FilePath == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "a file path is required"})
 	}
+	if err := s.confine(req.FilePath); err != nil {
+		return pathError(c, err)
+	}
 
 	lyrics, err := s.fetchLyricsForFile(req.FilePath)
 	if err != nil {
@@ -684,6 +766,10 @@ func (s *Server) handleEmbedLyrics(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	if err := s.confine(req.FilePath); err != nil {
+		return pathError(c, err)
+	}
+
 	tagger := core.NewFLACTagger()
 	if err := tagger.EmbedLyrics(req.FilePath, req.Plain, req.Synced); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -701,6 +787,9 @@ func (s *Server) handleFetchAndEmbedLyrics(c *fiber.Ctx) error {
 	}
 	if req.FilePath == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "a file path is required"})
+	}
+	if err := s.confine(req.FilePath); err != nil {
+		return pathError(c, err)
 	}
 
 	lyrics, err := s.fetchAndEmbedLyrics(req.FilePath)
@@ -744,6 +833,12 @@ func (s *Server) handleFetchAndEmbedMultiple(c *fiber.Ctx) error {
 		result := map[string]interface{}{
 			"filePath": filePath,
 			"success":  false,
+		}
+
+		if err := s.confine(filePath); err != nil {
+			result["error"] = err.Error()
+			results[i] = result
+			continue
 		}
 
 		lyrics, err := s.fetchAndEmbedLyrics(filePath)
@@ -799,7 +894,12 @@ func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	s.config.DownloadFolder = req.Folder
+	folder, err := validateDownloadFolder(req.Folder)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	s.config.DownloadFolder = folder
 	if err := core.SaveConfig(s.config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

@@ -40,6 +40,7 @@ func TestHandleAnalyzeFile_JSONPath_MP3ReturnsNotApplicable(t *testing.T) {
 	}
 
 	s := newTestServer(t)
+	s.config.DownloadFolder = filepath.Dir(mp3Path)
 
 	var result map[string]interface{}
 	resp := doRequest(t, s, "POST", "/api/analyze", map[string]string{"path": mp3Path}, &result)

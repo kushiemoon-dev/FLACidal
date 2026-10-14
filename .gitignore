@@ -86,3 +86,6 @@ progress_phase*.md
 
 # flacidal-core is a sibling repo at ../FLACidal-Core, linked via go.work (gitignored)
 # go.mod uses published version for CI; go.work activates local source for dev
+
+# Local compose secrets (FLACIDAL_AUTH_TOKEN)
+.env

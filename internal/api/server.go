@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -39,6 +40,14 @@ type ServerConfig struct {
 	Context         context.Context
 	FrontendFS      embed.FS
 	FrontendDir     string // on-disk SPA path used when FrontendFS is empty (default: "frontend/dist")
+
+	// AuthToken, when set, protects /api and /ws with a Bearer token. It is
+	// never stored in core.Config.
+	AuthToken string
+	// EnforceLocalHost rejects non-loopback Host headers (loopback bind without a token).
+	EnforceLocalHost bool
+	// CORSOrigins lists the allowed cross-origin callers; empty means no CORS headers.
+	CORSOrigins []string
 }
 
 type Server struct {
@@ -161,11 +170,21 @@ func NewServer(cfg ServerConfig) *Server {
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] ${status} - ${method} ${path} (${latency})\n",
 	}))
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept",
-		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-	}))
+	// Only register CORS when origins are configured: an empty AllowOrigins
+	// makes Fiber fall back to "*".
+	if len(cfg.CORSOrigins) > 0 {
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: strings.Join(cfg.CORSOrigins, ","),
+			AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+			AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+		}))
+	}
+	if cfg.EnforceLocalHost {
+		app.Use(localOnly(cfg.CORSOrigins))
+	}
+	if cfg.AuthToken != "" {
+		app.Use(tokenAuth(cfg.AuthToken))
+	}
 
 	server.setupRoutes()
 

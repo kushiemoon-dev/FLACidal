@@ -79,6 +79,7 @@ func TestHandleGetFFmpegInfo(t *testing.T) {
 
 func TestHandleConvertFiles_EmptyList(t *testing.T) {
 	s := newTestServer(t)
+	s.config.DownloadFolder = "/tmp"
 
 	var results []core.ConversionResult
 	resp := doRequest(t, s, "POST", "/api/convert", map[string]interface{}{
@@ -99,6 +100,7 @@ func TestHandleConvertFiles_NonexistentSource(t *testing.T) {
 		t.Skip("no FFmpeg on this machine, so we're exercising the 'unavailable' branch instead")
 	}
 	s := newTestServer(t)
+	s.config.DownloadFolder = "/tmp"
 
 	var results []core.ConversionResult
 	resp := doRequest(t, s, "POST", "/api/convert", map[string]interface{}{
@@ -124,6 +126,7 @@ func TestHandleConvertFiles_NoConverterAvailable(t *testing.T) {
 		t.Skip("this machine has FFmpeg, so the 'unavailable' branch can't be exercised here")
 	}
 	s := newTestServer(t)
+	s.config.DownloadFolder = "/tmp"
 
 	var results []core.ConversionResult
 	resp := doRequest(t, s, "POST", "/api/convert", map[string]interface{}{
