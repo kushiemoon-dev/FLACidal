@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- The headless server now listens on `127.0.0.1` by default (new `LISTEN_HOST` variable) and refuses to start on any other address unless `AUTH_TOKEN` is set.
+- With `AUTH_TOKEN` set, `/api`, `/ws` and `/ws/queue` require a bearer token; `GET /api/health` and the web app stay public. The browser asks for the token on first access.
+- Without a token on a loopback address, requests with a foreign `Host` header are rejected.
+- The wildcard CORS policy is gone: cross-origin calls need an origin listed in the new `CORS_ORIGINS` variable.
+- File routes of the headless server (delete, metadata, cover, rename, convert, lyrics, analyzer by path) are confined to the download folder and the external library paths, symlinks included. Deleting is limited to `.flac` files.
+- The download folder and external library paths saved through the API must be absolute and cannot be `/`.
+
+### Fixes
+- Rename templates containing `..` or an absolute path are rejected, and `{artist}/{album}/{title}` now creates the missing sub-folders (via flacidal-core v0.23.0).
+
+### Breaking
+- Docker users must set `FLACIDAL_AUTH_TOKEN` (see the README); the compose file refuses to start without it.
+
+### Dependencies
+- flacidal-core bumped to v0.23.0.
+
 ## v4.18.2: 2026-09-30
 
 ### Fixes

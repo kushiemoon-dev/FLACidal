@@ -317,10 +317,13 @@ The image bundles the server, the built frontend, `ffmpeg`, `aubio` (BPM), and `
 
 ```bash
 curl -O https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/main/docker-compose.yml
+export FLACIDAL_AUTH_TOKEN=$(openssl rand -hex 32)   # or put it in a .env file next to docker-compose.yml
 docker compose up -d
 ```
 
-Then open `http://localhost:8080`. Downloads go to `./music/FLACidal`, while config and the database persist across restarts in the `flacidal-config` volume. Port and volume layout details are in [docker-compose.yml](docker-compose.yml).
+The container listens on all interfaces, so the token is mandatory: `docker compose` refuses to start without `FLACIDAL_AUTH_TOKEN`. Keep any `.env` file out of version control.
+
+Then open `http://localhost:8080`; the browser asks for the token on first access and keeps it in its `localStorage`. Downloads go to `./music/FLACidal`, while config and the database persist across restarts in the `flacidal-config` volume. Port and volume layout details are in [docker-compose.yml](docker-compose.yml).
 
 ### From source
 
@@ -334,12 +337,21 @@ go run ./cmd/server
 
 Then open `http://localhost:8080`.
 
-The server reads from the same `~/.flacidal/config.json` as the desktop app. It's controlled by two optional environment variables:
+The server reads from the same `~/.flacidal/config.json` as the desktop app. It's controlled by five optional environment variables:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `8080` | HTTP port the server listens on |
+| `LISTEN_HOST` | `127.0.0.1` | Address the server binds to |
+| `AUTH_TOKEN` | empty | Access token for `/api` and `/ws`; required when `LISTEN_HOST` is not a loopback address |
+| `CORS_ORIGINS` | empty | Comma-separated list of origins allowed to call the API from another site (`*` is refused) |
 | `FRONTEND_DIST_DIR` | `frontend/dist` | Where to find the built SPA on disk |
+
+**Access control.** By default the server only listens on `127.0.0.1`. With no `AUTH_TOKEN` on a loopback address, authentication is off, a warning is logged, and requests whose `Host` header is not `localhost`, `127.0.0.1` or `::1` are refused. Binding any other address without a token makes the server refuse to start (`refusing to listen on <host> without authentication: set AUTH_TOKEN ...`). When a token is set, send it as `Authorization: Bearer <token>` (WebSocket clients may use `?token=` instead). `GET /api/health` and the web app itself stay public. The token is never stored in `config.json` or returned by `GET /api/config`.
+
+**File confinement.** In headless mode, file routes (delete, rename, convert, lyrics, analyzer by path) only accept paths under the download folder and the `externalLibraryPaths` entries. Symlinks that lead outside are refused.
+
+Note that `GET /api/config` still returns the Qobuz and Soulseek credentials to any authenticated client.
 
 Running `go run ./cmd/server` before the frontend is built works fine: the server still comes up and the API works on its own, though requests to `/` return a 503 nudging you to run `npm run build` first.
 
