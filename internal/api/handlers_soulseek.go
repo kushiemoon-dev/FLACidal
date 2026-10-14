@@ -30,5 +30,9 @@ func (s *Server) handleTestSoulseekConnection(c *fiber.Ctx) error {
 	if s.config != nil {
 		binaryPath = s.config.SoulseekBinaryPath
 	}
-	return c.JSON(app.TestSoulseekLogin(binaryPath, req.Username, req.Password, nil))
+	result := app.TestSoulseekLogin(binaryPath, req.Username, req.Password, nil)
+	if result["success"] == true && s.soulseekSource != nil {
+		s.soulseekSource.MarkVerifiedFor(req.Username, req.Password)
+	}
+	return c.JSON(result)
 }

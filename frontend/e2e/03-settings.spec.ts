@@ -20,6 +20,60 @@ async function openAdvancedInstances(page: Page) {
   await page.locator('details.advanced-instances > summary').click()
 }
 
+test.describe('Settings status tab', () => {
+  test('shows a never-tested endpoint as untested, not online', async ({ page }) => {
+    await injectWailsMocks(page, {
+      GetSourceHealth: [
+        {
+          name: 'tidal',
+          displayName: 'Tidal HiFi',
+          status: 'untested',
+          latencyMs: 0,
+          endpoints: [{ url: 'https://proxy.example.com', state: 'untested', fails: 0, revivals: 0 }],
+        },
+      ],
+    })
+    await page.goto('/')
+    await page.locator('.sidebar button[title="Settings"]').click()
+    await page.waitForTimeout(250)
+    await page.locator('.tab-item', { hasText: /Status/i }).first().click()
+
+    await expect(page.locator('button', { hasText: /Test endpoints/i }).first()).toBeVisible()
+    const row = page.locator('.endpoint-health-row').first()
+    await expect(row.locator('.status-badge')).toHaveClass(/untested/)
+    await expect(row.locator('.status-badge')).not.toHaveClass(/\bok\b/)
+  })
+})
+
+test.describe('Settings status tab probe results', () => {
+  test('shows the raw failure and the reference-not-found note', async ({ page }) => {
+    await injectWailsMocks(page, {
+      GetSourceHealth: [
+        {
+          name: 'tidal',
+          displayName: 'Tidal HiFi',
+          status: 'dead',
+          latencyMs: 0,
+          endpoints: [
+            { url: 'https://down.example.com', state: 'untested', fails: 0, revivals: 0, probe: { kind: 'failed', message: 'upstream api error', at: '2026-10-14T12:00:00Z' } },
+            { url: 'https://gap.example.com', state: 'untested', fails: 0, revivals: 0, probe: { kind: 'notfound', at: '2026-10-14T12:00:00Z' } },
+          ],
+        },
+      ],
+    })
+    await page.goto('/')
+    await page.locator('.sidebar button[title="Settings"]').click()
+    await page.waitForTimeout(250)
+    await page.locator('.tab-item', { hasText: /Status/i }).first().click()
+
+    const rows = page.locator('.endpoint-health-row .status-badge')
+    await expect(rows.nth(0)).toHaveClass(/error/)
+    await expect(page.getByText('upstream api error')).toBeVisible()
+    await expect(rows.nth(1)).toHaveClass(/untested/)
+    await expect(page.getByText('reference track not found')).toBeVisible()
+  })
+})
+
 test.describe('Settings screen', () => {
   test('renders the Tidal HiFi instances field', async ({ page }) => {
     await gotoSettings(page)

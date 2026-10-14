@@ -19,6 +19,7 @@
     SetDownloadOptions,
     ResetToDefaults,
     CheckAPIStatus,
+    ProbeEndpoints,
     CheckForUpdate,
     OpenConfigFolder,
     GetLogFilePath,
@@ -87,7 +88,7 @@
   });
   let activeTab = $state('general');
   let logFilePath = $state('');
-  interface ApiStatusRow { name: string; status: string; latencyMs: number }
+  interface ApiStatusRow { name: string; status: string; latencyMs: number; message?: string; referenceNotFound?: boolean }
   interface UpdateInfo { hasUpdate: boolean; version: string; url: string; releaseUrl: string }
   interface FfmpegInfo { available?: boolean; version?: string }
   interface SldlStatus { installed?: boolean; version?: string; path?: string }
@@ -99,7 +100,6 @@
   const PLACEHOLDER_AMAZON_ENDPOINTS = 'https://your-amazon-proxy-1.com\nhttps://your-amazon-proxy-2.com';
 
   let apiStatuses: ApiStatusRow[] = $state([]);
-  let checkingAPI = $state(false);
   let appVersion = $state('');
   let updateInfo: UpdateInfo | null = $state(null);
   let checkingUpdate = $state(false);
@@ -121,7 +121,8 @@
   let installingFFmpeg = $state(false);
   let ffmpegProgress: { stage: string; percent: number } = $state({ stage: '', percent: 0 });
   let sourceHealth: core.SourceHealth[] = $state([]);
-  let checkingSourceHealth = $state(false);
+  let testing = $state(false);
+  let probeError = $state('');
   let installingSldl = $state(false);
   let sldlInstallProgress = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
@@ -238,17 +239,6 @@
     { code: 'AR', labelKey: 'settings.country.ar' as MessageKey },
   ];
 
-  async function checkAPI() {
-    checkingAPI = true;
-    try {
-      apiStatuses = await CheckAPIStatus();
-    } catch (e) {
-      console.error('API check failed:', e);
-    } finally {
-      checkingAPI = false;
-    }
-  }
-
   async function checkUpdate() {
     checkingUpdate = true;
     try {
@@ -303,14 +293,25 @@
     }
   }
 
-  async function checkSourceHealth() {
-    checkingSourceHealth = true;
+  // Reads in-memory snapshots only (no request to any source).
+  async function loadStatus() {
     try {
-      sourceHealth = await GetSourceHealth();
+      [apiStatuses, sourceHealth] = await Promise.all([CheckAPIStatus(), GetSourceHealth()]);
     } catch (e) {
-      console.error('Source health check failed:', e);
+      console.error('Status load failed:', e);
+    }
+  }
+
+  async function testEndpoints() {
+    testing = true;
+    probeError = '';
+    try {
+      sourceHealth = await ProbeEndpoints();
+      apiStatuses = await CheckAPIStatus();
+    } catch (e) {
+      probeError = $t('settings.health.testFailed', { error: String(e) });
     } finally {
-      checkingSourceHealth = false;
+      testing = false;
     }
   }
 
@@ -329,6 +330,10 @@
   let isSaving = $state(false);
   let showResetConfirm = $state(false);
   let isResetting = $state(false);
+
+  $effect(() => {
+    if (activeTab === 'status') loadStatus();
+  });
 
   $effect(() => {
     updateAudioSettings(config.soundEffects, config.soundVolume);
@@ -1509,9 +1514,12 @@
     <section class="settings-section">
       <div class="group-title">{$t('settings.health.group')}</div>
       <div class="api-status-header">
-        <button class="btn-secondary" onclick={checkSourceHealth} disabled={checkingSourceHealth}>
-          {checkingSourceHealth ? $t('settings.health.checking') : $t('settings.health.check')}
+        <button class="btn-secondary" onclick={testEndpoints} disabled={testing}>
+          {testing ? $t('settings.health.checking') : $t('settings.health.test')}
         </button>
+        {#if probeError}
+          <div class="probe-error">{probeError}</div>
+        {/if}
       </div>
       {#if sourceHealth.length > 0}
         <div class="api-status-list">
@@ -1528,11 +1536,14 @@
                   <span class="status-badge"
                     class:ok={displayStatus === 'online'}
                     class:error={displayStatus === 'dead'}
-                    class:slow={displayStatus === 'degraded' || displayStatus === 'untested'}
+                    class:slow={displayStatus === 'degraded'}
+                    class:untested={displayStatus === 'untested'}
                     title={displayStatus !== src.status ? $t('settings.health.overrideTip') : null}>
                     {statusText(displayStatus)}{src.latencyMs > 0 ? ` (${src.latencyMs}ms)` : ''}
                   </span>
-                  {#if src.tier1}
+                  {#if src.tier1 && !src.tier1.tested}
+                    <span class="status-badge status-badge-sm untested">{$t('settings.health.selfHostUntested')}</span>
+                  {:else if src.tier1}
                     <span class="status-badge status-badge-sm" class:ok={src.tier1.healthy} class:error={!src.tier1.healthy}>
                       {src.tier1.healthy ? $t('settings.health.selfHostHealthy') : $t('settings.health.selfHostUnhealthy')}
                     </span>
@@ -1545,6 +1556,7 @@
               {#if (src.endpoints?.length ?? 0) > 0}
                 <div class="endpoint-health-list">
                   {#each src.endpoints ?? [] as ep (ep.url)}
+                    {@const failed = ep.probe?.kind === 'failed'}
                     <div class="endpoint-health-row">
                       <span class="endpoint-health-url" title={ep.url}>{ep.url.replace(/^https?:\/\//, '')}</span>
                       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
@@ -1552,13 +1564,19 @@
                           <span class="endpoint-latency">{ep.latencyMs}ms</span>
                         {/if}
                         <span class="status-badge status-badge-sm"
-                          class:ok={ep.state === 'live'}
-                          class:error={ep.state === 'dead'}
-                          class:slow={ep.state === 'blacklisted' || ep.state === 'probation'}>
-                          {statusText(ep.state)}{ep.state === 'probation' ? ` #${ep.revivals}` : ''}
+                          class:ok={ep.state === 'live' && !failed}
+                          class:error={ep.state === 'dead' || failed}
+                          class:slow={ep.state === 'blacklisted' || ep.state === 'probation'}
+                          class:untested={ep.state === 'untested' && !failed}>
+                          {statusText(failed && ep.state === 'untested' ? 'offline' : ep.state)}{ep.state === 'probation' ? ` #${ep.revivals}` : ''}
                         </span>
                       </div>
                     </div>
+                    {#if failed}
+                      <span class="endpoint-note">{ep.probe?.message}</span>
+                    {:else if ep.probe?.kind === 'notfound'}
+                      <span class="endpoint-note">{$t('settings.health.refNotFound')}</span>
+                    {/if}
                   {/each}
                 </div>
               {/if}
@@ -1570,19 +1588,19 @@
 
     <section class="settings-section">
       <div class="group-title">{$t('settings.api.group')}</div>
-      <div class="api-status-header">
-        <button class="btn-secondary" onclick={checkAPI} disabled={checkingAPI}>
-          {checkingAPI ? $t('settings.health.checking') : $t('settings.api.check')}
-        </button>
-      </div>
       {#if apiStatuses.length > 0}
         <div class="api-status-list">
           {#each apiStatuses as ep (ep.name)}
             <div class="api-status-item">
               <span class="api-name">{ep.name}</span>
-              <span class="status-badge" class:ok={ep.status === 'online'} class:error={ep.status === 'offline'} class:slow={ep.status === 'slow'}>
-                {statusText(ep.status)} ({ep.latencyMs}ms)
+              <span class="status-badge" class:ok={ep.status === 'online'} class:error={ep.status === 'offline'} class:slow={ep.status === 'slow'} class:untested={ep.status === 'untested'}>
+                {statusText(ep.status)}{ep.latencyMs > 0 ? ` (${ep.latencyMs}ms)` : ''}
               </span>
+              {#if ep.message}
+                <span class="endpoint-note">{ep.message}</span>
+              {:else if ep.referenceNotFound}
+                <span class="endpoint-note">{$t('settings.health.refNotFound')}</span>
+              {/if}
             </div>
           {/each}
         </div>
@@ -2238,6 +2256,25 @@
   .status-badge.slow {
     color: #f59e0b;
     background: rgba(245, 158, 11, 0.1);
+  }
+
+  .status-badge.untested {
+    color: var(--color-text-tertiary, #666);
+    background: var(--color-border-subtle, #222);
+  }
+
+  .probe-error {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #ef4444;
+  }
+
+  .endpoint-note {
+    align-self: flex-start;
+    text-align: left;
+    font-size: 11px;
+    color: var(--color-text-tertiary, #666);
+    overflow-wrap: anywhere;
   }
 
   /* API Status */

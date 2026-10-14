@@ -10,25 +10,86 @@ import (
 	goruntime "runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// HealthSources are the sources whose health is reported. Each field may be
+// nil. Shared by the Wails App and the headless server so both build the same
+// statuses.
+type HealthSources struct {
+	Downloader *core.TidalHifiService
+	Qobuz      *core.QobuzSource
+	Amazon     *core.AmazonSource
+	Soulseek   *core.SoulseekSource
+	Config     *core.Config
+}
+
+func (a *App) healthSources() HealthSources {
+	return HealthSources{
+		Downloader: a.downloader,
+		Qobuz:      a.qobuzSource,
+		Amazon:     a.amazonSource,
+		Soulseek:   a.soulseekSource,
+		Config:     a.config,
+	}
+}
+
 // GetSourceHealth reports one of: online, degraded, dead, or untested, per
-// source. It only runs when the user opens the Settings Status tab (never
-// polled) and reads pool state without issuing network requests, reported
-// states come from real failures seen during actual downloads rather than
-// synthetic probes, which sidesteps the WebKitGTK signal-handler conflict on
-// Linux.
+// source. It reads pool state in memory and issues no network request;
+// ProbeEndpoints is the action that does (the "Test endpoints" button).
 func (a *App) GetSourceHealth() []core.SourceHealth {
+	return BuildSourceHealth(a.healthSources())
+}
+
+// ProbeEndpoints sends one reference request to every endpoint of every pool,
+// then returns the refreshed source health. A failed probe only records its
+// result, it never changes routing. It runs on a plain Go goroutine (Wails
+// runs each bound method on its own) and uses no Wails runtime.
+func (a *App) ProbeEndpoints() []core.SourceHealth {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	h := a.healthSources()
+	ProbeAllEndpoints(ctx, h, 0)
+	return BuildSourceHealth(h)
+}
+
+// ProbeAllEndpoints probes the pools of every non-nil source in parallel.
+// skipRecent > 0 skips endpoints used by a real request within that window.
+// Soulseek is never probed automatically: a login probe risks a ban.
+func ProbeAllEndpoints(ctx context.Context, h HealthSources, skipRecent time.Duration) {
+	var wg sync.WaitGroup
+	run := func(f func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f()
+		}()
+	}
+	if h.Downloader != nil {
+		run(func() { h.Downloader.ProbeEndpoints(ctx, skipRecent) })
+	}
+	if h.Qobuz != nil {
+		run(func() { h.Qobuz.ProbeProxyEndpoints(ctx, skipRecent) })
+	}
+	if h.Amazon != nil {
+		run(func() { h.Amazon.ProbeEndpoints(ctx, skipRecent) })
+	}
+	wg.Wait()
+}
+
+// BuildSourceHealth builds the health of every non-nil source from in-memory
+// pool state.
+func BuildSourceHealth(h HealthSources) []core.SourceHealth {
 	var results []core.SourceHealth
 
-	if a.downloader != nil {
-		snaps := a.downloader.PoolSnapshot()
-		tier1Snaps := a.downloader.Tier1PoolSnapshot()
-		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.downloader.NextRevivalETASecs)
+	if h.Downloader != nil {
+		snaps := h.Downloader.PoolSnapshot()
+		tier1Snaps := h.Downloader.Tier1PoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, h.Downloader.NextRevivalETASecs)
 		results = append(results, core.SourceHealth{
 			Name:         "tidal",
 			DisplayName:  "Tidal HiFi",
@@ -40,10 +101,10 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 		})
 	}
 
-	if a.qobuzSource != nil {
-		snaps := a.qobuzSource.ProxyPoolSnapshot()
-		tier1Snaps := a.qobuzSource.Tier1ProxyPoolSnapshot()
-		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.qobuzSource.ProxyNextRevivalETASecs)
+	if h.Qobuz != nil {
+		snaps := h.Qobuz.ProxyPoolSnapshot()
+		tier1Snaps := h.Qobuz.Tier1ProxyPoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, h.Qobuz.ProxyNextRevivalETASecs)
 		results = append(results, core.SourceHealth{
 			Name:         "qobuz",
 			DisplayName:  "Qobuz",
@@ -55,10 +116,10 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 		})
 	}
 
-	if a.amazonSource != nil {
-		snaps := a.amazonSource.PoolSnapshot()
-		tier1Snaps := a.amazonSource.Tier1PoolSnapshot()
-		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, a.amazonSource.NextRevivalETASecs)
+	if h.Amazon != nil {
+		snaps := h.Amazon.PoolSnapshot()
+		tier1Snaps := h.Amazon.Tier1PoolSnapshot()
+		tier1, failureKind, retryETASecs := poolSnapshotTier1Status(snaps, tier1Snaps, h.Amazon.NextRevivalETASecs)
 		results = append(results, core.SourceHealth{
 			Name:         "amazon",
 			DisplayName:  "Amazon Music",
@@ -70,23 +131,29 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 		})
 	}
 
-	if a.soulseekSource != nil {
+	if h.Soulseek != nil {
 		status := "dead"
 		reason := ""
-		if a.soulseekSource.IsAvailable() {
-			status = "online"
-		} else if a.config != nil && (a.config.SoulseekUsername == "" || a.config.SoulseekPassword == "") {
+		if h.Soulseek.IsAvailable() {
+			// Configured is not connected: online needs a login or download that worked.
+			if h.Soulseek.IsVerified() {
+				status = "online"
+			} else {
+				status = "untested"
+				reason = "configured, not connected yet"
+			}
+		} else if h.Config != nil && (h.Config.SoulseekUsername == "" || h.Config.SoulseekPassword == "") {
 			reason = "credentials not configured"
 		} else {
 			reason = "sldl not installed"
 		}
-		// A non-empty reason here always means a local configuration problem
+		// A dead status with a reason always means a local configuration problem
 		// (missing credentials or a missing sldl binary), never a network
 		// failure, this branch issues no request at all, so it is exactly
 		// what FailureKindConfig describes, and it lets the UI name what is
 		// missing via Reason instead of blaming an upstream outage.
 		failureKind := core.FailureKindNone
-		if reason != "" {
+		if status == "dead" {
 			failureKind = core.FailureKindConfig
 		}
 		results = append(results, core.SourceHealth{
@@ -101,32 +168,40 @@ func (a *App) GetSourceHealth() []core.SourceHealth {
 	return results
 }
 
+// poolSnapshotStatus aggregates the endpoints whose result is known: all OK is
+// online, a mix degraded, all failing dead, none known untested. A failed last
+// probe counts as failing even for a live endpoint; an untested endpoint
+// without a failed probe is unknown and counts for nothing.
 func poolSnapshotStatus(snaps []core.EndpointStat) string {
-	if len(snaps) == 0 {
-		return "untested"
-	}
-	live := 0
+	ok, bad := 0, 0
 	for _, ep := range snaps {
-		if ep.State == "live" || ep.State == "probation" {
-			live++
+		switch {
+		case ep.Probe != nil && ep.Probe.Kind == "failed", ep.State == "dead", ep.State == "blacklisted":
+			bad++
+		case ep.State == "live", ep.State == "probation":
+			ok++
 		}
 	}
 	switch {
-	case live == 0:
-		return "dead"
-	case live < len(snaps):
-		return "degraded"
-	default:
+	case ok+bad == 0:
+		return "untested"
+	case bad == 0:
 		return "online"
+	case ok == 0:
+		return "dead"
+	default:
+		return "degraded"
 	}
 }
 
 // poolSnapshotTier1Status derives a source's Tier1 status, FailureKind, and
 // RetryETASecs purely from already-fetched pool snapshots, no network
-// calls, matching this file's no-live-probe constraint (see GetSourceHealth's
-// doc comment). tier1Snaps empty means Tier1 stays nil (not configured).
+// calls (see GetSourceHealth's doc comment). tier1Snaps empty means Tier1
+// stays nil (not configured). A tier1 entry is healthy when neither dead nor
+// untested, and Tested is false while every tier1 entry is untested.
 // FailureKindUpstream is only reported once no tier1 entry is healthy AND
-// every entry in the full snapshot (both tiers) is dead, the same
+// every entry in the full snapshot (both tiers) is dead (untested entries do
+// not count as dead), the same
 // no-live-endpoint condition Core's own live probes (probeQobuz, probeAmazon,
 // ProbeTidalService) use, just computed from a snapshot instead of a fresh
 // check. An empty snaps means no endpoint is configured at all rather than
@@ -138,15 +213,19 @@ func poolSnapshotTier1Status(snaps, tier1Snaps []core.EndpointStat, nextRevivalE
 	var tier1 *core.Tier1Status
 	tier1Healthy := false
 	if len(tier1Snaps) > 0 {
+		tier1Tested := false
 		for _, ep := range tier1Snaps {
-			if ep.State != "dead" {
-				tier1Healthy = true
-				break
+			if ep.State != "untested" {
+				tier1Tested = true
+				if ep.State != "dead" {
+					tier1Healthy = true
+				}
 			}
 		}
 		tier1 = &core.Tier1Status{
 			Configured: true,
 			Healthy:    tier1Healthy,
+			Tested:     tier1Tested,
 			Endpoints:  tier1Snaps,
 		}
 	}
@@ -264,7 +343,11 @@ func (a *App) TestSoulseekConnection(username, password string) map[string]inter
 			a.logBuffer.Info(msg)
 		}
 	}
-	return TestSoulseekLogin(sldlPath, username, password, logf)
+	result := TestSoulseekLogin(sldlPath, username, password, logf)
+	if result["success"] == true && a.soulseekSource != nil {
+		a.soulseekSource.MarkVerifiedFor(username, password)
+	}
+	return result
 }
 
 // TestSoulseekLogin backs TestSoulseekConnection and is shared by both the

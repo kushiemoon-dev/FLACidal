@@ -58,6 +58,8 @@ type Server struct {
 	sourceManager    *core.SourceManager
 	tidalSource      *core.TidalSource
 	qobuzSource      *core.QobuzSource
+	downloader       *core.TidalHifiService
+	soulseekSource   *core.SoulseekSource
 	lyricsClient     *core.LyricsClient
 	wsHub            *WebSocketHub
 	queueBroadcaster *QueueBroadcaster
@@ -105,6 +107,8 @@ func NewServer(cfg ServerConfig) *Server {
 		sourceManager:    cfg.SourceManager,
 		tidalSource:      cfg.TidalSource,
 		qobuzSource:      cfg.QobuzSource,
+		downloader:       cfg.Downloader,
+		soulseekSource:   cfg.SoulseekSource,
 		lyricsClient:     cfg.LyricsClient,
 		wsHub:            wsHub,
 		queueBroadcaster: queueBroadcaster,
@@ -207,6 +211,9 @@ func (s *Server) setupRoutes() {
 	api.Post("/sources/order", s.handleSetSourceOrder)
 	api.Get("/sources/soulseek/status", s.handleGetSldlStatus)
 	api.Post("/sources/soulseek/test", s.handleTestSoulseekConnection)
+	api.Get("/sources/health", s.handleGetSourceHealth)
+	api.Get("/sources/endpoints", s.handleGetEndpointStatuses)
+	api.Post("/sources/health/probe", s.handleProbeSources)
 
 	api.Post("/content/fetch", s.handleFetchContent)
 	api.Post("/content/validate", s.handleValidateURL)

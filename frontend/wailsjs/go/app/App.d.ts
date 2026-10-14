@@ -143,6 +143,8 @@ export function PauseDownloads():Promise<boolean>;
 
 export function PreviewRename(arg1:Array<string>,arg2:string):Promise<Array<core.RenamePreview>>;
 
+export function ProbeEndpoints():Promise<Array<core.SourceHealth>>;
+
 export function QueueArtistAlbum(arg1:string,arg2:string,arg3:string):Promise<number>;
 
 export function QueueDiscographyAlbums(arg1:Array<string>,arg2:string):Promise<number>;

@@ -32,6 +32,7 @@ export interface WailsOverrides {
   IsConverterAvailable?: boolean
   AnalyzeMultiple?: unknown[]
   ListDownloadedFiles?: unknown[]
+  GetSourceHealth?: unknown[]
   // Network: stubbed fetch response for /api/* endpoints
   apiAnalyze?: { ok: boolean; body: unknown }
 }
@@ -215,6 +216,8 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetSldlBinaryPath: async () => '',
 
       CheckAPIStatus: async () => [],
+      GetSourceHealth: async () => opts.GetSourceHealth ?? [],
+      ProbeEndpoints: async () => opts.GetSourceHealth ?? [],
       CheckForUpdate: async () => ({ available: false }),
       GetCacheStats: async () => ({}),
       GetConnectionStatus: async () => ({}),

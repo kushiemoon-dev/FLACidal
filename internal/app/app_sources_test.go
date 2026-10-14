@@ -66,6 +66,24 @@ func TestGetSourceHealth(t *testing.T) {
 	})
 }
 
+func TestBuildSourceHealth_Soulseek(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "sldl")
+	if err := os.WriteFile(bin, []byte("x"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	s := core.NewSoulseekSource(bin, "u", "p")
+	h := HealthSources{Soulseek: s, Config: &core.Config{SoulseekUsername: "u", SoulseekPassword: "p"}}
+
+	got := BuildSourceHealth(h)
+	if got[0].Status != "untested" || got[0].FailureKind != core.FailureKindNone {
+		t.Errorf("configured, not connected: %+v, want untested without failure kind", got[0])
+	}
+	s.MarkVerified()
+	if got := BuildSourceHealth(h); got[0].Status != "online" {
+		t.Errorf("verified: %+v, want online", got[0])
+	}
+}
+
 func TestPoolSnapshotStatus(t *testing.T) {
 	tests := []struct {
 		name string
@@ -73,9 +91,14 @@ func TestPoolSnapshotStatus(t *testing.T) {
 		want string
 	}{
 		{"empty", nil, "untested"},
+		{"fresh config, all untested", []core.EndpointStat{{State: "untested"}, {State: "untested"}}, "untested"},
 		{"all live", []core.EndpointStat{{State: "live"}, {State: "probation"}}, "online"},
+		{"live and untested", []core.EndpointStat{{State: "live"}, {State: "untested"}}, "online"},
 		{"some dead", []core.EndpointStat{{State: "live"}, {State: "dead"}}, "degraded"},
 		{"all dead", []core.EndpointStat{{State: "dead"}, {State: "dead"}}, "dead"},
+		{"untested with failed probe only", []core.EndpointStat{{State: "untested", Probe: &core.EndpointProbe{Kind: "failed"}}}, "dead"},
+		{"untested with notfound probe", []core.EndpointStat{{State: "untested", Probe: &core.EndpointProbe{Kind: "notfound"}}}, "untested"},
+		{"live with failed probe only", []core.EndpointStat{{State: "live", Probe: &core.EndpointProbe{Kind: "failed"}}}, "dead"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -107,7 +130,7 @@ func TestPoolSnapshotTier1Status(t *testing.T) {
 			"tier1 healthy despite every entry dead in the public pool",
 			[]core.EndpointStat{{State: "dead"}, {State: "blacklisted"}},
 			[]core.EndpointStat{{State: "blacklisted"}},
-			&core.Tier1Status{Configured: true, Healthy: true, Endpoints: []core.EndpointStat{{State: "blacklisted"}}},
+			&core.Tier1Status{Configured: true, Healthy: true, Tested: true, Endpoints: []core.EndpointStat{{State: "blacklisted"}}},
 			core.FailureKindNone,
 			0,
 		},
@@ -115,7 +138,15 @@ func TestPoolSnapshotTier1Status(t *testing.T) {
 			"tier1 configured but every tier1 entry dead, public pool still has a live entry",
 			[]core.EndpointStat{{State: "live"}, {State: "dead"}},
 			[]core.EndpointStat{{State: "dead"}},
-			&core.Tier1Status{Configured: true, Healthy: false, Endpoints: []core.EndpointStat{{State: "dead"}}},
+			&core.Tier1Status{Configured: true, Healthy: false, Tested: true, Endpoints: []core.EndpointStat{{State: "dead"}}},
+			core.FailureKindNone,
+			0,
+		},
+		{
+			"untested tier1 is neither healthy nor tested, and the rest being dead stays an upstream outage",
+			[]core.EndpointStat{{State: "dead"}, {State: "untested"}},
+			[]core.EndpointStat{{State: "untested"}},
+			&core.Tier1Status{Configured: true, Healthy: false, Tested: false, Endpoints: []core.EndpointStat{{State: "untested"}}},
 			core.FailureKindNone,
 			0,
 		},

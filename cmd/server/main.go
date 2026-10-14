@@ -150,6 +150,8 @@ func main() {
 		})
 	})
 
+	server.StartHealthProbe()
+
 	downloadManager.Start()
 
 	go func() {

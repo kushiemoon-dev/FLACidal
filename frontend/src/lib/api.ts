@@ -836,14 +836,21 @@ export async function CheckAPIStatus(): Promise<WailsResult<'CheckAPIStatus'>> {
   if (isWailsRuntime()) {
     return Wails.CheckAPIStatus()
   }
-  return unavailableInBrowser('CheckAPIStatus', 'the headless server does not implement this yet')
+  return apiGet('/sources/endpoints')
 }
 
 export async function GetSourceHealth(): Promise<WailsResult<'GetSourceHealth'>> {
   if (isWailsRuntime()) {
     return Wails.GetSourceHealth()
   }
-  return unavailableInBrowser('GetSourceHealth', 'the headless server does not implement this yet (Amazon/Soulseek source wiring is still needed)')
+  return apiGet('/sources/health')
+}
+
+export async function ProbeEndpoints(): Promise<WailsResult<'ProbeEndpoints'>> {
+  if (isWailsRuntime()) {
+    return Wails.ProbeEndpoints()
+  }
+  return apiPost('/sources/health/probe')
 }
 
 export async function InstallFFmpeg(): Promise<void> {

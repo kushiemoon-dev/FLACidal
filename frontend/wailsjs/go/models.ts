@@ -5,6 +5,8 @@ export namespace app {
 	    url: string;
 	    status: string;
 	    latencyMs: number;
+	    message?: string;
+	    referenceNotFound?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new EndpointStatus(source);
@@ -16,6 +18,8 @@ export namespace app {
 	        this.url = source["url"];
 	        this.status = source["status"];
 	        this.latencyMs = source["latencyMs"];
+	        this.message = source["message"];
+	        this.referenceNotFound = source["referenceNotFound"];
 	    }
 	}
 	export class UpdateInfo {
@@ -427,6 +431,24 @@ export namespace core {
 	        this.trackNumber = source["trackNumber"];
 	    }
 	}
+	export class EndpointProbe {
+	    kind: string;
+	    message?: string;
+	    at: any;
+	    latencyMs?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EndpointProbe(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.message = source["message"];
+	        this.at = source["at"];
+	        this.latencyMs = source["latencyMs"];
+	    }
+	}
 	export class EndpointStat {
 	    url: string;
 	    state: string;
@@ -434,6 +456,7 @@ export namespace core {
 	    revivals: number;
 	    latencyMs?: number;
 	    cooldownSecs?: number;
+	    probe?: EndpointProbe;
 	
 	    static createFrom(source: any = {}) {
 	        return new EndpointStat(source);
@@ -447,7 +470,26 @@ export namespace core {
 	        this.revivals = source["revivals"];
 	        this.latencyMs = source["latencyMs"];
 	        this.cooldownSecs = source["cooldownSecs"];
+	        this.probe = this.convertValues(source["probe"], EndpointProbe);
 	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class FLACMetadata {
 	    path: string;
@@ -887,6 +929,7 @@ export namespace core {
 	export class Tier1Status {
 	    configured: boolean;
 	    healthy: boolean;
+	    tested: boolean;
 	    endpoints?: EndpointStat[];
 	
 	    static createFrom(source: any = {}) {
@@ -897,6 +940,7 @@ export namespace core {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.configured = source["configured"];
 	        this.healthy = source["healthy"];
+	        this.tested = source["tested"];
 	        this.endpoints = this.convertValues(source["endpoints"], EndpointStat);
 	    }
 	

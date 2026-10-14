@@ -10,7 +10,25 @@
 - File routes of the headless server (delete, metadata, cover, rename, convert, lyrics, analyzer by path) are confined to the download folder and the external library paths, symlinks included. Deleting is limited to `.flac` files.
 - The download folder and external library paths saved through the API must be absolute and cannot be `/`.
 
+### New features
+- **Test endpoints**: a button in Settings > Status sends one reference request to every endpoint (Tidal HiFi, Qobuz proxies, Amazon proxies, self-hosted ones included) and shows the result. It runs in the background, so the interface stays responsive and a download in progress is not slowed down. Every source is probed in parallel; endpoints that share a host are probed one after the other.
+- **Three reference tracks per source** instead of a single one. The next reference is tried only when the previous one is not found on that endpoint. If none is found, the row shows "reference track not found" in grey rather than a failure.
+- **Real error shown on failure**: a failed test displays the raw message (timeout, `401`, `403`, `429`, `5xx`, challenge page, "upstream api error") under the endpoint, in red, in both Source Health and API Status. A failed test only changes what is displayed: it never blacklists an endpoint, never marks it dead and never alters how downloads are routed. A successful test restores an endpoint exactly like a real successful download does, including one marked dead or on probation.
+- **Source status computed from known results only**: all tested endpoints OK gives online, a mix gives degraded, all failing gives dead, none tested gives untested. Self-hosted endpoints never tested show "Self-host: untested" instead of healthy or unhealthy.
+- **Headless server**: new routes `GET /api/sources/health`, `GET /api/sources/endpoints` and `POST /api/sources/health/probe`, behind the same bearer token as the rest of `/api`. The server also probes its endpoints automatically 10 seconds after startup, then every 30 minutes with a 20 percent random jitter, skipping endpoints a real download used in the last 10 minutes. The web app Status tab now works in the browser instead of reporting the feature as unavailable. Amazon is not wired into the headless server yet.
+- Opening the Status tab reads in-memory state only and sends no request to any source. The two former "Check Sources" and "Check Status" buttons are replaced by the single "Test endpoints" button.
+
+### flacidal-core changes included in this release
+- Endpoints start as `untested` and become `live` only after a real success or a successful probe. The previous behavior reported every fresh endpoint as `live`.
+- New `EndpointPool.ProbeEndpoints` and per-source `ProbeEndpoints` / `ProbeProxyEndpoints` with the three reference tracks (Tidal, Qobuz) and three reference ISRCs (Amazon). Each endpoint records its last probe result (`ok`, `failed`, `notfound`, with message and latency).
+- `Tier1Status` gains `tested`, so a self-hosted pool never queried is neither healthy nor broken. Its state is now computed after a source probe instead of before.
+- Soulseek reports `untested` until a connection test or a download succeeds.
+- Documentation of `ProbeSources` corrected: it routes requests through the pool and can change endpoint state, so it must only run on a user action; the background probe is `ProbeEndpoints`.
+
 ### Fixes
+- **Endpoints and sources were shown as `online` before anything had been tested**: every endpoint without a recorded failure was displayed in green, so Settings > Status looked healthy even when the proxies were unreachable. Never-tested endpoints now show as grey `untested`, and green appears only after a real success or a successful test. An unknown state is never shown as online either.
+- **Soulseek showed as online as soon as it was configured**: it now stays untested until a connection test or a download succeeds (the connection test in Settings counts when it uses the saved credentials).
+- The internal `tidalReady` flag of the connection status, always true, is removed.
 - Rename templates containing `..` or an absolute path are rejected, and `{artist}/{album}/{title}` now creates the missing sub-folders (via flacidal-core v0.23.0).
 
 ### Breaking

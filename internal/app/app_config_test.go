@@ -235,8 +235,8 @@ func TestGetConnectionStatus(t *testing.T) {
 	t.Run("nil spotifySearch", func(t *testing.T) {
 		a := &App{}
 		got := a.GetConnectionStatus()
-		if got["tidalReady"] != true || got["spotifySearch"] != false {
-			t.Errorf("GetConnectionStatus() = %v", got)
+		if _, ok := got["tidalReady"]; ok || got["spotifySearch"] != false {
+			t.Errorf("GetConnectionStatus() = %v, want spotifySearch=false and no tidalReady", got)
 		}
 	})
 	t.Run("non-nil spotifySearch", func(t *testing.T) {
@@ -262,11 +262,22 @@ func TestCheckAPIStatus(t *testing.T) {
 			t.Fatal("CheckAPIStatus() = empty, want at least one endpoint from the default pool")
 		}
 		for _, s := range got {
-			if s.Status != "online" && s.Status != "offline" && s.Status != "slow" {
+			if s.Status != "online" && s.Status != "offline" && s.Status != "slow" && s.Status != "untested" {
 				t.Errorf("CheckAPIStatus() entry has unexpected Status %q", s.Status)
 			}
 		}
 	})
+}
+
+func TestEndpointStatToStatus_Probe(t *testing.T) {
+	failed := endpointStatToStatus("Q", core.EndpointStat{URL: "https://x.test", State: "live", Probe: &core.EndpointProbe{Kind: "failed", Message: "x"}})
+	if failed.Status != "offline" || failed.Message != "x" {
+		t.Errorf("live + failed probe = %+v, want offline with message", failed)
+	}
+	nf := endpointStatToStatus("Q", core.EndpointStat{URL: "https://x.test", State: "untested", Probe: &core.EndpointProbe{Kind: "notfound"}})
+	if nf.Status != "untested" || !nf.ReferenceNotFound {
+		t.Errorf("untested + notfound probe = %+v, want untested with ReferenceNotFound", nf)
+	}
 }
 
 func TestEndpointStatToStatus(t *testing.T) {
@@ -278,7 +289,9 @@ func TestEndpointStatToStatus(t *testing.T) {
 		{"blacklisted", "slow"},
 		{"probation", "slow"},
 		{"live", "online"},
-		{"", "online"}, // falls through to the default case
+		{"untested", "untested"},
+		{"weird", "untested"},
+		{"", "untested"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.state, func(t *testing.T) {

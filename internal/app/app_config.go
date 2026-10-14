@@ -238,34 +238,41 @@ func (a *App) ResetToDefaults() (*core.Config, error) {
 
 func (a *App) GetConnectionStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"tidalReady":    true, // built-in credentials mean this is always ready
 		"spotifySearch": a.spotifySearch != nil,
 	}
 }
 
 type EndpointStatus struct {
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	Status    string `json:"status"`    // one of "online", "offline", "slow"
-	LatencyMs int64  `json:"latencyMs"` // round-trip time, in milliseconds
+	Name              string `json:"name"`
+	URL               string `json:"url"`
+	Status            string `json:"status"`                      // one of "online", "offline", "slow" or "untested"
+	LatencyMs         int64  `json:"latencyMs"`                   // round-trip time, in milliseconds
+	Message           string `json:"message,omitempty"`           // raw failure text of the last probe
+	ReferenceNotFound bool   `json:"referenceNotFound,omitempty"` // every reference track was missing from this endpoint
 }
 
 // Reads from in-memory EndpointPool snapshots, issues no network calls itself.
 func (a *App) CheckAPIStatus() []EndpointStatus {
+	return BuildEndpointStatuses(a.healthSources())
+}
+
+// BuildEndpointStatuses lists the endpoints of every non-nil source from
+// in-memory pool snapshots.
+func BuildEndpointStatuses(h HealthSources) []EndpointStatus {
 	var results []EndpointStatus
 
-	if a.downloader != nil {
-		for _, ep := range a.downloader.PoolSnapshot() {
+	if h.Downloader != nil {
+		for _, ep := range h.Downloader.PoolSnapshot() {
 			results = append(results, endpointStatToStatus("Tidal HiFi", ep))
 		}
 	}
-	if a.qobuzSource != nil {
-		for _, ep := range a.qobuzSource.ProxyPoolSnapshot() {
+	if h.Qobuz != nil {
+		for _, ep := range h.Qobuz.ProxyPoolSnapshot() {
 			results = append(results, endpointStatToStatus("Qobuz", ep))
 		}
 	}
-	if a.amazonSource != nil {
-		for _, ep := range a.amazonSource.PoolSnapshot() {
+	if h.Amazon != nil {
+		for _, ep := range h.Amazon.PoolSnapshot() {
 			results = append(results, endpointStatToStatus("Amazon", ep))
 		}
 	}
@@ -280,18 +287,33 @@ func endpointStatToStatus(sourceLabel string, ep core.EndpointStat) EndpointStat
 		status = "offline"
 	case "blacklisted", "probation":
 		status = "slow"
-	default:
+	case "live":
 		status = "online"
+	default: // "untested", and any unknown state: never show green without proof
+		status = "untested"
+	}
+	var message string
+	var notFound bool
+	if ep.Probe != nil {
+		switch ep.Probe.Kind {
+		case "failed":
+			status = "offline"
+			message = ep.Probe.Message
+		case "notfound":
+			notFound = true
+		}
 	}
 	host := ep.URL
 	if idx := strings.Index(ep.URL, "://"); idx >= 0 {
 		host = ep.URL[idx+3:]
 	}
 	return EndpointStatus{
-		Name:      sourceLabel + " — " + host,
-		URL:       ep.URL,
-		Status:    status,
-		LatencyMs: ep.LatencyMs,
+		Name:              sourceLabel + " — " + host,
+		URL:               ep.URL,
+		Status:            status,
+		LatencyMs:         ep.LatencyMs,
+		Message:           message,
+		ReferenceNotFound: notFound,
 	}
 }
 

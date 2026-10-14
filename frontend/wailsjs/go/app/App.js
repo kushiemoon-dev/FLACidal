@@ -282,6 +282,10 @@ export function PreviewRename(arg1, arg2) {
   return window['go']['app']['App']['PreviewRename'](arg1, arg2);
 }
 
+export function ProbeEndpoints() {
+  return window['go']['app']['App']['ProbeEndpoints']();
+}
+
 export function QueueArtistAlbum(arg1, arg2, arg3) {
   return window['go']['app']['App']['QueueArtistAlbum'](arg1, arg2, arg3);
 }
