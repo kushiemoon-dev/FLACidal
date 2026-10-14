@@ -18,7 +18,7 @@
 - **Headless server**: new routes `GET /api/sources/health`, `GET /api/sources/endpoints` and `POST /api/sources/health/probe`, behind the same bearer token as the rest of `/api`. The server also probes its endpoints automatically 10 seconds after startup, then every 30 minutes with a 20 percent random jitter, skipping endpoints a real download used in the last 10 minutes. The web app Status tab now works in the browser instead of reporting the feature as unavailable. Amazon is not wired into the headless server yet.
 - Opening the Status tab reads in-memory state only and sends no request to any source. The two former "Check Sources" and "Check Status" buttons are replaced by the single "Test endpoints" button.
 
-### flacidal-core changes included in this release
+### flacidal-core v0.24.0 changes included in this release
 - Endpoints start as `untested` and become `live` only after a real success or a successful probe. The previous behavior reported every fresh endpoint as `live`.
 - New `EndpointPool.ProbeEndpoints` and per-source `ProbeEndpoints` / `ProbeProxyEndpoints` with the three reference tracks (Tidal, Qobuz) and three reference ISRCs (Amazon). Each endpoint records its last probe result (`ok`, `failed`, `notfound`, with message and latency).
 - `Tier1Status` gains `tested`, so a self-hosted pool never queried is neither healthy nor broken. Its state is now computed after a source probe instead of before.
@@ -35,7 +35,7 @@
 - Docker users must set `FLACIDAL_AUTH_TOKEN` (see the README); the compose file refuses to start without it.
 
 ### Dependencies
-- flacidal-core bumped to v0.23.0.
+- flacidal-core bumped to v0.24.0.
 
 ## v4.18.2: 2026-09-30
 
