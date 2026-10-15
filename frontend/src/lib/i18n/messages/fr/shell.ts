@@ -19,4 +19,5 @@ export const shell = {
   'shell.auth.label': "Jeton d'accès",
   'shell.auth.submit': "Déverrouiller",
   'shell.auth.rejected': "Le jeton a été refusé. Vérifiez-le et réessayez.",
+  'shell.mainAria': 'Contenu principal',
 };

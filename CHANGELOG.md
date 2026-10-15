@@ -18,6 +18,17 @@
 - **Headless server**: new routes `GET /api/sources/health`, `GET /api/sources/endpoints` and `POST /api/sources/health/probe`, behind the same bearer token as the rest of `/api`. The server also probes its endpoints automatically 10 seconds after startup, then every 30 minutes with a 20 percent random jitter, skipping endpoints a real download used in the last 10 minutes. The web app Status tab now works in the browser instead of reporting the feature as unavailable. Amazon is not wired into the headless server yet.
 - Opening the Status tab reads in-memory state only and sends no request to any source. The two former "Check Sources" and "Check Status" buttons are replaced by the single "Test endpoints" button.
 
+- **Default download folder**: on first launch, desktop and headless create `~/Music/FLACidal` and save it in the config, so Files, the download queue and `GET /api/folder` all agree on the folder in use. An existing choice is never changed, and `DOWNLOAD_FOLDER` still takes priority at runtime without being written to the file.
+- **Download folder checks**: a folder entered in Settings, the File Manager, `POST /api/folder` or `POST /api/config` must be absolute, exist, be a directory and be writable. A symlink to a valid folder is accepted. A folder that is already saved and has disappeared (unmounted disk) no longer blocks saving other settings.
+- **Translated, actionable errors** (English, French, German) for folder problems, a missing download folder, an unreachable server, an access token error and a download engine that is not ready, on Files, File Manager, Settings and the download buttons of Home. The raw message is only shown as a detail inside the translated text.
+- **Browser mode**: the download folder in Settings can be typed (saved on change, with the same checks and messages) now that there is no native picker. Importing a config whose folder does not exist on this machine says so instead of a generic failure.
+- **File Manager**: Browse now saves the chosen folder and lists it, rename templates come from the Core instead of a hard-coded list, and files that fail to rename are listed with the reason. In the browser, where there is no native picker, Browse is disabled with an explanation. The empty Lyrics and Covers tabs are gone.
+- **Files at 390 px**: the action bar wraps with 44 px buttons, and the table becomes stacked rows that show title, artist, album, size, date and the three row actions without horizontal scrolling. The desktop layout is unchanged.
+- **Screen reader and keyboard support**: the selects, toggles and icon buttons that had no name now have one, pages have proper landmarks and heading levels, the Files checkboxes can be reached with Tab and toggled with Space (the header one shows a partial selection), the sort state is announced, and every focusable control shows a focus ring.
+- **Dialogs**: the seven dialogs are named modal dialogs, take focus when they open, and give it back to the button that opened them when they close.
+- **Notifications**: an error toast is announced as an alert, other toasts as a status, and the announcement area exists before the first toast.
+- **Contrast**: secondary and muted text, some badges and tags now reach a 4.5:1 ratio in both the dark and light themes. An automated axe scan of the 13 views checks this at 390 px and 1024 px.
+
 ### flacidal-core v0.24.0 changes included in this release
 - Endpoints start as `untested` and become `live` only after a real success or a successful probe. The previous behavior reported every fresh endpoint as `live`.
 - New `EndpointPool.ProbeEndpoints` and per-source `ProbeEndpoints` / `ProbeProxyEndpoints` with the three reference tracks (Tidal, Qobuz) and three reference ISRCs (Amazon). Each endpoint records its last probe result (`ok`, `failed`, `notfound`, with message and latency).
@@ -26,16 +37,20 @@
 - Documentation of `ProbeSources` corrected: it routes requests through the pool and can change endpoint state, so it must only run on a user action; the background probe is `ProbeEndpoints`.
 
 ### Fixes
+- **Listing errors were hidden**: an absent, unreadable or non-directory download folder looked like an empty library. Files and File Manager now show an error (and a notification) instead of "no files", and an empty folder is still reported as empty.
+- **Rename templates**: the File Manager offered `{track}`, which the Core does not substitute, so the literal text ended up in file names.
 - **Endpoints and sources were shown as `online` before anything had been tested**: every endpoint without a recorded failure was displayed in green, so Settings > Status looked healthy even when the proxies were unreachable. Never-tested endpoints now show as grey `untested`, and green appears only after a real success or a successful test. An unknown state is never shown as online either.
 - **Soulseek showed as online as soon as it was configured**: it now stays untested until a connection test or a download succeeds (the connection test in Settings counts when it uses the saved credentials).
 - The internal `tidalReady` flag of the connection status, always true, is removed.
 - Rename templates containing `..` or an absolute path are rejected, and `{artist}/{album}/{title}` now creates the missing sub-folders (via flacidal-core v0.23.0).
+- **Slow library listing**: listing read every FLAC file whole, one after the other. It now reads only the file headers, in parallel, and keeps a per-file cache that is dropped when a file's size or modification time changes. On a generated library of 1189 files with 500 KB covers, the listing went from about 158 ms to 14 ms on a first pass and 6 ms on a repeat (files already in the OS page cache, so a cold disk will be slower).
+- **Wrong source label**: a file with an ISRC but no source named in its comment was labelled `tidal`. It is now `unknown`, so the source filter of the mobile library no longer lists such files under Tidal.
 
 ### Breaking
 - Docker users must set `FLACIDAL_AUTH_TOKEN` (see the README); the compose file refuses to start without it.
 
 ### Dependencies
-- flacidal-core bumped to v0.24.0.
+- flacidal-core bumped to v0.27.0.
 
 ## v4.18.2: 2026-09-30
 

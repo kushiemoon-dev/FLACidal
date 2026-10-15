@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetDownloadHistoryFiltered, DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory } from '../lib/api';
+  import { GetDownloadHistoryFiltered, DeleteHistoryRecord, ClearDownloadHistory, RefetchFromHistory, ListTrackHistory, type TrackHistoryEntry } from '../lib/api';
   import TabBar from '../components/TabBar.svelte';
   import { formatDate } from '../lib/format';
   import { t, locale } from '../lib/i18n';
@@ -50,10 +50,26 @@
 
   let { onRefetch = () => {}, onNavigateHome = () => {} }: { onRefetch?: (content: TidalContent) => void; onNavigateHome?: (url: string) => void } = $props();
 
+  // Recent failures section state
+  let failures: TrackHistoryEntry[] = $state([]);
+  let failuresError = $state(false);
+
   onMount(async () => {
+    loadFailures();
     await loadHistory();
     loadFetches();
   });
+
+  async function loadFailures() {
+    try {
+      const page = await ListTrackHistory('failed', 20, 0);
+      failures = page.entries ?? [];
+      failuresError = false;
+    } catch {
+      failures = [];
+      failuresError = true;
+    }
+  }
 
   function loadFetches() {
     if (typeof localStorage === 'undefined') {
@@ -217,6 +233,29 @@
   <TabBar {tabs} bind:activeTab />
 
   {#if activeTab === 'downloads'}
+    <section class="failures" aria-labelledby="failures-title">
+      <h2 id="failures-title">{$t('history.failures.title')}</h2>
+      {#if failures.length === 0}
+        <p class="failures-empty">{failuresError ? $t('history.failures.loadError') : $t('history.failures.empty')}</p>
+      {:else}
+        <ul class="failures-list">
+          {#each failures as entry (entry.id)}
+            <li class="failure-item">
+              <div class="failure-main">
+                <span class="failure-title">{entry.title}</span>
+                <span class="failure-artist">{entry.artist}</span>
+              </div>
+              <div class="failure-meta">
+                <span class="failure-source">{entry.source || $t('history.failures.unknownSource')}</span>
+                <span class="failure-date">{formatDate(new Date(entry.downloadedAt * 1000), dateOptions, $locale)}</span>
+              </div>
+              <span class="failure-error" title={entry.errorMessage}>{entry.errorMessage}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
+
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="search-box">
@@ -234,7 +273,7 @@
           {/if}
         </div>
 
-        <select bind:value={contentTypeFilter} onchange={handleFilterChange}>
+        <select aria-label={$t('history.filter.aria')} bind:value={contentTypeFilter} onchange={handleFilterChange}>
           <option value="">{$t('history.filter.all')}</option>
           <option value="playlist">{$t('history.filter.playlists')}</option>
           <option value="album">{$t('history.filter.albums')}</option>
@@ -243,7 +282,7 @@
 
         <div class="sort-dropdown">
           <ArrowUpDown size={14} />
-          <select bind:value={sortBy} onchange={handleSortChange}>
+          <select aria-label={$t('history.sort.aria')} bind:value={sortBy} onchange={handleSortChange}>
             <option value="default">{$t('history.sort.default')}</option>
             <option value="date">{$t('history.sort.date')}</option>
             <option value="name">{$t('history.sort.name')}</option>
@@ -810,6 +849,74 @@
 
   .tracks-total {
     color: var(--color-text-secondary);
+  }
+
+  .failures {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+  }
+
+  .failures h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--color-text-primary);
+  }
+
+  .failures-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  .failures-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .failure-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    font-size: 13px;
+  }
+
+  .failure-main {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .failure-title {
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .failure-artist,
+  .failure-meta {
+    color: var(--color-text-muted);
+  }
+
+  .failure-meta {
+    display: flex;
+    gap: 8px;
+  }
+
+  .failure-error {
+    grid-column: 1 / -1;
+    color: #ef4444;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tracks-failed {

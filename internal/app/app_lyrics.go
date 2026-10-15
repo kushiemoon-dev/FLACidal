@@ -65,7 +65,7 @@ func (a *App) FetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 		return lyrics, err // still hand back the lyrics even though embedding failed
 	}
 
-	if a.config != nil && a.config.SaveLyricsFile {
+	if a.cfg().SaveLyricsFile {
 		if saveErr := core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain); saveErr != nil {
 			a.logBuffer.Warn("Could not save lyrics file: " + saveErr.Error())
 		}

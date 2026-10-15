@@ -13,7 +13,7 @@
   import About from './pages/About.svelte';
   import { queueStore, queueStats, downloadFolder, queuePaused, type QueueItem, type TidalContent } from './stores/queue';
   import { toastStore } from './stores/toast';
-  import { initLanguage } from './lib/i18n';
+  import { initLanguage, t } from './lib/i18n';
   import { themeStore, initializeAccentColor, initializeFontFamily } from './stores/theme';
   import { initializeAudioSettings, playSound } from './stores/audio';
   import { createNavHistory, navigateTo, goBack, goForward, canGoBack, canGoForward, currentPage } from './lib/navHistory';
@@ -214,7 +214,7 @@
 {#if updateStatus?.blocked}
 <UpdateRequiredScreen status={updateStatus} onUpdate={DownloadAndInstallUpdate} />
 {:else}
-<main class="app-layout">
+<div class="app-layout">
   <Sidebar
     {activePage}
     onNavigate={handleNavigate}
@@ -227,7 +227,9 @@
     onBugReport={() => showIssueReporter = true}
   />
 
-  <div class="main-content">
+  <!-- scrollable region must be keyboard reachable -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <main class="main-content" tabindex="0" aria-label={$t('shell.mainAria')}>
     {#key activePage + ':' + reloadKey}
     <div transition:fade={{ duration: 150 }}>
       {#if activePage === 'home'}
@@ -259,8 +261,8 @@
       {/if}
     </div>
     {/key}
-  </div>
-</main>
+  </main>
+</div>
 {/if}
 <IssueReporterModal bind:isOpen={showIssueReporter} repoUrl="https://github.com/kushiemoon-dev/FLACidal/issues" />
 <Toast />
@@ -280,8 +282,8 @@
     --color-bg-hover: #2a2a2a;
     --color-text-primary: #fafafa;
     --color-text-secondary: #a1a1a1;
-    --color-text-tertiary: #666666;
-    --color-text-muted: #444444;
+    --color-text-tertiary: #9a9a9a;
+    --color-text-muted: #8a8a8a;
     --color-accent: #f472b6;
     --color-accent-hover: #f9a8d4;
     --color-accent-subtle: rgba(244, 114, 182, 0.15);
@@ -307,8 +309,8 @@
     --color-bg-hover: #e5e5e5;
     --color-text-primary: #171717;
     --color-text-secondary: #525252;
-    --color-text-tertiary: #737373;
-    --color-text-muted: #a3a3a3;
+    --color-text-tertiary: #5f5f5f;
+    --color-text-muted: #6b6b6b;
     --color-accent: #db2777;
     --color-accent-hover: #be185d;
     --color-accent-subtle: rgba(219, 39, 119, 0.1);
@@ -325,6 +327,11 @@
 
   :global(*) {
     box-sizing: border-box;
+  }
+
+  :global(:is(button, a, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   :global(body) {

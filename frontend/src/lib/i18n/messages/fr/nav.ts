@@ -17,4 +17,7 @@ export const nav = {
   'nav.back': 'Précédent',
   'nav.forward': 'Suivant',
   'nav.reload': 'Recharger',
+  'nav.historyAria': 'Navigation de l\'historique',
+  'nav.mainAria': 'Navigation principale',
+  'nav.bottomAria': 'Navigation secondaire',
 };

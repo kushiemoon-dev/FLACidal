@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../lib/i18n';
+  import { dialogFocus } from '../lib/dialogFocus';
 
   let {
     title,
@@ -44,8 +45,8 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="backdrop" onclick={handleBackdropClick}>
-  <div class="dialog" class:danger={variant === 'danger'}>
-    <h2 class="dialog-title">{title}</h2>
+  <div class="dialog" class:danger={variant === 'danger'} role="dialog" aria-modal="true" aria-labelledby="confirm-title" use:dialogFocus>
+    <h2 id="confirm-title" class="dialog-title">{title}</h2>
     <p class="dialog-message">{message}</p>
     <div class="dialog-actions">
       <button class="btn btn-cancel" onclick={onCancel}>{cancelText ?? $t('common.cancel')}</button>

@@ -28,9 +28,9 @@ func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 	if s.downloadManager != nil {
 		s.downloadManager.SetSourceOrder(validated)
 	}
-	if s.config != nil {
-		s.config.SourceOrder = validated
-		if err := core.SaveConfig(s.config); err != nil {
+	if s.configLoaded() {
+		next := s.updateConfig(func(c *core.Config) { c.SourceOrder = validated })
+		if err := core.SaveConfig(&next); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 	}

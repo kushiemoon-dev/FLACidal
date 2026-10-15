@@ -38,4 +38,8 @@ export const files = {
   'files.totalSize': '{size} total',
   'files.deleteConfirm.title': 'Delete File',
   'files.deleteConfirm.message': 'Are you sure you want to delete this file? This cannot be undone.',
+  'files.selectAll': 'Select all files',
+  'files.selectRow': 'Select {name}',
+  'files.sortedAsc': 'sorted ascending',
+  'files.sortedDesc': 'sorted descending',
 } as const;

@@ -130,8 +130,8 @@
               <span class="updated-ago">{timeAgo(project.updatedAt)}</span>
             {/if}
           </div>
-          <h3 class="project-name">{project.name}</h3>
-          <span class="project-tag" style="background: {project.color}20; color: {project.color}; border-color: {project.color}40">
+          <h2 class="project-name">{project.name}</h2>
+          <span class="project-tag" style="background: {project.color}20; color: color-mix(in srgb, {project.color} 50%, var(--color-text-primary)); border-color: {project.color}40">
             {project.tag}
           </span>
           <p class="project-desc">{$t(project.descriptionKey)}</p>
@@ -157,7 +157,7 @@
         </div>
 
         <div class="kofi-content">
-          <h3 class="support-subtitle">{$t('about.supportKofi')}</h3>
+          <h2 class="support-subtitle">{$t('about.supportKofi')}</h2>
           <p class="support-desc">
             {$t('about.supportDesc')}
           </p>
@@ -219,7 +219,7 @@
   .tab-badge.active {
     background: var(--badge-color);
     border-color: var(--badge-color);
-    color: #fff;
+    color: #000;
     font-weight: 600;
   }
 

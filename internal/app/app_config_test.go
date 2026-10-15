@@ -18,8 +18,9 @@ import (
 func TestGetConfig(t *testing.T) {
 	cfg := &core.Config{Theme: "dark"}
 	a := &App{config: cfg}
-	if got := a.GetConfig(); got != cfg {
-		t.Errorf("GetConfig() = %p, want the same pointer %p", got, cfg)
+	// GetConfig hands out a copy so callers cannot race with SaveConfig.
+	if got := a.GetConfig(); got == cfg || got.Theme != "dark" {
+		t.Errorf("GetConfig() = %+v, want a copy of %+v", got, cfg)
 	}
 }
 
@@ -226,8 +227,8 @@ func TestResetToDefaults(t *testing.T) {
 	if cfg.DownloadFolder != "/music/keep-me" {
 		t.Errorf("ResetToDefaults() DownloadFolder = %q, want preserved %q", cfg.DownloadFolder, "/music/keep-me")
 	}
-	if a.config != cfg {
-		t.Error("ResetToDefaults() did not update a.config to the new default config")
+	if got := a.cfg(); got.DownloadFolder != cfg.DownloadFolder || got.Theme != cfg.Theme {
+		t.Error("ResetToDefaults() did not update the stored config to the new default config")
 	}
 }
 

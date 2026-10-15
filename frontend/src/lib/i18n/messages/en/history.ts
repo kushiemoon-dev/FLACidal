@@ -41,4 +41,10 @@ export const history = {
   'history.fetches.emptyHint': 'URLs you fetch will appear here.',
   'history.refetch': 'Re-fetch',
   'history.removeFromHistory': 'Remove from history',
+  'history.failures.title': 'Recent failures',
+  'history.failures.empty': 'No recent failures',
+  'history.failures.loadError': 'Could not load recent failures',
+  'history.failures.unknownSource': 'Unknown source',
+  'history.filter.aria': 'Filter by type',
+  'history.sort.aria': 'Sort history',
 } as const;

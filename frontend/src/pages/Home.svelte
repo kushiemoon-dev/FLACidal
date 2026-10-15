@@ -21,7 +21,9 @@
   } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalContent, type TidalTrack } from '../stores/queue';
+  import { get } from 'svelte/store';
   import { toastStore } from '../stores/toast';
+  import { toUiError } from '../lib/errors';
   import { formatBytes, formatDuration } from '../lib/format';
   import { t, type MessageKey, tm, type UiMsg } from '../lib/i18n';
   import { Search, Download, Clock, Music } from 'lucide-svelte';
@@ -86,7 +88,7 @@
         await QueueArtistAlbum(album.content_id, album.artist, $downloadFolder);
       }
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.queueAlbum' };
+      error = toUiError(e);
     }
   }
 
@@ -281,7 +283,7 @@
         error = { key: 'home.error.noAlbumsMatched' };
       }
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.queueDiscography' };
+      error = toUiError(e);
     }
     discographyAlbums = null;
     discographyConfirmLoading = false;
@@ -397,11 +399,11 @@
     try {
       const selected = await SelectDownloadFolder();
       if (selected) {
-        downloadFolder.set(selected);
         await SetDownloadFolder(selected);
+        downloadFolder.set(selected);
       }
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.selectFolder' };
+      error = toUiError(e);
     }
   }
 
@@ -427,7 +429,7 @@
     try {
       await QueueSingleDownload(track.id, $downloadFolder, track.title, track.artists);
     } catch (e) {
-      queueStore.updateItem(track.id, { status: 'error', error: errorMessage(e) });
+      queueStore.updateItem(track.id, { status: 'error', error: get(tm)(toUiError(e)) });
     }
   }
 
@@ -460,7 +462,7 @@
         await QueueDownloads(tracksToDownload, $downloadFolder, content.title, content.id ?? '', content.type);
       }
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.queueDownloads' };
+      error = toUiError(e);
     }
   }
 
@@ -523,7 +525,7 @@
     try {
       await QueueArtistAlbum(String(albumId), content?.title || '', $downloadFolder);
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.queueAlbum' };
+      error = toUiError(e);
     }
   }
 
@@ -604,7 +606,7 @@
       const count = await DownloadArtistAssets(artistId, content?.title || '', $downloadFolder);
       assetsResult = { key: 'home.assetsSaved', vars: { count } };
     } catch (e) {
-      error = errorMessage(e) || { key: 'home.error.artistAssets' };
+      error = toUiError(e);
     }
     downloadingAssets = false;
   }
@@ -765,14 +767,14 @@
   <!-- Recent Albums -->
   {#if recentAlbums.length > 0 && !content && !loading}
   <section class="recent-albums">
-    <h3>{$t('home.recentlyDownloaded')}</h3>
+    <h2>{$t('home.recentlyDownloaded')}</h2>
     <div class="albums-grid">
       {#each recentAlbums as album (album.content_id)}
       <div class="album-card" title="{album.artist ? album.artist + ', ' : ''}{album.title}"
         role="button"
         tabindex="0"
         onclick={() => redownloadAlbum(album)}
-        onkeydown={(e) => e.key === 'Enter' && redownloadAlbum(album)}>
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); redownloadAlbum(album); } }}>
         {#if album.cover_url}
           <img src="{album.cover_url}" alt="{album.title}" />
         {:else}
@@ -1052,7 +1054,7 @@
           <circle cx="18" cy="16" r="3"/>
         </svg>
       </div>
-      <h3>{$t('home.empty.title')}</h3>
+      <h2>{$t('home.empty.title')}</h2>
       <p>{$t('home.empty.body')}</p>
       <div class="source-chips">
         <span class="source-chip">{$t('home.chip.tidal')}</span>
@@ -1771,7 +1773,7 @@
     color: var(--color-text-muted);
   }
 
-  .empty-state h3 {
+  .empty-state h2 {
     margin: 0 0 8px 0;
     font-size: 1.2rem;
     font-weight: 600;
@@ -1811,6 +1813,9 @@
     color: #60a5fa;
     background: rgba(59, 130, 246, 0.08);
   }
+
+  :global([data-theme="light"]) .source-chip-p2p { color: #047857; }
+  :global([data-theme="light"]) .source-chip-spotify { color: #1d4ed8; }
 
   /* Artist discography */
   .album-filter-bar {
@@ -2082,7 +2087,7 @@
   }
 
   .recent-albums { margin-top: 2rem; }
-  .recent-albums h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; margin-bottom: 1rem; }
+  .recent-albums h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; margin-bottom: 1rem; }
   .albums-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; }
   .album-card { cursor: pointer; border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.05); transition: transform 0.15s; }
   .album-card:hover { transform: translateY(-2px); }

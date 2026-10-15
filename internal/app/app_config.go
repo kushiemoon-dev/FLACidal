@@ -22,11 +22,21 @@ type configExport struct {
 }
 
 func (a *App) GetConfig() *core.Config {
-	return a.config
+	c := a.cfg()
+	return &c
 }
 
 func (a *App) SaveConfig(config core.Config) error {
-	a.config = &config
+	// Only a changed folder is checked: the front end sends the whole config
+	// back, and a vanished folder must not block saving other settings.
+	if config.DownloadFolder != a.cfg().DownloadFolder {
+		folder, err := core.ValidateDownloadFolder(config.DownloadFolder)
+		if err != nil {
+			return err
+		}
+		config.DownloadFolder = folder
+	}
+	a.setCfg(config)
 	if a.downloadManager != nil {
 		a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
 		a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
@@ -176,9 +186,9 @@ func (a *App) SetSourceOrder(order []string) error {
 	if a.downloadManager != nil {
 		a.downloadManager.SetSourceOrder(validated)
 	}
-	if a.config != nil {
-		a.config.SourceOrder = validated
-		return core.SaveConfig(a.config)
+	if a.configLoaded() {
+		next := a.updateConfig(func(c *core.Config) { c.SourceOrder = validated })
+		return core.SaveConfig(&next)
 	}
 	return nil
 }
@@ -219,11 +229,11 @@ func ValidateSourceOrder(order []string) ([]string, error) {
 func (a *App) ResetToDefaults() (*core.Config, error) {
 	defaultCfg := core.GetDefaultConfig()
 
-	if a.config != nil && a.config.DownloadFolder != "" {
-		defaultCfg.DownloadFolder = a.config.DownloadFolder
+	if folder := a.cfg().DownloadFolder; folder != "" {
+		defaultCfg.DownloadFolder = folder
 	}
 
-	a.config = defaultCfg
+	a.setCfg(*defaultCfg)
 	if err := core.SaveConfig(defaultCfg); err != nil {
 		return nil, err
 	}
@@ -334,7 +344,7 @@ func (a *App) ExportConfig() error {
 	if err != nil || path == "" {
 		return err
 	}
-	cfg := *a.config
+	cfg := a.cfg()
 	cfg.TidalClientID = ""
 	cfg.TidalClientSecret = ""
 	cfg.SoulseekUsername = ""
@@ -375,7 +385,7 @@ func (a *App) ImportConfig() (*core.Config, error) {
 	if err := a.SaveConfig(export.Config); err != nil {
 		return nil, err
 	}
-	return a.config, nil
+	return a.GetConfig(), nil
 }
 
 func openFolder(path string) error {

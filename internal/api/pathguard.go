@@ -19,12 +19,13 @@ var (
 // allowedRoots reads the live config on every call so a saved config change
 // applies immediately.
 func (s *Server) allowedRoots() []string {
-	download := s.config.DownloadFolder
+	cfg := s.cfg()
+	download := cfg.DownloadFolder
 	if download == "" {
 		download = core.GetDefaultDownloadFolder()
 	}
 	roots := []string{download}
-	for _, p := range s.config.ExternalLibraryPaths {
+	for _, p := range cfg.ExternalLibraryPaths {
 		if p != "" {
 			roots = append(roots, p)
 		}
@@ -102,10 +103,7 @@ func validateAbsFolder(p string) (string, error) {
 
 // validateDownloadFolder allows empty, which means "use the default".
 func validateDownloadFolder(p string) (string, error) {
-	if p == "" {
-		return "", nil
-	}
-	return validateAbsFolder(p)
+	return core.ValidateDownloadFolder(p)
 }
 
 // validateLibraryPaths refuses "/" so an authenticated client cannot widen

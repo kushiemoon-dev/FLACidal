@@ -319,6 +319,31 @@ export async function GetDownloadHistoryFiltered(
   return apiGet(`/history/filtered${query}`)
 }
 
+export interface TrackHistoryEntry {
+  id: number
+  spotifyId: string
+  isrc: string
+  title: string
+  artist: string
+  album: string
+  source: string
+  quality: string
+  filePath: string
+  status: string
+  errorMessage: string
+  downloadedAt: number // Unix seconds
+}
+
+type TrackHistoryPage = { entries: TrackHistoryEntry[]; total: number }
+
+// status is '' (all), 'failed' or 'completed'.
+export async function ListTrackHistory(status: string, limit: number, offset: number): Promise<TrackHistoryPage> {
+  if (isWailsRuntime()) {
+    return Wails.ListTrackHistory(status, limit, offset) as unknown as Promise<TrackHistoryPage>
+  }
+  return apiGet(`/track-history${qs({ status, limit, offset })}`)
+}
+
 export async function DeleteHistoryRecord(id: number): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.DeleteHistoryRecord(id)

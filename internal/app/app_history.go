@@ -32,6 +32,39 @@ func (a *App) GetDownloadHistory() ([]core.DownloadRecord, error) {
 	return a.db.GetAllDownloadRecords()
 }
 
+// TrackHistoryPage backs ListTrackHistory and GET /api/track-history. status
+// is "", "failed" or "completed"; limit is capped to 1..200 (default 50).
+func TrackHistoryPage(db *core.Database, status string, limit, offset int) (map[string]interface{}, error) {
+	if status != "" && status != "failed" && status != "completed" {
+		return nil, fmt.Errorf("invalid status %q", status)
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	entries, err := db.ListHistoryByStatus(status, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("ListTrackHistory: %w", err)
+	}
+	total, err := db.GetHistoryCountByStatus(status)
+	if err != nil {
+		return nil, fmt.Errorf("ListTrackHistory: %w", err)
+	}
+	return map[string]interface{}{"entries": entries, "total": total}, nil
+}
+
+// ListTrackHistory lists per-track download history, newest first. status is
+// "", "failed" or "completed".
+func (a *App) ListTrackHistory(status string, limit, offset int) (map[string]interface{}, error) {
+	if a.db == nil {
+		return map[string]interface{}{"entries": []core.HistoryEntry{}, "total": 0}, nil
+	}
+	return TrackHistoryPage(a.db, status, limit, offset)
+}
+
 // Deduplicated, for the home page grid.
 func (a *App) GetRecentAlbums(limit int) ([]map[string]interface{}, error) {
 	if a.db == nil {

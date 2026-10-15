@@ -38,4 +38,8 @@ export const files = {
   'files.totalSize': '{size} au total',
   'files.deleteConfirm.title': 'Supprimer le fichier',
   'files.deleteConfirm.message': 'Voulez-vous vraiment supprimer ce fichier ? Cette action est irréversible.',
+  'files.selectAll': 'Tout sélectionner',
+  'files.selectRow': 'Sélectionner {name}',
+  'files.sortedAsc': 'trié par ordre croissant',
+  'files.sortedDesc': 'trié par ordre décroissant',
 };

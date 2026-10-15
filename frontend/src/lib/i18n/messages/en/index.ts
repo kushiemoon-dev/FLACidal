@@ -1,4 +1,5 @@
 import { common } from './common';
+import { errors } from './errors';
 import { files } from './files';
 import { history } from './history';
 import { home } from './home';
@@ -12,4 +13,4 @@ import { about } from './about';
 import { terminal } from './terminal';
 import { tools } from './tools';
 
-export const en = { ...common, ...files, ...history, ...home, ...modals, ...nav, ...queue, ...search, ...settings, ...shell, ...about, ...terminal, ...tools };
+export const en = { ...common, ...errors, ...files, ...history, ...home, ...modals, ...nav, ...queue, ...search, ...settings, ...shell, ...about, ...terminal, ...tools };

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '../lib/dialogFocus';
   import { OpenExternalURL } from '../lib/runtime';
   import { t } from '../lib/i18n';
 
@@ -29,7 +30,7 @@
 
 {#if isOpen}
 <div class="modal-overlay" role="presentation" onclick={handleOverlayClick}>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-label={$t('modals.issue.title')}>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label={$t('modals.issue.title')} use:dialogFocus>
     <h2 class="modal-title">{$t('modals.issue.title')}</h2>
 
     <div class="warning-box">

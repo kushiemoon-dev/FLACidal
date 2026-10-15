@@ -52,6 +52,7 @@ type ServerConfig struct {
 
 type Server struct {
 	app              *fiber.App
+	configMu         sync.RWMutex // guards config, see cfg/setCfg/updateConfig
 	config           *core.Config
 	db               *core.Database
 	downloadManager  *core.DownloadManager
@@ -282,6 +283,12 @@ func (s *Server) setupRoutes() {
 	RegisterHistoryRoutes(api, s)
 
 	RegisterQueueRoutes(s.app, s)
+
+	// Unknown API paths must not fall through to the SPA handler below, which
+	// would answer 200 with index.html.
+	api.All("/*", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not found"})
+	})
 
 	s.app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {

@@ -20,7 +20,7 @@ test.describe('Home screen', () => {
     await expect(fetchBtn).toBeVisible()
     await fetchBtn.click()
     await expect(page.locator('.content-card')).toHaveCount(0)
-    await expect(page.locator('.empty-state h3', { hasText: 'Ready to Download' })).toBeVisible()
+    await expect(page.locator('.empty-state h2', { hasText: 'Ready to Download' })).toBeVisible()
   })
 
   test('a Tidal album URL is detected as its source and Fetch renders a content card', async ({ page }) => {

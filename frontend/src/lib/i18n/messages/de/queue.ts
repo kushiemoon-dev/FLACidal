@@ -43,4 +43,5 @@ export const queue = {
   'queue.panel.empty': 'Keine Downloads in Bearbeitung',
   'queue.panel.queued': 'Wartend',
   'queue.panel.downloading': 'Wird heruntergeladen…',
+  'queue.panel.aria': 'Download-Warteschlange',
 } as const;

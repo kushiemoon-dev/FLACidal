@@ -21,10 +21,10 @@ func (s *Server) handleQueueQobuzDownloads(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	if s.downloadManager == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "download manager not initialized"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNotReady, "").Error()})
 	}
 	if req.OutputDir == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "no output directory specified"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNoOutputDir, "").Error()})
 	}
 
 	outputDir := req.OutputDir

@@ -86,8 +86,9 @@ func TestValidateDownloadFolder(t *testing.T) {
 	if got, err := validateDownloadFolder(""); err != nil || got != "" {
 		t.Errorf("empty = %q, %v; want \"\", nil", got, err)
 	}
-	if got, err := validateDownloadFolder("/srv/music/"); err != nil || got != "/srv/music" {
-		t.Errorf("clean = %q, %v; want /srv/music, nil", got, err)
+	dir := t.TempDir()
+	if got, err := validateDownloadFolder(dir + "/"); err != nil || got != dir {
+		t.Errorf("clean = %q, %v; want %s, nil", got, err, dir)
 	}
 }
 

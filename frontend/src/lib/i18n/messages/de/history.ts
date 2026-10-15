@@ -41,4 +41,10 @@ export const history = {
   'history.fetches.emptyHint': 'URLs, die Sie abrufen, erscheinen hier.',
   'history.refetch': 'Erneut abrufen',
   'history.removeFromHistory': 'Aus dem Verlauf entfernen',
+  'history.failures.title': 'Letzte Fehlschläge',
+  'history.failures.empty': 'Keine aktuellen Fehlschläge',
+  'history.failures.loadError': 'Letzte Fehlschläge konnten nicht geladen werden',
+  'history.failures.unknownSource': 'Unbekannte Quelle',
+  'history.filter.aria': 'Nach Typ filtern',
+  'history.sort.aria': 'Verlauf sortieren',
 };

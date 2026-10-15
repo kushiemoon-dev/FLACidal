@@ -41,4 +41,10 @@ export const history = {
   'history.fetches.emptyHint': 'Les URL que vous récupérez apparaîtront ici.',
   'history.refetch': 'Récupérer à nouveau',
   'history.removeFromHistory': "Retirer de l'historique",
+  'history.failures.title': 'Échecs récents',
+  'history.failures.empty': 'Aucun échec récent',
+  'history.failures.loadError': 'Impossible de charger les échecs récents',
+  'history.failures.unknownSource': 'Source inconnue',
+  'history.filter.aria': 'Filtrer par type',
+  'history.sort.aria': 'Trier l\'historique',
 };

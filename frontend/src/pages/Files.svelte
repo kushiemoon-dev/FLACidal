@@ -3,7 +3,9 @@
   import { SvelteSet } from 'svelte/reactivity';
   import { downloadFolder } from '../stores/queue';
   import { formatNumber, formatBytes, formatDate } from '../lib/format';
-  import { t, locale } from '../lib/i18n';
+  import { t, tm, locale, type UiMsg } from '../lib/i18n';
+  import { toUiError } from '../lib/errors';
+  import { toastStore } from '../stores/toast';
   import { ListDownloadedFiles, DeleteFile, OpenDownloadFolder, IsConverterAvailable, FetchAndEmbedLyricsMultiple, OpenFLACFilesDialog, SelectFolderForConversion, isWailsRuntime } from '../lib/api';
   import { onNativeFileDrop } from '../lib/runtime';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
@@ -24,6 +26,7 @@
 
   let files: DownloadedFile[] = $state([]);
   let isLoading = $state(true);
+  let loadError = $state<UiMsg>(null);
   let sortBy: 'name' | 'date' | 'size' = $state('date');
   let sortOrder: 'asc' | 'desc' = $state('desc');
   let metadataFilePath: string | null = $state(null);
@@ -167,7 +170,7 @@
         showConvertModal = true;
       }
     } catch (error) {
-      console.error('Error selecting folder for conversion:', error);
+      toastStore.showMsg(toUiError(error), 'error');
     }
   }
 
@@ -194,12 +197,14 @@
 
   async function loadFiles() {
     isLoading = true;
+    loadError = null;
     try {
       const result = await ListDownloadedFiles();
       files = result || [];
     } catch (error) {
-      console.error('Error loading files:', error);
       files = [];
+      loadError = toUiError(error);
+      toastStore.showMsg(loadError, 'error');
     } finally {
       isLoading = false;
     }
@@ -219,7 +224,7 @@
       const folder = path.substring(0, path.lastIndexOf('/'));
       await OpenDownloadFolder(folder);
     } catch (error) {
-      console.error('Error opening file manager:', error);
+      toastStore.showMsg(toUiError(error), 'error');
     }
   }
 
@@ -245,7 +250,7 @@
       try {
         await OpenDownloadFolder($downloadFolder);
       } catch (error) {
-        console.error('Error opening folder:', error);
+        toastStore.showMsg(toUiError(error), 'error');
       }
     }
   }
@@ -410,6 +415,10 @@
       <div class="loader"></div>
       <p>{$t('files.loading')}</p>
     </div>
+  {:else if loadError}
+    <div class="empty-state error-state" role="alert">
+      <p>{$tm(loadError)}</p>
+    </div>
   {:else if files.length === 0}
     <div class="empty-state">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -422,7 +431,7 @@
     <div class="files-table">
       <div class="table-header">
         <label class="th checkbox-col">
-          <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
+          <input type="checkbox" checked={allSelected} indeterminate={someSelected && !allSelected} aria-label={$t('files.selectAll')} onchange={toggleSelectAll} />
           <span class="custom-checkbox" class:checked={allSelected} class:indeterminate={someSelected && !allSelected}>
             {#if allSelected}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -438,7 +447,8 @@
         <button class="th sortable" onclick={() => sortFiles('name')}>
           {$t('files.col.name')}
           {#if sortBy === 'name'}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <span class="sr-only">{sortOrder === 'asc' ? $t('files.sortedAsc') : $t('files.sortedDesc')}</span>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
                 <path d="M7 14l5-5 5 5z"/>
               {:else}
@@ -452,7 +462,8 @@
         <button class="th sortable" onclick={() => sortFiles('size')}>
           {$t('files.col.size')}
           {#if sortBy === 'size'}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <span class="sr-only">{sortOrder === 'asc' ? $t('files.sortedAsc') : $t('files.sortedDesc')}</span>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
                 <path d="M7 14l5-5 5 5z"/>
               {:else}
@@ -464,7 +475,8 @@
         <button class="th sortable" onclick={() => sortFiles('date')}>
           {$t('files.col.date')}
           {#if sortBy === 'date'}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <span class="sr-only">{sortOrder === 'asc' ? $t('files.sortedAsc') : $t('files.sortedDesc')}</span>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               {#if sortOrder === 'asc'}
                 <path d="M7 14l5-5 5 5z"/>
               {:else}
@@ -480,7 +492,7 @@
         {#each sortedFiles as file (file.path)}
           <div class="table-row" class:selected={selectedFiles.has(file.path)}>
             <label class="cell checkbox-col">
-              <input type="checkbox" checked={selectedFiles.has(file.path)} onchange={() => toggleSelect(file.path)} />
+              <input type="checkbox" checked={selectedFiles.has(file.path)} aria-label={$t('files.selectRow', { name: file.title || file.name })} onchange={() => toggleSelect(file.path)} />
               <span class="custom-checkbox" class:checked={selectedFiles.has(file.path)}>
                 {#if selectedFiles.has(file.path)}
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -500,8 +512,8 @@
                 <span class="file-path">{file.name}</span>
               </div>
             </div>
-            <span class="cell">{file.artist || '--'}</span>
-            <span class="cell">{file.album || '--'}</span>
+            <span class="cell artist">{file.artist || '--'}</span>
+            <span class="cell album">{file.album || '--'}</span>
             <span class="cell size">{formatBytes(file.size)}</span>
             <span class="cell date">{formatFileDate(file.modTime, $locale)}</span>
             <div class="cell actions">
@@ -709,7 +721,15 @@
     background: rgba(244, 114, 182, 0.25);
   }
 
+  :global([data-theme="light"]) .action-btn.primary {
+    color: #be185d;
+  }
+
   .loading-state,
+  .empty-state.error-state {
+    color: var(--color-error, #e5484d);
+  }
+
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -923,8 +943,31 @@
     cursor: pointer;
   }
 
+  .checkbox-col {
+    position: relative;
+  }
+
   .checkbox-col input {
-    display: none;
+    position: absolute;
+    opacity: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .checkbox-col input:focus-visible + .custom-checkbox {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .custom-checkbox {
@@ -952,5 +995,75 @@
     background: #f472b6;
     border-color: #f472b6;
     color: #000;
+  }
+
+  @media (max-width: 640px) {
+    .files-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .header-actions {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .action-btn {
+      min-height: 44px;
+    }
+
+    .selection-count {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+    }
+
+    .folder-path {
+      overflow-wrap: anywhere;
+    }
+
+    .table-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+    }
+
+    .table-header .th:not(.sortable):not(.checkbox-col) {
+      display: none;
+    }
+
+    .th.sortable {
+      min-height: 44px;
+    }
+
+    .header-left {
+      text-align: left;
+    }
+
+    .table-row {
+      grid-template-columns: 36px 1fr 1fr;
+      grid-template-areas:
+        "chk name name"
+        "chk artist album"
+        "chk size date"
+        "chk act act";
+      gap: 4px 12px;
+      text-align: left;
+    }
+
+    .table-row > * {
+      min-width: 0;
+    }
+
+    .table-row .checkbox-col { grid-area: chk; }
+    .table-row .name-cell { grid-area: name; }
+    .table-row .cell.artist { grid-area: artist; }
+    .table-row .cell.album { grid-area: album; }
+    .table-row .cell.size { grid-area: size; }
+    .table-row .cell.date { grid-area: date; }
+    .table-row .cell.actions { grid-area: act; justify-content: flex-start; }
   }
 </style>

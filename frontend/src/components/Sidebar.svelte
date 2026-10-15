@@ -92,7 +92,7 @@
   </div>
 
   <!-- Back / Forward / Reload -->
-  <nav class="nav-history">
+  <nav class="nav-history" aria-label={$t('nav.historyAria')}>
     <button class="nav-item" onclick={onBack} disabled={!canBack} title={$t('nav.back')} aria-label={$t('nav.back')}>
       <ArrowLeft size={18} />
     </button>
@@ -105,7 +105,7 @@
   </nav>
 
   <!-- Main navigation -->
-  <nav class="nav-main">
+  <nav class="nav-main" aria-label={$t('nav.mainAria')}>
     {#each navItems as item (item.id)}
       <button
         class="nav-item"
@@ -124,7 +124,7 @@
   </nav>
 
   <!-- Bottom navigation -->
-  <nav class="nav-bottom">
+  <nav class="nav-bottom" aria-label={$t('nav.bottomAria')}>
     <!-- Tools flyout button -->
     <div class="flyout-wrapper">
       <button

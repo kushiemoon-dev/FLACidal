@@ -27,11 +27,15 @@ export interface WailsOverrides {
   FetchContentFromURL?: unknown
   ExpandDiscographyURL?: string[]
   GetDownloadHistoryFiltered?: unknown
+  ListTrackHistory?: unknown
   GetAvailableSources?: unknown
   GetConversionFormats?: unknown
   IsConverterAvailable?: boolean
   AnalyzeMultiple?: unknown[]
   ListDownloadedFiles?: unknown[]
+  ListDownloadedFilesError?: string
+  SetDownloadFolderError?: string
+  ImportConfigError?: string
   GetSourceHealth?: unknown[]
   // Network: stubbed fetch response for /api/* endpoints
   apiAnalyze?: { ok: boolean; body: unknown }
@@ -75,7 +79,13 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetAppVersion: async () => opts.GetAppVersion ?? '4.0.0-test',
 
       GetDownloadFolder: async () => opts.GetDownloadFolder ?? '/tmp/flacidal-test',
-      SetDownloadFolder: async (_f: string) => {},
+      ImportConfig: async () => {
+        if (opts.ImportConfigError) throw new Error(opts.ImportConfigError)
+        return null
+      },
+      SetDownloadFolder: async (_f: string) => {
+        if (opts.SetDownloadFolderError) throw new Error(opts.SetDownloadFolderError)
+      },
       SelectDownloadFolder: async () => '/tmp/flacidal-selected',
       OpenDownloadFolder: async (_f: string) => {},
       OpenConfigFolder: async () => {},
@@ -165,11 +175,16 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       GetDownloadHistory: async () => [],
       GetDownloadHistoryFiltered: async (_f: unknown) =>
         opts.GetDownloadHistoryFiltered ?? { records: [], total: 0 },
+      ListTrackHistory: async (_s: string, _l: number, _o: number) =>
+        opts.ListTrackHistory ?? { entries: [], total: 0 },
       DeleteHistoryRecord: async (_id: number) => {},
       ClearDownloadHistory: async () => {},
       RefetchFromHistory: async (_id: string) => ({ url: '' }),
 
-      ListDownloadedFiles: async () => opts.ListDownloadedFiles ?? [],
+      ListDownloadedFiles: async () => {
+        if (opts.ListDownloadedFilesError) throw new Error(opts.ListDownloadedFilesError)
+        return opts.ListDownloadedFiles ?? []
+      },
       DeleteFile: async (_p: string) => {},
       OpenFLACFilesDialog: async () => [],
       SelectFolderForConversion: async () => [],

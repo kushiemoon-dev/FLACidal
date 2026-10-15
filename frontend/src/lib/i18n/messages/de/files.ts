@@ -38,4 +38,8 @@ export const files = {
   'files.totalSize': '{size} insgesamt',
   'files.deleteConfirm.title': 'Datei löschen',
   'files.deleteConfirm.message': 'Möchten Sie diese Datei wirklich löschen? Dies kann nicht rückgängig gemacht werden.',
+  'files.selectAll': 'Alle Dateien auswählen',
+  'files.selectRow': '{name} auswählen',
+  'files.sortedAsc': 'aufsteigend sortiert',
+  'files.sortedDesc': 'absteigend sortiert',
 };
