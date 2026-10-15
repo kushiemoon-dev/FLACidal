@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
+	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
 // Functionally mirrors internal/app's App.ExportFailedDownloads, but skips
@@ -13,7 +15,7 @@ import (
 func (s *Server) handleExportFailedDownloads(c *fiber.Ctx) error {
 	format := c.Query("format", "txt")
 	if s.downloadManager == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "download manager not initialized"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNotReady, "").Error()})
 	}
 
 	jobs := s.downloadManager.GetFailedJobs()

@@ -22,7 +22,8 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetConfig(c *fiber.Ctx) error {
-	return c.JSON(s.config)
+	cfg := s.cfg()
+	return c.JSON(&cfg)
 }
 
 func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
@@ -30,9 +31,14 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	if err := c.BodyParser(&config); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	folder, err := validateDownloadFolder(config.DownloadFolder)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	// The client sends the whole config back: only a changed folder is checked,
+	// so a vanished one (unmounted disk) cannot block saving other settings.
+	folder := config.DownloadFolder
+	if folder != s.cfg().DownloadFolder {
+		var err error
+		if folder, err = validateDownloadFolder(folder); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
 	}
 	libraries, err := validateLibraryPaths(config.ExternalLibraryPaths)
 	if err != nil {
@@ -45,7 +51,7 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	if err := core.SaveConfig(&config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	s.config = &config
+	s.setCfg(config)
 	return c.JSON(fiber.Map{"success": true})
 }
 
@@ -53,14 +59,14 @@ func (s *Server) handleResetConfig(c *fiber.Ctx) error {
 	config := core.GetDefaultConfig()
 
 	// Keep the existing download folder, mirroring internal/app's App.ResetToDefaults.
-	if s.config != nil && s.config.DownloadFolder != "" {
-		config.DownloadFolder = s.config.DownloadFolder
+	if folder := s.cfg().DownloadFolder; folder != "" {
+		config.DownloadFolder = folder
 	}
 
 	if err := core.SaveConfig(config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	s.config = config
+	s.setCfg(*config)
 	return c.JSON(config)
 }
 
@@ -230,7 +236,7 @@ func (s *Server) handleSearch(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "the 'q' query parameter is required"})
 	}
 	if s.tidalSource == nil || s.tidalSource.GetService() == nil {
-		return c.Status(500).JSON(fiber.Map{"error": "downloader not initialized"})
+		return c.Status(500).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNotReady, "").Error()})
 	}
 
 	limit, err := strconv.Atoi(c.Query("limit", "50"))
@@ -268,7 +274,7 @@ func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 
 	outputDir := req.OutputDir
 	if outputDir == "" {
-		outputDir = s.config.DownloadFolder
+		outputDir = s.cfg().DownloadFolder
 	}
 	if outputDir == "" {
 		outputDir = core.GetDefaultDownloadFolder()
@@ -291,7 +297,7 @@ func (s *Server) handleQueueSingle(c *fiber.Ctx) error {
 
 	outputDir := req.OutputDir
 	if outputDir == "" {
-		outputDir = s.config.DownloadFolder
+		outputDir = s.cfg().DownloadFolder
 	}
 	if outputDir == "" {
 		outputDir = core.GetDefaultDownloadFolder()
@@ -316,15 +322,16 @@ func (s *Server) handleGetQueueStatus(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetDownloadOptions(c *fiber.Ctx) error {
+	cfg := s.cfg()
 	return c.JSON(fiber.Map{
-		"quality":         s.config.DownloadQuality,
-		"fileNameFormat":  s.config.FileNameFormat,
-		"organizeFolders": s.config.OrganizeFolders,
-		"embedCover":      s.config.EmbedCover,
-		"saveCoverFile":   s.config.SaveCoverFile,
-		"saveFolderCover": s.config.SaveFolderCover,
-		"autoAnalyze":     s.config.AutoAnalyze,
-		"embedLyrics":     s.config.EmbedLyrics,
+		"quality":         cfg.DownloadQuality,
+		"fileNameFormat":  cfg.FileNameFormat,
+		"organizeFolders": cfg.OrganizeFolders,
+		"embedCover":      cfg.EmbedCover,
+		"saveCoverFile":   cfg.SaveCoverFile,
+		"saveFolderCover": cfg.SaveFolderCover,
+		"autoAnalyze":     cfg.AutoAnalyze,
+		"embedLyrics":     cfg.EmbedLyrics,
 	})
 }
 
@@ -341,14 +348,16 @@ func (s *Server) handleSetDownloadOptions(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	s.config.DownloadQuality = req.Quality
-	s.config.FileNameFormat = req.FileNameFormat
-	s.config.OrganizeFolders = req.OrganizeFolders
-	s.config.EmbedCover = req.EmbedCover
-	s.config.SaveCoverFile = req.SaveCoverFile
-	s.config.AutoAnalyze = req.AutoAnalyze
+	next := s.updateConfig(func(c *core.Config) {
+		c.DownloadQuality = req.Quality
+		c.FileNameFormat = req.FileNameFormat
+		c.OrganizeFolders = req.OrganizeFolders
+		c.EmbedCover = req.EmbedCover
+		c.SaveCoverFile = req.SaveCoverFile
+		c.AutoAnalyze = req.AutoAnalyze
+	})
 
-	if err := core.SaveConfig(s.config); err != nil {
+	if err := core.SaveConfig(&next); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -362,7 +371,7 @@ func (s *Server) handleRetryDownload(c *fiber.Ctx) error {
 	}
 
 	// The download manager already tracks failed jobs internally, so this just re-queues it.
-	outputDir := s.config.DownloadFolder
+	outputDir := s.cfg().DownloadFolder
 	if outputDir == "" {
 		outputDir = core.GetDefaultDownloadFolder()
 	}
@@ -508,7 +517,7 @@ func (s *Server) handleRefetchFromHistory(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleListFiles(c *fiber.Ctx) error {
-	folder := s.config.DownloadFolder
+	folder := s.cfg().DownloadFolder
 	if folder == "" {
 		return c.JSON([]core.DownloadedFileInfo{})
 	}
@@ -813,7 +822,7 @@ func (s *Server) fetchAndEmbedLyrics(filePath string) (*core.Lyrics, error) {
 		return lyrics, err
 	}
 
-	if s.config != nil && s.config.SaveLyricsFile {
+	if s.cfg().SaveLyricsFile {
 		core.SaveLyricsFile(filePath, lyrics.Synced, lyrics.Plain) //nolint:errcheck // sidecar write is best-effort; the embed already succeeded
 	}
 
@@ -868,10 +877,12 @@ func (s *Server) handleUpdateQobuzCredentials(c *fiber.Ctx) error {
 
 	s.qobuzSource.SetCredentials(req.AppID, req.AppSecret, req.AuthToken)
 
-	s.config.QobuzAppID = req.AppID
-	s.config.QobuzAppSecret = req.AppSecret
-	s.config.QobuzAuthToken = req.AuthToken
-	if err := core.SaveConfig(s.config); err != nil {
+	next := s.updateConfig(func(c *core.Config) {
+		c.QobuzAppID = req.AppID
+		c.QobuzAppSecret = req.AppSecret
+		c.QobuzAuthToken = req.AuthToken
+	})
+	if err := core.SaveConfig(&next); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -883,7 +894,7 @@ func (s *Server) handleIsQobuzConfigured(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleGetDownloadFolder(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"folder": s.config.DownloadFolder})
+	return c.JSON(fiber.Map{"folder": s.cfg().DownloadFolder})
 }
 
 func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
@@ -899,8 +910,8 @@ func (s *Server) handleSetDownloadFolder(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	s.config.DownloadFolder = folder
-	if err := core.SaveConfig(s.config); err != nil {
+	next := s.updateConfig(func(c *core.Config) { c.DownloadFolder = folder })
+	if err := core.SaveConfig(&next); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 

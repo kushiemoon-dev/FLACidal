@@ -365,7 +365,6 @@
   }
 
   .select:focus, .input:focus {
-    outline: none;
     border-color: var(--color-accent);
   }
 

@@ -16,11 +16,12 @@ const probeRequestTimeout = 30 * time.Second
 // healthSources is every source the headless server can report on. Amazon is
 // not wired into the headless server yet.
 func (s *Server) healthSources() app.HealthSources {
+	cfg := s.cfg()
 	return app.HealthSources{
 		Downloader: s.downloader,
 		Qobuz:      s.qobuzSource,
 		Soulseek:   s.soulseekSource,
-		Config:     s.config,
+		Config:     &cfg,
 	}
 }
 

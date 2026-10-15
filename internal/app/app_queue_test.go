@@ -37,14 +37,15 @@ func TestGetDownloadFolder_SetDownloadFolder(t *testing.T) {
 		t.Errorf("GetDownloadFolder() with nil config = %q, want empty", got)
 	}
 
-	if err := a.SetDownloadFolder("/music/out"); err != nil {
+	out := t.TempDir()
+	if err := a.SetDownloadFolder(out); err != nil {
 		t.Fatalf("SetDownloadFolder() error = %v", err)
 	}
 	if a.config == nil {
 		t.Fatal("SetDownloadFolder() did not self-initialize a.config")
 	}
-	if got := a.GetDownloadFolder(); got != "/music/out" {
-		t.Errorf("GetDownloadFolder() = %q, want %q", got, "/music/out")
+	if got := a.GetDownloadFolder(); got != out {
+		t.Errorf("GetDownloadFolder() = %q, want %q", got, out)
 	}
 }
 

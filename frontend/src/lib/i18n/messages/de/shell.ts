@@ -19,4 +19,5 @@ export const shell = {
   'shell.auth.label': "Zugriffstoken",
   'shell.auth.submit': "Entsperren",
   'shell.auth.rejected': "Das Token wurde abgelehnt. Prüfen Sie es und versuchen Sie es erneut.",
+  'shell.mainAria': 'Hauptinhalt',
 };

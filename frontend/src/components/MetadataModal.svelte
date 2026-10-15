@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '../lib/dialogFocus';
   import { onMount } from 'svelte';
   import { GetFileMetadata, GetFileCoverArt } from '../lib/api';
   import { formatBytes, formatDuration, formatNumber } from '../lib/format';
@@ -78,10 +79,10 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-labelledby="metadata-title" tabindex="-1" use:dialogFocus>
   <div class="modal-content">
     <div class="modal-header">
-      <h2>{$t('modals.metadata.title')}</h2>
+      <h2 id="metadata-title">{$t('modals.metadata.title')}</h2>
       <button class="close-btn" onclick={onClose} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/>

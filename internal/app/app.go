@@ -18,6 +18,7 @@ import (
 type App struct {
 	version         string
 	ctx             context.Context
+	configMu        sync.RWMutex // guards config, see cfg/setCfg/updateConfig
 	config          *core.Config
 	db              *core.Database
 	tidalClient     *core.TidalClient
@@ -119,12 +120,16 @@ func (a *App) Startup(ctx context.Context) {
 	core.SetTidalEndpointLogger(a.logBuffer)
 	core.InitTidalEndpoints()
 
+	if err := core.EnsureDefaultDownloadFolder(); err != nil {
+		a.logBuffer.Warn("Could not prepare the default download folder: " + err.Error())
+	}
+
 	config, err := core.LoadConfig()
 	if err != nil {
 		a.logBuffer.Warn("Unable to load config: " + err.Error())
 		config = &core.Config{}
 	}
-	a.config = config
+	a.setCfg(*config)
 	a.logBuffer.Success("Config loaded successfully")
 
 	db, err := core.NewDatabase()
@@ -151,6 +156,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.spotifySearch = core.NewSpotifyClientForSearch()
 
 	a.matcher = core.NewMatcher(a.spotifySearch, a.db)
+	a.matcher.SetLogger(a.logBuffer)
 
 	a.downloader = core.NewTidalHifiService()
 	// So endpoint rotation shows up on the Terminal page.
@@ -259,7 +265,7 @@ func (a *App) Startup(ctx context.Context) {
 				if result != nil && result.Error != "" {
 					a.logBuffer.Error(fmt.Sprintf("Download error: %s", result.Error))
 				}
-				if a.config.AutoStopOnCooldown && !a.downloader.HasHealthyEndpoints() {
+				if a.cfg().AutoStopOnCooldown && !a.downloader.HasHealthyEndpoints() {
 					if a.downloadManager.PauseQueue() {
 						a.logBuffer.Warn("Every Tidal endpoint is cooling down, queue paused")
 						minCooldown := 0
@@ -453,8 +459,9 @@ func (a *App) Shutdown(ctx context.Context) {
 		a.downloadManager.Stop()
 	}
 
-	if a.config != nil {
-		core.SaveConfig(a.config)
+	if a.configLoaded() {
+		cfg := a.cfg()
+		core.SaveConfig(&cfg)
 	}
 
 	if a.db != nil {

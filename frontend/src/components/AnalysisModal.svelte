@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '../lib/dialogFocus';
   import { onMount } from 'svelte';
   import { AnalyzeMultiple } from '../lib/api';
   import { t, tm, type UiMsg } from '../lib/i18n';
@@ -88,10 +89,10 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-labelledby="analysis-title" tabindex="-1" use:dialogFocus>
   <div class="modal-content">
     <div class="modal-header">
-      <h2>{$t('modals.analysis.title')}</h2>
+      <h2 id="analysis-title">{$t('modals.analysis.title')}</h2>
       <span class="file-count">{$t('modals.fileCount', { count: files.length })}</span>
       <button class="close-btn" onclick={onClose} disabled={isAnalyzing} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -5,35 +5,45 @@
   import { tm } from '../lib/i18n';
 </script>
 
-{#if $toastStore.length > 0}
-  <div class="toast-container">
-    {#each $toastStore as toast (toast.id)}
-      <div
-        class="toast"
-        class:success={toast.type === 'success'}
-        class:error={toast.type === 'error'}
-        class:info={toast.type === 'info'}
-        in:fly={{ y: 8, duration: 200 }}
-        out:fade={{ duration: 150 }}
-      >
-        {#if toast.type === 'success'}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        {:else if toast.type === 'error'}
-          <XCircle size={14} />
-        {:else}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        {/if}
-        <span>{$tm(toast.message)}</span>
-      </div>
+{#snippet toastItem(toast: (typeof $toastStore)[number])}
+  <div
+    class="toast"
+    class:success={toast.type === 'success'}
+    class:error={toast.type === 'error'}
+    class:info={toast.type === 'info'}
+    in:fly={{ y: 8, duration: 200 }}
+    out:fade={{ duration: 150 }}
+  >
+    {#if toast.type === 'success'}
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    {:else if toast.type === 'error'}
+      <XCircle size={14} aria-hidden="true" />
+    {:else}
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    {/if}
+    <span>{$tm(toast.message)}</span>
+  </div>
+{/snippet}
+
+<!-- Both live regions exist before the first toast so screen readers announce it. -->
+<div class="toast-container">
+  <div class="toast-region" role="status">
+    {#each $toastStore.filter((toast) => toast.type !== 'error') as toast (toast.id)}
+      {@render toastItem(toast)}
     {/each}
   </div>
-{/if}
+  <div class="toast-region" role="alert">
+    {#each $toastStore.filter((toast) => toast.type === 'error') as toast (toast.id)}
+      {@render toastItem(toast)}
+    {/each}
+  </div>
+</div>
 
 <style>
   .toast-container {
@@ -45,6 +55,12 @@
     flex-direction: column;
     gap: 8px;
     pointer-events: none;
+  }
+
+  .toast-region {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .toast {

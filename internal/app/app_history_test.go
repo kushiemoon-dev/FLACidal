@@ -253,3 +253,42 @@ func TestGetMatchFailures(t *testing.T) {
 		}
 	})
 }
+
+func TestListTrackHistory(t *testing.T) {
+	t.Run("nil db returns an empty page", func(t *testing.T) {
+		page, err := (&App{}).ListTrackHistory("failed", 20, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if page["total"] != 0 {
+			t.Errorf("page = %v", page)
+		}
+	})
+
+	t.Run("failed filter", func(t *testing.T) {
+		a := newTestApp(t)
+		for _, e := range []core.HistoryEntry{
+			{Title: "bad", Status: "failed", ErrorMessage: "boom"},
+			{Title: "good", Status: "completed"},
+		} {
+			if err := a.db.InsertHistoryEntry(e); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		page, err := a.ListTrackHistory("failed", 20, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		entries := page["entries"].([]core.HistoryEntry)
+		if page["total"] != 1 || len(entries) != 1 || entries[0].Title != "bad" {
+			t.Errorf("page = %+v", page)
+		}
+	})
+
+	t.Run("invalid status", func(t *testing.T) {
+		if _, err := newTestApp(t).ListTrackHistory("bogus", 20, 0); err == nil {
+			t.Error("expected an error")
+		}
+	})
+}

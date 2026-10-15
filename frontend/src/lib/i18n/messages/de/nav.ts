@@ -17,4 +17,7 @@ export const nav = {
   'nav.back': 'Zurück',
   'nav.forward': 'Vor',
   'nav.reload': 'Neu laden',
+  'nav.historyAria': 'Verlaufsnavigation',
+  'nav.mainAria': 'Hauptnavigation',
+  'nav.bottomAria': 'Sekundärnavigation',
 };

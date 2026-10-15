@@ -52,4 +52,53 @@ test.describe('History screen', () => {
     }
     await expect(page.locator('.content-name', { hasText: 'Test Album' }).first()).toBeVisible()
   })
+
+  test('lists recent failures with source and raw error message', async ({ page }) => {
+    const message = 'could not resolve stream URL (the public Tidal endpoints failed): server responded with status 403'
+    await injectWailsMocks(page, {
+      ListTrackHistory: {
+        entries: [
+          {
+            id: 1,
+            title: 'Failed Song',
+            artist: 'Failed Artist',
+            source: 'tidal',
+            status: 'failed',
+            errorMessage: message,
+            downloadedAt: Math.floor(Date.now() / 1000),
+          },
+          {
+            id: 2,
+            title: 'Other Song',
+            artist: 'Other Artist',
+            source: 'qobuz',
+            status: 'failed',
+            errorMessage: 'no track found',
+            downloadedAt: Math.floor(Date.now() / 1000) - 60,
+          },
+        ],
+        total: 2,
+      },
+    })
+    await page.goto('/')
+    await page.locator('.sidebar button[title="History"]').click()
+    await page.waitForTimeout(250)
+
+    const section = page.locator('.failures').first()
+    await expect(section.getByText('Recent failures')).toBeVisible()
+    await expect(section.getByText('Failed Song')).toBeVisible()
+    await expect(section.getByText('Failed Artist')).toBeVisible()
+    await expect(section.getByText('tidal', { exact: true })).toBeVisible()
+    await expect(section.getByText(message)).toBeVisible()
+    await expect(section.getByText('Other Song')).toBeVisible()
+  })
+
+  test('shows an empty state when there are no recent failures', async ({ page }) => {
+    await injectWailsMocks(page, { ListTrackHistory: { entries: [], total: 0 } })
+    await page.goto('/')
+    await page.locator('.sidebar button[title="History"]').click()
+    await page.waitForTimeout(250)
+
+    await expect(page.locator('.failures').first().getByText('No recent failures')).toBeVisible()
+  })
 })

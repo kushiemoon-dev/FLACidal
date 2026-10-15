@@ -43,4 +43,5 @@ export const queue = {
   'queue.panel.empty': 'No downloads in progress',
   'queue.panel.queued': 'Queued',
   'queue.panel.downloading': 'Downloading…',
+  'queue.panel.aria': 'Download queue',
 } as const;

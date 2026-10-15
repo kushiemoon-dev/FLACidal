@@ -20,10 +20,10 @@ func (s *Server) handleQueueArtistAlbum(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	if req.OutputDir == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "no output directory specified"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNoOutputDir, "").Error()})
 	}
 	if s.downloadManager == nil || s.tidalSource == nil || s.tidalSource.GetService() == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "downloader not initialized"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNotReady, "").Error()})
 	}
 
 	album, err := s.tidalSource.GetService().GetAlbumFromProxy(req.AlbumID)

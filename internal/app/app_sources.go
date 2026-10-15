@@ -29,12 +29,13 @@ type HealthSources struct {
 }
 
 func (a *App) healthSources() HealthSources {
+	cfg := a.cfg()
 	return HealthSources{
 		Downloader: a.downloader,
 		Qobuz:      a.qobuzSource,
 		Amazon:     a.amazonSource,
 		Soulseek:   a.soulseekSource,
-		Config:     a.config,
+		Config:     &cfg,
 	}
 }
 
@@ -267,12 +268,13 @@ func (a *App) InstallSldl() error {
 	}
 
 	// Rebuild the Soulseek source so IsAvailable() picks up the change without a restart
-	if a.config != nil {
-		username := a.config.SoulseekUsername
-		password := a.config.SoulseekPassword
+	if a.configLoaded() {
+		cfg := a.cfg()
+		username := cfg.SoulseekUsername
+		password := cfg.SoulseekPassword
 		a.soulseekSource = core.NewSoulseekSource(sldlPath, username, password)
 		a.soulseekSource.SetLogger(a.logBuffer)
-		if a.config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
+		if cfg.SoulseekEnabled && a.soulseekSource.IsAvailable() {
 			a.sourceManager.RegisterSource(a.soulseekSource)
 			a.logBuffer.Info("Soulseek source registered following the sldl install")
 		}
@@ -285,11 +287,7 @@ func (a *App) InstallSldl() error {
 }
 
 func (a *App) GetSldlStatus() map[string]interface{} {
-	sldlPath := ""
-	if a.config != nil {
-		sldlPath = a.config.SoulseekBinaryPath
-	}
-	return SldlStatus(sldlPath)
+	return SldlStatus(a.cfg().SoulseekBinaryPath)
 }
 
 // SldlStatus is shared by the desktop (Wails) and HTTP server APIs, the same
@@ -329,10 +327,7 @@ func SldlStatus(binaryPath string) map[string]interface{} {
 // message in the verbose sldl output, which appears before any search
 // results and doesn't depend on firewall/inbound connectivity.
 func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
-	sldlPath := ""
-	if a.config != nil {
-		sldlPath = a.config.SoulseekBinaryPath
-	}
+	sldlPath := a.cfg().SoulseekBinaryPath
 	logf := func(level, msg string) {
 		if a.logBuffer == nil {
 			return
@@ -691,10 +686,10 @@ func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
 
 func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string) (int, error) {
 	if a.downloadManager == nil {
-		return 0, fmt.Errorf("download manager not initialized")
+		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return 0, fmt.Errorf("no output directory specified")
+		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 	if a.spotifySearch == nil {
 		return 0, fmt.Errorf("Spotify client not initialized")
@@ -788,20 +783,19 @@ func (a *App) UpdateQobuzCredentials(appID, appSecret, authToken string) error {
 	}
 	a.qobuzSource.SetCredentials(appID, appSecret, authToken)
 
-	if a.config == nil {
-		a.config = &core.Config{}
-	}
-	a.config.QobuzAppID = appID
-	a.config.QobuzAppSecret = appSecret
-	a.config.QobuzAuthToken = authToken
-	a.config.QobuzEnabled = appID != "" && appSecret != ""
+	next := a.updateConfig(func(c *core.Config) {
+		c.QobuzAppID = appID
+		c.QobuzAppSecret = appSecret
+		c.QobuzAuthToken = authToken
+		c.QobuzEnabled = appID != "" && appSecret != ""
+	})
 
-	if err := core.SaveConfig(a.config); err != nil {
+	if err := core.SaveConfig(&next); err != nil {
 		return err
 	}
 
 	if a.logBuffer != nil {
-		if a.config.QobuzEnabled {
+		if next.QobuzEnabled {
 			a.logBuffer.Success("Qobuz credentials updated")
 		} else {
 			a.logBuffer.Info("Qobuz disabled")

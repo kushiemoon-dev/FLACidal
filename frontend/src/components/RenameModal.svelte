@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '../lib/dialogFocus';
   import { onMount } from 'svelte';
   import { GetRenameTemplates, PreviewRename, RenameFiles } from '../lib/api';
   import { t, tm, type UiMsg } from '../lib/i18n';
@@ -109,10 +110,10 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+<div class="modal-backdrop" onclick={handleBackdropClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-labelledby="rename-title" tabindex="-1" use:dialogFocus>
   <div class="modal-content">
     <div class="modal-header">
-      <h2>{$t('modals.rename.title')}</h2>
+      <h2 id="rename-title">{$t('modals.rename.title')}</h2>
       <span class="file-count">{$t('modals.rename.fileCountSelected', { count: files.length })}</span>
       <button class="close-btn" onclick={onClose} aria-label={$t('common.close')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -423,7 +424,6 @@
     color: #fff;
     font-size: 14px;
     font-family: 'JetBrains Mono', monospace;
-    outline: none;
   }
 
   .custom-input:focus {

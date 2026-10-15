@@ -37,18 +37,16 @@ func (a *App) SelectDownloadFolder() (string, error) {
 }
 
 func (a *App) GetDownloadFolder() string {
-	if a.config != nil && a.config.DownloadFolder != "" {
-		return a.config.DownloadFolder
-	}
-	return ""
+	return a.cfg().DownloadFolder
 }
 
 func (a *App) SetDownloadFolder(folder string) error {
-	if a.config == nil {
-		a.config = &core.Config{}
+	folder, err := core.ValidateDownloadFolder(folder)
+	if err != nil {
+		return err
 	}
-	a.config.DownloadFolder = folder
-	return core.SaveConfig(a.config)
+	next := a.updateConfig(func(c *core.Config) { c.DownloadFolder = folder })
+	return core.SaveConfig(&next)
 }
 
 func (a *App) IsDownloaderAvailable() bool {
@@ -60,30 +58,30 @@ func (a *App) IsDownloaderAvailable() bool {
 
 func (a *App) DownloadTrack(trackID int, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
-		return nil, fmt.Errorf("downloader not initialized")
+		return nil, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return nil, fmt.Errorf("no output directory specified")
+		return nil, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 	return a.downloader.DownloadTrack(trackID, outputDir, "", "", "", nil)
 }
 
 func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*core.DownloadResult, error) {
 	if a.downloader == nil {
-		return nil, fmt.Errorf("downloader not initialized")
+		return nil, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return nil, fmt.Errorf("no output directory specified")
+		return nil, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label, "", nil)
 }
 
 func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
 	if a.downloadManager == nil {
-		return 0, fmt.Errorf("download manager not initialized")
+		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return 0, fmt.Errorf("no output directory specified")
+		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 
 	if contentName != "" {
@@ -115,10 +113,10 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 
 func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, contentName string) (int, error) {
 	if a.downloadManager == nil {
-		return 0, fmt.Errorf("download manager not initialized")
+		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return 0, fmt.Errorf("no output directory specified")
+		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 	if contentName != "" {
 		outputDir = filepath.Join(outputDir, core.SanitizeFileName(contentName))
@@ -132,10 +130,10 @@ func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, c
 // outputDir should point at the artist's folder; an album subfolder gets created automatically.
 func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string) (int, error) {
 	if a.downloadManager == nil {
-		return 0, fmt.Errorf("download manager not initialized")
+		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return 0, fmt.Errorf("no output directory specified")
+		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 
 	album, err := a.downloader.GetAlbumFromProxy(albumID)
@@ -160,7 +158,7 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 // Files are written to {outputDir}/{artistName}/ as profile.jpg, profile_hires.jpg, banner.jpg.
 func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir string) (int, error) {
 	if outputDir == "" {
-		return 0, fmt.Errorf("no output directory specified")
+		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 
 	name, pictureID, err := a.tidalClient.GetArtistPictureID(artistID)
@@ -223,10 +221,10 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 
 func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) error {
 	if a.downloadManager == nil {
-		return fmt.Errorf("download manager not initialized")
+		return core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
-		return fmt.Errorf("no output directory specified")
+		return core.NewCodedError(core.CodeQueueNoOutputDir, "")
 	}
 
 	// Pull the full Tidal metadata, not just the ISRC, so sources that don't
@@ -275,7 +273,7 @@ func (a *App) GetDownloadQueueStatus() map[string]interface{} {
 }
 
 func (a *App) GetDownloadOptions() map[string]interface{} {
-	if a.config == nil {
+	if !a.configLoaded() {
 		return map[string]interface{}{
 			"quality":         "LOSSLESS",
 			"fileNameFormat":  "{artist} - {title}",
@@ -287,11 +285,12 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 		}
 	}
 
-	quality := a.config.DownloadQuality
+	cfg := a.cfg()
+	quality := cfg.DownloadQuality
 	if quality == "" {
 		quality = "LOSSLESS"
 	}
-	format := a.config.FileNameFormat
+	format := cfg.FileNameFormat
 	if format == "" {
 		format = "{artist} - {title}"
 	}
@@ -299,32 +298,27 @@ func (a *App) GetDownloadOptions() map[string]interface{} {
 	return map[string]interface{}{
 		"quality":         quality,
 		"fileNameFormat":  format,
-		"organizeFolders": a.config.OrganizeFolders,
-		"embedCover":      a.config.EmbedCover,
-		"saveCoverFile":   a.config.SaveCoverFile,
-		"saveFolderCover": a.config.SaveFolderCover,
-		"autoAnalyze":     a.config.AutoAnalyze,
+		"organizeFolders": cfg.OrganizeFolders,
+		"embedCover":      cfg.EmbedCover,
+		"saveCoverFile":   cfg.SaveCoverFile,
+		"saveFolderCover": cfg.SaveFolderCover,
+		"autoAnalyze":     cfg.AutoAnalyze,
 	}
 }
 
 func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders, embedCover, saveCoverFile, autoAnalyze bool) error {
-	if a.config == nil {
-		a.config = &core.Config{}
-	}
-
-	a.config.DownloadQuality = quality
-	a.config.FileNameFormat = fileNameFormat
-	a.config.OrganizeFolders = organizeFolders
-	a.config.EmbedCover = embedCover
-	a.config.SaveCoverFile = saveCoverFile
-	a.config.AutoAnalyze = autoAnalyze
+	next := a.updateConfig(func(c *core.Config) {
+		c.DownloadQuality = quality
+		c.FileNameFormat = fileNameFormat
+		c.OrganizeFolders = organizeFolders
+		c.EmbedCover = embedCover
+		c.SaveCoverFile = saveCoverFile
+		c.AutoAnalyze = autoAnalyze
+	})
 
 	// AutoQualityFallback isn't a SetDownloadOptions parameter, so preserve it from the existing config.
 	if a.downloader != nil {
-		autoQualityFallback := false
-		if a.config != nil {
-			autoQualityFallback = a.config.AutoQualityFallback
-		}
+		autoQualityFallback := next.AutoQualityFallback
 		a.downloader.SetOptions(core.DownloadOptions{
 			Quality:             quality,
 			FileNameFormat:      fileNameFormat,
@@ -336,7 +330,7 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 		})
 	}
 
-	return core.SaveConfig(a.config)
+	return core.SaveConfig(&next)
 }
 
 func (a *App) OpenDownloadFolder(folder string) error {
@@ -349,7 +343,7 @@ func (a *App) OpenDownloadFolder(folder string) error {
 
 func (a *App) RetryDownload(trackID int) error {
 	if a.downloadManager == nil {
-		return fmt.Errorf("download manager not initialized")
+		return core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 
 	folder := a.GetDownloadFolder()
@@ -365,7 +359,7 @@ func (a *App) RetryDownload(trackID int) error {
 
 func (a *App) RetryAllFailed() (int, error) {
 	if a.downloadManager == nil {
-		return 0, fmt.Errorf("download manager not initialized")
+		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 
 	count := a.downloadManager.RetryAllFailed()
@@ -375,7 +369,7 @@ func (a *App) RetryAllFailed() (int, error) {
 // format should be "txt" or "csv". It returns the saved file's path, or an empty string if the user cancelled.
 func (a *App) ExportFailedDownloads(format string) (string, error) {
 	if a.downloadManager == nil {
-		return "", fmt.Errorf("download manager not initialized")
+		return "", core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	jobs := a.downloadManager.GetFailedJobs()
 	if len(jobs) == 0 {
@@ -422,7 +416,7 @@ func (a *App) ExportFailedDownloads(format string) (string, error) {
 
 func (a *App) CancelDownload(trackID int) error {
 	if a.downloadManager == nil {
-		return fmt.Errorf("download manager not initialized")
+		return core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 
 	return a.downloadManager.CancelDownload(trackID)

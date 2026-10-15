@@ -17,4 +17,7 @@ export const nav = {
   'nav.back': 'Back',
   'nav.forward': 'Forward',
   'nav.reload': 'Reload',
+  'nav.historyAria': 'History navigation',
+  'nav.mainAria': 'Main navigation',
+  'nav.bottomAria': 'Secondary navigation',
 } as const;

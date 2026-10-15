@@ -129,6 +129,8 @@ export function IsQueuePaused():Promise<boolean>;
 
 export function ListDownloadedFiles():Promise<Array<core.DownloadedFileInfo>>;
 
+export function ListTrackHistory(arg1:string,arg2:number,arg3:number):Promise<Record<string, any>>;
+
 export function MatchPlaylistTracks(arg1:Array<core.TidalTrack>):Promise<Array<core.MatchResult>>;
 
 export function MatchSingleTrack(arg1:core.TidalTrack):Promise<core.MatchResult>;

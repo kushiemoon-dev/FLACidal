@@ -533,6 +533,10 @@
     color: #f472b6;
   }
 
+  :global([data-theme="light"]) .tab.active {
+    color: #be185d;
+  }
+
   .search-box {
     margin-bottom: 32px;
   }

@@ -225,7 +225,7 @@
     flex: 1;
     text-align: center;
     font-size: 13px;
-    color: #666;
+    color: #9a9a9a;
     font-family: 'JetBrains Mono', monospace;
   }
 
@@ -239,7 +239,7 @@
   }
 
   .empty-terminal {
-    color: #444;
+    color: #8a8a8a;
   }
 
   .log-entry {

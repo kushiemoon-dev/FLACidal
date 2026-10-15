@@ -1,15 +1,18 @@
 <script lang="ts">
   import type { core } from '../../wailsjs/go/models';
   import { onMount } from 'svelte';
+  import { dialogFocus } from '../lib/dialogFocus';
   import { downloadFolder } from '../stores/queue';
   import { themeStore, type ThemeMode, accentColor, accentPresets, applyAccentColor, fontPresets, applyFontFamily } from '../stores/theme';
   import { updateAudioSettings, testSound } from '../stores/audio';
   import { toastStore } from '../stores/toast';
+  import { toUiError } from '../lib/errors';
   import TabBar from '../components/TabBar.svelte';
   import { t, tm, setLanguage, type MessageKey, type UiMsg } from '../lib/i18n';
   import { FolderOpen } from 'lucide-svelte';
   import {
     GetConfig,
+    GetDownloadFolder,
     SelectDownloadFolder,
     GetFFmpegInfo,
     GetAppVersion,
@@ -277,7 +280,12 @@
       }
     } catch (e) {
       console.error('Failed to import config:', e);
-      toastStore.showKey('settings.toast.configImportError', {}, 'error');
+      const folderMsg = folderError(e);
+      if (folderMsg) {
+        toastStore.showMsg(folderMsg, 'error');
+      } else {
+        toastStore.showKey('settings.toast.configImportError', {}, 'error');
+      }
     }
   }
 
@@ -472,16 +480,35 @@
     }
   }
 
+  // Folder problems get their own translated message; anything else keeps the caller's generic one.
+  function folderError(error: unknown): UiMsg {
+    const uiError = toUiError(error);
+    return typeof uiError === 'object' && uiError.key.startsWith('errors.folder.') ? uiError : null;
+  }
+
+  // No native picker in the browser: the path is typed and saved on change.
+  async function commitTypedFolder() {
+    const typed = config.downloadFolder;
+    try {
+      await SetDownloadFolder(typed);
+      downloadFolder.set(typed);
+      toastStore.showKey('settings.toast.saved');
+    } catch (error) {
+      toastStore.showMsg(toUiError(error), 'error');
+      config.downloadFolder = (await GetDownloadFolder().catch(() => '')) || '';
+    }
+  }
+
   async function selectFolder() {
     try {
       const folder = await SelectDownloadFolder();
       if (folder) {
+        await SetDownloadFolder(folder);
         config.downloadFolder = folder;
         downloadFolder.set(folder);
-        await SetDownloadFolder(folder);
       }
     } catch (error) {
-      console.error('Error selecting folder:', error);
+      toastStore.showMsg(toUiError(error), 'error');
     }
   }
 
@@ -567,7 +594,12 @@
       toastStore.showKey('settings.toast.saved');
     } catch (error) {
       console.error('Error saving config:', error);
-      toastStore.showKey('settings.toast.saveError', {}, 'error');
+      const folderMsg = folderError(error);
+      if (folderMsg) {
+        toastStore.showMsg(folderMsg, 'error');
+      } else {
+        toastStore.showKey('settings.toast.saveError', {}, 'error');
+      }
     } finally {
       isSaving = false;
     }
@@ -687,11 +719,12 @@
               type="text"
               id="download-folder"
               bind:value={config.downloadFolder}
-              readonly
+              readonly={isWailsRuntime()}
+              onchange={commitTypedFolder}
               placeholder={$t('settings.download.selectFolder')}
               class="setting-input folder-input"
             />
-            <button class="browse-btn" onclick={selectFolder}>
+            <button class="browse-btn" onclick={selectFolder} disabled={!isWailsRuntime()}>
               <FolderOpen size={16} />
               {$t('settings.download.browse')}
             </button>
@@ -766,7 +799,7 @@
           </div>
           <div class="setting-control sound-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.soundEffects} />
+              <input id="sound-effects" type="checkbox" bind:checked={config.soundEffects} />
               <span class="toggle-slider"></span>
             </label>
             <button class="test-sound-btn" onclick={testSound} title={$t('settings.sound.test')}>
@@ -835,7 +868,7 @@
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.soulseekEnabled} />
+              <input type="checkbox" aria-label={$t('settings.soulseek.enable')} bind:checked={config.soulseekEnabled} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -897,7 +930,7 @@
           </div>
           <div class="setting-control">
             <label class="toggle">
-              <input type="checkbox" bind:checked={config.jellyfinEnabled} />
+              <input type="checkbox" aria-label={$t('settings.jellyfin.enable')} bind:checked={config.jellyfinEnabled} />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1697,7 +1730,7 @@
 
 <!-- Reset Confirmation Modal -->
 {#if showResetConfirm}
-  <div class="modal-overlay" onclick={() => showResetConfirm = false} onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-overlay" onclick={() => showResetConfirm = false} onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)} role="dialog" aria-modal="true" aria-labelledby="reset-title" tabindex="-1" use:dialogFocus>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
       <div class="modal-icon">
@@ -1706,7 +1739,7 @@
           <path d="M3 3v5h5"/>
         </svg>
       </div>
-      <h3>{$t('settings.reset.title')}</h3>
+      <h3 id="reset-title">{$t('settings.reset.title')}</h3>
       <p>{$t('settings.reset.body')}</p>
       <div class="modal-actions">
         <button class="modal-btn cancel" onclick={() => showResetConfirm = false}>
@@ -2077,7 +2110,12 @@
     font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
   }
 
-  .browse-btn:hover {
+  .browse-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .browse-btn:hover:not(:disabled) {
     background: var(--color-bg-hover, #1a1a1a);
   }
 

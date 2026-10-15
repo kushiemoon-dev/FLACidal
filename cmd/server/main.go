@@ -39,6 +39,10 @@ func main() {
 	// Kick off a background refresh of Tidal endpoints from the gist before the downloader initializes.
 	core.InitTidalEndpoints()
 
+	if err := core.EnsureDefaultDownloadFolder(); err != nil {
+		log.Printf("Warning: could not prepare the default download folder: %v", err)
+	}
+
 	// Load config, letting env vars take precedence over the file
 	config, err := core.LoadConfigWithEnv()
 	if err != nil {

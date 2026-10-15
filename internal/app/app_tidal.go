@@ -8,15 +8,14 @@ import (
 )
 
 func (a *App) SetTidalCredentials(clientID, clientSecret string) error {
-	if a.config == nil {
-		a.config = &core.Config{}
-	}
-	a.config.TidalClientID = clientID
-	a.config.TidalClientSecret = clientSecret
+	next := a.updateConfig(func(c *core.Config) {
+		c.TidalClientID = clientID
+		c.TidalClientSecret = clientSecret
+	})
 
 	a.tidalClient = core.NewTidalClient(clientID, clientSecret)
 
-	return core.SaveConfig(a.config)
+	return core.SaveConfig(&next)
 }
 
 func (a *App) FetchTidalPlaylist(url string) (*core.TidalPlaylist, error) {
@@ -137,9 +136,10 @@ func (a *App) RefreshTidalEndpoints() ([]string, error) {
 		return endpoints, err
 	}
 	// Push the refreshed endpoints to the downloader, unless the user has set a full override
-	if len(a.config.TidalHifiEndpoints) == 0 {
+	cfg := a.cfg()
+	if len(cfg.TidalHifiEndpoints) == 0 {
 		a.downloader.SetEndpoints(endpoints)
-		tidalPriority := core.ResolvePriorityEndpoints(a.config.TidalPriorityEndpoints, a.config.TidalCustomEndpoint)
+		tidalPriority := core.ResolvePriorityEndpoints(cfg.TidalPriorityEndpoints, cfg.TidalCustomEndpoint)
 		applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (downloader)", a.downloader.SetPriorityEndpoints, tidalPriority)
 		a.logBuffer.Info(fmt.Sprintf("Tidal endpoints refreshed: %d loaded", len(endpoints)))
 	}

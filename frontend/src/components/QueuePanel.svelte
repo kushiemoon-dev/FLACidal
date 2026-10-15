@@ -25,7 +25,7 @@
   }
 </script>
 
-<div class="queue-panel" class:collapsed>
+<aside class="queue-panel" class:collapsed aria-label={$t('queue.panel.aria')}>
   <button class="panel-header" onclick={() => (collapsed = !collapsed)}>
     <span class="panel-title">
       {$t('queue.panel.title')}
@@ -57,7 +57,7 @@
       {/if}
     </div>
   {/if}
-</div>
+</aside>
 
 <style>
   .queue-panel {

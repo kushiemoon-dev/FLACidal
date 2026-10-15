@@ -1,8 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, GetDownloadFolder } from '../../lib/api';
+  import {
+    ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, SetDownloadFolder,
+    GetDownloadFolder, GetRenameTemplates, isWailsRuntime,
+  } from '../../lib/api';
   import { formatBytes } from '../../lib/format';
-  import TabBar from '../../components/TabBar.svelte';
+  import { toUiError } from '../../lib/errors';
   import { toastStore } from '../../stores/toast';
   import { FolderOpen, RefreshCw, Eye, Pencil } from 'lucide-svelte';
   import { t, tm, type UiMsg } from '../../lib/i18n';
@@ -14,29 +17,23 @@
     selected: boolean;
   }
 
+  interface RenameFailure {
+    path: string;
+    error: string;
+  }
+
   let currentFolder = $state('');
   let files: FileEntry[] = $state([]);
   let loading = $state(false);
+  let loadError = $state<UiMsg>(null);
   let renaming = $state(false);
   let previewing = $state(false);
   let previewResult = $state<UiMsg>('');
-  let activeTab = $state('tracks');
+  let renameFailures = $state<RenameFailure[]>([]);
   let selectAll = $state(false);
-
-  const renameTemplates = [
-    '{title} - {artist}',
-    '{artist} - {title}',
-    '{track} {title}',
-    '{track} {artist} - {title}',
-    '{artist}/{album}/{track} {title}',
-  ];
-  let selectedTemplate = $state('{title} - {artist}');
-
-  let tabs = $derived([
-    { id: 'tracks', label: $t('tools.files.tabTracks', { count: files.length }) },
-    { id: 'lyrics', label: $t('tools.files.tabLyrics', { count: 0 }) },
-    { id: 'covers', label: $t('tools.files.tabCovers', { count: 0 }) },
-  ]);
+  let templates = $state<Array<{ name: string; template: string }>>([]);
+  let selectedTemplate = $state('');
+  const canBrowse = isWailsRuntime();
 
   function toggleSelectAll() {
     selectAll = !selectAll;
@@ -58,13 +55,19 @@
 
   onMount(async () => {
     try {
+      templates = await GetRenameTemplates();
+      selectedTemplate = templates[0]?.template ?? '';
+    } catch (err) {
+      toastStore.showMsg(toUiError(err), 'error');
+    }
+    try {
       const folder = await GetDownloadFolder();
       if (folder) {
         currentFolder = folder;
         await loadFiles();
       }
     } catch (err) {
-      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.loadFolderFailed' }, 'error');
+      toastStore.showMsg(toUiError(err), 'error');
     }
   });
 
@@ -72,17 +75,19 @@
     try {
       const folder = await SelectDownloadFolder();
       if (folder) {
+        await SetDownloadFolder(folder);
         currentFolder = folder;
         await loadFiles();
       }
     } catch (err) {
-      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.browseFailed' }, 'error');
+      toastStore.showMsg(toUiError(err), 'error');
     }
   }
 
   async function loadFiles() {
     if (!currentFolder) return;
     loading = true;
+    loadError = null;
     try {
       const result = await ListDownloadedFiles();
       if (Array.isArray(result)) {
@@ -96,8 +101,10 @@
         files = [];
       }
       selectAll = false;
-    } catch {
+    } catch (err) {
       files = [];
+      loadError = toUiError(err);
+      toastStore.showMsg(loadError, 'error');
     } finally {
       loading = false;
     }
@@ -117,7 +124,7 @@
         previewResult = { key: 'tools.files.noPreview' };
       }
     } catch (err) {
-      previewResult = (err as Error)?.message || { key: 'tools.files.previewFailed' };
+      previewResult = toUiError(err);
     } finally {
       previewing = false;
     }
@@ -128,11 +135,17 @@
     if (selected.length === 0) return;
     renaming = true;
     try {
-      await RenameFiles(selected, selectedTemplate);
+      const results = await RenameFiles(selected, selectedTemplate);
+      const failed = (results ?? []).filter((r) => !r.success);
       await loadFiles();
-      previewResult = '';
+      renameFailures = failed.map((r) => ({ path: r.oldPath, error: r.error ?? '' }));
+      if (failed.length > 0) {
+        toastStore.showKey('tools.files.renameFailedCount', { failed: failed.length, total: selected.length }, 'error');
+      } else {
+        previewResult = '';
+      }
     } catch (err) {
-      toastStore.showMsg((err as Error)?.message || { key: 'tools.files.renameFailed' }, 'error');
+      toastStore.showMsg(toUiError(err), 'error');
     }
     renaming = false;
   }
@@ -146,24 +159,24 @@
 
   <div class="folder-bar">
     <input type="text" class="input folder-input" value={currentFolder} readonly placeholder={$t('tools.files.noFolder')} />
-    <button class="btn btn-accent" onclick={browseFolder}>
+    <button class="btn btn-accent" onclick={browseFolder} disabled={!canBrowse}>
       <FolderOpen size={16} />
       {$t('tools.files.browse')}
     </button>
-    <button class="btn btn-outline" onclick={loadFiles} disabled={loading || !currentFolder}>
+    <button class="btn btn-outline" onclick={loadFiles} disabled={loading || !currentFolder} aria-label={$t('tools.files.refreshAria')} title={$t('tools.files.refreshAria')}>
       <RefreshCw size={16} />
     </button>
   </div>
+  {#if !canBrowse}
+    <p class="browse-note">{$t('tools.files.browseUnavailable')}</p>
+  {/if}
 
-  <TabBar {tabs} bind:activeTab />
-
-  {#if activeTab === 'tracks'}
     <div class="rename-section">
-      <h3 class="section-title">{$t('tools.files.renameFormat')}</h3>
+      <h2 class="section-title">{$t('tools.files.renameFormat')}</h2>
       <div class="rename-controls">
-        <select class="select" bind:value={selectedTemplate}>
-          {#each renameTemplates as tmpl (tmpl)}
-            <option value={tmpl}>{tmpl}</option>
+        <select class="select" aria-label={$t('tools.files.templateAria')} bind:value={selectedTemplate}>
+          {#each templates as tmpl (tmpl.template)}
+            <option value={tmpl.template}>{tmpl.name}</option>
           {/each}
         </select>
       </div>
@@ -171,6 +184,16 @@
         <div class="preview-box">
           <span class="preview-label">{$t('tools.files.previewLabel')}</span>
           <span class="preview-text">{$tm(previewResult)}</span>
+        </div>
+      {/if}
+      {#if renameFailures.length > 0}
+        <div class="failures" role="alert">
+          <strong>{$t('tools.files.renameFailuresTitle')}</strong>
+          <ul>
+            {#each renameFailures as failure (failure.path)}
+              <li>{getFileName(failure.path)}<span class="failure-reason">{failure.error}</span></li>
+            {/each}
+          </ul>
         </div>
       {/if}
     </div>
@@ -187,7 +210,7 @@
         <button
           class="btn btn-outline btn-sm"
           onclick={previewRename}
-          disabled={previewing || getSelectedFiles().length === 0}
+          disabled={previewing || selectedTemplate === '' || getSelectedFiles().length === 0}
         >
           <Eye size={14} />
           {$t('tools.files.preview')}
@@ -195,7 +218,7 @@
         <button
           class="btn btn-accent btn-sm"
           onclick={applyRename}
-          disabled={renaming || getSelectedFiles().length === 0}
+          disabled={renaming || selectedTemplate === '' || getSelectedFiles().length === 0}
         >
           <Pencil size={14} />
           {$t('tools.files.rename')}
@@ -205,6 +228,8 @@
 
     {#if loading}
       <div class="empty-state">{$t('tools.files.loading')}</div>
+    {:else if loadError}
+      <div class="empty-state error-state" role="alert">{$tm(loadError)}</div>
     {:else if files.length === 0}
       <div class="empty-state">{$t('tools.files.noTracks')}</div>
     {:else}
@@ -220,9 +245,6 @@
         {/each}
       </div>
     {/if}
-  {:else}
-    <div class="empty-state">{activeTab === 'lyrics' ? $t('tools.files.noLyrics') : $t('tools.files.noCovers')}</div>
-  {/if}
 </div>
 
 <style>
@@ -258,6 +280,35 @@
   .folder-input {
     flex: 1;
     min-width: 0;
+  }
+
+  .browse-note {
+    margin: -12px 0 20px;
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+  }
+
+  .empty-state.error-state {
+    color: var(--color-error, #e5484d);
+  }
+
+  .failures {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--color-error, #e5484d);
+    font-size: 13px;
+    color: var(--color-text-primary);
+  }
+
+  .failures ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+  }
+
+  .failure-reason {
+    margin-left: 8px;
+    color: var(--color-text-tertiary);
   }
 
   .rename-section {
@@ -387,7 +438,6 @@
   }
 
   .input:focus, .select:focus {
-    outline: none;
     border-color: var(--color-accent);
   }
 

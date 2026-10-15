@@ -7,11 +7,7 @@ import (
 )
 
 func (s *Server) handleGetSldlStatus(c *fiber.Ctx) error {
-	binaryPath := ""
-	if s.config != nil {
-		binaryPath = s.config.SoulseekBinaryPath
-	}
-	return c.JSON(app.SldlStatus(binaryPath))
+	return c.JSON(app.SldlStatus(s.cfg().SoulseekBinaryPath))
 }
 
 // Headless mode has no server-side log buffer wired up (a known gap tracked
@@ -26,11 +22,7 @@ func (s *Server) handleTestSoulseekConnection(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	binaryPath := ""
-	if s.config != nil {
-		binaryPath = s.config.SoulseekBinaryPath
-	}
-	result := app.TestSoulseekLogin(binaryPath, req.Username, req.Password, nil)
+	result := app.TestSoulseekLogin(s.cfg().SoulseekBinaryPath, req.Username, req.Password, nil)
 	if result["success"] == true && s.soulseekSource != nil {
 		s.soulseekSource.MarkVerifiedFor(req.Username, req.Password)
 	}

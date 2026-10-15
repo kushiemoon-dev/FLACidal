@@ -43,4 +43,5 @@ export const queue = {
   'queue.panel.empty': 'Aucun téléchargement en cours',
   'queue.panel.queued': 'En file',
   'queue.panel.downloading': 'Téléchargement…',
+  'queue.panel.aria': 'File de téléchargement',
 } as const;

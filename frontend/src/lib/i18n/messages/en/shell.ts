@@ -19,4 +19,5 @@ export const shell = {
   'shell.auth.label': "Access token",
   'shell.auth.submit': "Unlock",
   'shell.auth.rejected': "The token was rejected. Check it and try again.",
+  'shell.mainAria': 'Main content',
 } as const;
