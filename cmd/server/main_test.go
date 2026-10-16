@@ -30,6 +30,17 @@ func TestApplyPriorityEndpoints(t *testing.T) {
 			t.Errorf("applyPriorityEndpoints() called setPriority with %d urls, want 2", len(got))
 		}
 	})
+
+	t.Run("some urls rejected: setPriority still receives the full list", func(t *testing.T) {
+		var got []string
+		applyPriorityEndpoints("test", func(urls []string) int {
+			got = urls
+			return 1
+		}, []string{"https://a.example", "ftp://b.example"})
+		if len(got) != 2 {
+			t.Errorf("applyPriorityEndpoints() called setPriority with %d urls, want 2", len(got))
+		}
+	})
 }
 
 func TestRegisterSoulseekSource(t *testing.T) {

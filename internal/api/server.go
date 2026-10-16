@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -336,6 +338,19 @@ func fileExists(path string) bool {
 
 func (s *Server) Listen(addr string) error {
 	return s.app.Listen(addr)
+}
+
+// Serve serves on an already open listener, so the caller can close it to end
+// the server even if a shutdown raced the start.
+func (s *Server) Serve(ln net.Listener) error {
+	return s.app.Listener(ln)
+}
+
+// ShutdownWithTimeout closes WS connections, then waits at most timeout for
+// open connections to finish before giving up.
+func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
+	s.wsHub.Close()
+	return s.app.ShutdownWithTimeout(timeout)
 }
 
 // Shutdown closes WS connections first, before shutting down the app.
