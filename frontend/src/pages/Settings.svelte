@@ -71,7 +71,7 @@
     firstArtistOnly: false,
     autoQualityFallback: false,
     autoStopOnCooldown: false,
-    sourceOrder: ['soulseek', 'tidal', 'qobuz', 'amazon', 'bandcamp'] as string[],
+    sourceOrder: ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'] as string[],
     qualityOrder: ['HI_RES', 'LOSSLESS', 'HIGH'] as string[],
     proxyUrl: '',
     tidalCustomEndpoint: '',
@@ -426,7 +426,7 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.autoStopOnCooldown = result.autoStopOnCooldown || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
-        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['soulseek', 'tidal', 'qobuz', 'amazon', 'bandcamp'];
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
         sourceOrder = config.sourceOrder.length > 0
           ? config.sourceOrder
           : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
@@ -640,7 +640,7 @@
         config.autoQualityFallback = result.autoQualityFallback || false;
         config.autoStopOnCooldown = result.autoStopOnCooldown || false;
         config.firstArtistOnly = result.firstArtistOnly || false;
-        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['soulseek', 'tidal', 'qobuz', 'amazon', 'bandcamp'];
+        config.sourceOrder = result.sourceOrder?.length ? result.sourceOrder : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
         sourceOrder = config.sourceOrder.length > 0
           ? config.sourceOrder
           : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];

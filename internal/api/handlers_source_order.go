@@ -8,10 +8,9 @@ import (
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
 
-// Unlike internal/app's App.SetSourceOrder, this has nothing equivalent to
-// a.orchestrator.SetPriority since Server carries no orchestrator field,
-// that's specific to the Wails app's live in-flight request routing. Only
-// the persisted config and the download manager's priority get updated here.
+// With a Core the order reaches the config, the orchestrator and the download
+// manager in one call. Without one (tests), only the persisted config and the
+// download manager's priority are updated.
 func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 	var req struct {
 		Order []string `json:"order"`
@@ -23,6 +22,13 @@ func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 	validated, err := app.ValidateSourceOrder(req.Order)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if s.core != nil {
+		if _, err := s.core.SetSourceOrder(validated); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"success": true})
 	}
 
 	if s.downloadManager != nil {
