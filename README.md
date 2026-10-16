@@ -20,9 +20,9 @@
 
 ## Overview
 
-**FLACidal** is a desktop app that grabs lossless FLAC files with full metadata and embedded cover art attached. It tries Soulseek P2P, Tidal, Qobuz, Amazon Music, and Bandcamp in sequence, automatically moving to the next source until one succeeds.
+**FLACidal** is a desktop app that grabs lossless FLAC files with full metadata and embedded cover art attached. It tries Tidal, Qobuz, Amazon Music, Bandcamp, and Soulseek P2P in sequence, automatically moving to the next source until one succeeds.
 
-> **Note:** Tidal, Qobuz, and Amazon have all tightened their APIs against third-party access. The community proxy pools FLACidal relies on to reach them go offline regularly, occasionally for days at a stretch. **Soulseek is currently the source you can count on**: it needs no proxy pool at all and takes about 5 minutes to set up. Tidal is tried first by default (see [source order](#download-chain) below); to give Soulseek priority over the proxy-dependent sources instead, move it to the top under **Settings -> General -> Source Mode**.
+> **Note:** Tidal, Qobuz, and Amazon have all tightened their APIs against third-party access. The community proxy pools FLACidal relies on to reach them go offline regularly, occasionally for days at a stretch. **Soulseek is currently the source you can count on**: it needs no proxy pool at all and takes about 5 minutes to set up. Tidal is tried first and Soulseek last by default (see [source order](#download-chain) below); to give Soulseek priority over the proxy-dependent sources instead, move it to the top under **Settings -> General -> Source Mode**.
 
 ---
 
@@ -30,7 +30,7 @@
 
 **1. [Download FLACidal](#download) for your platform**
 
-**2. [Set up Soulseek](#setting-up-soulseek) first: it matters**
+**2. Optionally [set up Soulseek](#setting-up-soulseek)** as a last resort that needs no proxy pool
 
 **3. Paste a URL or run a search, then hit download**
 
@@ -57,7 +57,7 @@ FLACidal works through sources one at a time, in order, until one succeeds:
 | 4 | **Bandcamp** | FLAC | Direct |
 | 5 | **Soulseek P2P** | FLAC | Through `sldl` (needs a free account) |
 
-Sources can be reordered under **Settings -> General -> Source Mode**, and whatever order is set gets followed top to bottom with no exceptions. Given how often the proxy pools go down, many users move Soulseek to the top for reliability.
+Sources can be reordered under **Settings -> General -> Source Mode**, and whatever order is set gets followed top to bottom with no exceptions. Soulseek is last by default; an order you choose is kept as is, Soulseek first included.
 
 ### Two things called "proxy": they are different
 
@@ -85,7 +85,7 @@ Major streaming platforms actively push back against unofficial API access, so e
 
 - Proxy pools may drop offline with no warning
 - Downloads can quietly fall through to Soulseek as a last resort
-- **Right now, Soulseek is the most consistently available source**
+- Soulseek does not depend on the proxy pools, which is why it is the last resort by default
 
 You can check endpoint health live at any time under **Settings -> Status**.
 
@@ -93,8 +93,8 @@ You can check endpoint health live at any time under **Settings -> Status**.
 
 ## Features
 
-- **Multi-Source Fallback**: cascades automatically across Soulseek, Tidal, Qobuz, Amazon, and Bandcamp
-- **Soulseek P2P** stays unaffected by streaming-proxy uptime, so put it first in Source Mode for the most reliable results
+- **Multi-Source Fallback**: cascades automatically across Tidal, Qobuz, Amazon, Bandcamp, and Soulseek
+- **Soulseek P2P** stays unaffected by streaming-proxy uptime; it is tried last by default and can be moved up in Source Mode
 - **Smart Dedup** checks every source plus an optional external library path (a Navidrome/Jellyfin library, say) and skips anything already on disk, matched by ISRC
 - **Jellyfin Integration**: triggers a library scan automatically once a download batch finishes
 - Streaming sources deliver **Hi-Res and Lossless** quality: 24-bit up to 192 kHz for Hi-Res, 16-bit / 44.1 kHz for Lossless
