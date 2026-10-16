@@ -6,7 +6,8 @@ build/bin/
 *.so
 *.dylib
 flacidal
-server
+/server
+/cmd/server/server
 tidal-to-spotify
 
 # Temp files
@@ -23,10 +24,13 @@ frontend/playwright-report/
 node_modules/
 test-results/
 playwright-report/
+playwright-report-http/
 .playwright-mcp/
 *.incomplete
 *.mp3
 *.flac
+!frontend/e2e-http/fixtures/*.flac
+frontend/e2e-http/.bin/
 
 # Go
 *.test

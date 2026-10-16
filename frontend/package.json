@@ -11,8 +11,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src e2e",
-    "test:e2e": "playwright test"
+    "lint": "eslint src e2e e2e-http",
+    "test:e2e": "playwright test",
+    "build:e2e-server": "node e2e-http/build-server.mjs",
+    "test:e2e:http": "npm run build && npm run build:e2e-server && playwright test -c playwright.http.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

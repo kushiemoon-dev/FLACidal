@@ -1,4 +1,4 @@
-.PHONY: dev serve test test-unit test-integration test-frontend test-e2e test-all lint coverage clean help
+.PHONY: dev serve test test-unit test-integration test-frontend test-e2e test-e2e-http test-all lint coverage clean help
 
 GO := go
 GOFLAGS := -v -race
@@ -27,7 +27,8 @@ help:
 	@echo "make test-unit      - Run unit tests only"
 	@echo "make test-integration - Run integration tests (requires -tags=integration)"
 	@echo "make test-frontend  - Run frontend TypeScript tests"
-	@echo "make test-e2e       - Run E2E Playwright tests"
+	@echo "make test-e2e       - Run both E2E suites (mocked UI and real server)"
+	@echo "make test-e2e-http  - Run only the E2E suite against the real headless server"
 	@echo "make test-all       - Run complete test suite"
 	@echo "make lint           - Run linters (golangci-lint + ESLint)"
 	@echo "make coverage       - Generate coverage report (HTML)"
@@ -50,7 +51,11 @@ test-frontend:
 
 test-e2e:
 	@echo "Running E2E tests..."
-	npx playwright test
+	cd $(FRONTEND_DIR) && npm run test:e2e && npm run test:e2e:http
+
+test-e2e-http:
+	@echo "Running E2E tests against the real server..."
+	cd $(FRONTEND_DIR) && npm run test:e2e:http
 
 test-all: test-unit test-frontend
 	@echo "All tests completed!"

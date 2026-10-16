@@ -52,6 +52,12 @@
 ### Dependencies
 - flacidal-core bumped to v0.27.0.
 
+### Development
+- New HTTP e2e suite (`frontend/e2e-http/`) that starts the real headless server on temporary folders, with no Wails mock and no `page.route`: boot of the 13 views, download folder checks, Files on real FLAC files (list, metadata, delete, rename) and the access token. Run it with `npm run test:e2e:http` or `make test-e2e-http`.
+- `make test-e2e` now runs from the repository root and covers both the mocked and the HTTP suites.
+- New blocking `e2e` job in the test workflow (mocked suite, HTTP suite, and the navigation boot test without retry), with the Playwright reports uploaded when it fails.
+- `cmd/server` is wired through a testable `run` function, shutdown now waits at most 5 seconds for open connections and 5 more for running downloads, a second Ctrl-C works while it waits and a signal during startup stops the server; its coverage went from 21 % to 91 %; the Go CI job fails below 60 %.
+
 ## v4.18.2: 2026-09-30
 
 ### Fixes
