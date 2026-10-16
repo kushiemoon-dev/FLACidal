@@ -38,6 +38,8 @@ type ServerConfig struct {
 	LyricsClient    *core.LyricsClient
 	Downloader      *core.TidalHifiService // same object as the desktop's a.downloader
 	SoulseekSource  *core.SoulseekSource
+	Core            *core.Core      // owner of the config and the live reconfiguration; optional (tests build Servers without it)
+	LogBuffer       *core.LogBuffer // shared with Core; a private buffer is created when nil
 	Version         string
 	Context         context.Context
 	FrontendFS      embed.FS
@@ -63,6 +65,7 @@ type Server struct {
 	qobuzSource      *core.QobuzSource
 	downloader       *core.TidalHifiService
 	soulseekSource   *core.SoulseekSource
+	core             *core.Core
 	lyricsClient     *core.LyricsClient
 	wsHub            *WebSocketHub
 	queueBroadcaster *QueueBroadcaster
@@ -90,8 +93,11 @@ func NewServer(cfg ServerConfig) *Server {
 		frontendDir = defaultFrontendDir
 	}
 
-	logBuffer := core.NewLogBuffer(500)
-	logBuffer.EnableFileLog(core.GetLogFilePath())
+	logBuffer := cfg.LogBuffer
+	if logBuffer == nil {
+		logBuffer = core.NewLogBuffer(500)
+		logBuffer.EnableFileLog(core.GetLogFilePath())
+	}
 	if cfg.Downloader != nil {
 		cfg.Downloader.SetLogger(logBuffer)
 	}
@@ -112,6 +118,7 @@ func NewServer(cfg ServerConfig) *Server {
 		qobuzSource:      cfg.QobuzSource,
 		downloader:       cfg.Downloader,
 		soulseekSource:   cfg.SoulseekSource,
+		core:             cfg.Core,
 		lyricsClient:     cfg.LyricsClient,
 		wsHub:            wsHub,
 		queueBroadcaster: queueBroadcaster,

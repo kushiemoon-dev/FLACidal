@@ -267,17 +267,10 @@ func (a *App) InstallSldl() error {
 		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
 	}
 
-	// Rebuild the Soulseek source so IsAvailable() picks up the change without a restart
+	// Rebuild the sldl handle so its status picks up the change without a restart.
 	if a.configLoaded() {
 		cfg := a.cfg()
-		username := cfg.SoulseekUsername
-		password := cfg.SoulseekPassword
-		a.soulseekSource = core.NewSoulseekSource(sldlPath, username, password)
-		a.soulseekSource.SetLogger(a.logBuffer)
-		if cfg.SoulseekEnabled && a.soulseekSource.IsAvailable() {
-			a.sourceManager.RegisterSource(a.soulseekSource)
-			a.logBuffer.Info("Soulseek source registered following the sldl install")
-		}
+		a.soulseekSource = NewSldlSource(&cfg, a.logBuffer)
 	}
 
 	if a.logBuffer != nil {
