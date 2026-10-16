@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 
 type App struct {
 	version         string
+	core            *core.Core // owner of the config and of every component below once Startup ran
 	ctx             context.Context
 	configMu        sync.RWMutex // guards config, see cfg/setCfg/updateConfig
 	config          *core.Config
@@ -73,147 +75,40 @@ func EnsureSldlExecutable(path string) error {
 	return nil
 }
 
-// resolveAndPersistSourceOrder returns config.SourceOrder, computing it with
-// core.DefaultSourceOrder and writing the result back to config whenever it
-// was blank, this way App.GetConfig() (and by extension Settings.svelte)
-// later reflects the order the orchestrator actually applies, rather than
-// leaving that resolution stuck in a local variable that never hits disk.
-// warnf is given a best-effort diagnostic when the persist step fails; pass
-// nil if logging isn't needed.
-func resolveAndPersistSourceOrder(config *core.Config, warnf func(string)) []string {
-	if len(config.SourceOrder) > 0 {
-		return config.SourceOrder
-	}
-	config.SourceOrder = core.DefaultSourceOrder(config)
-	if err := core.SaveConfig(config); err != nil && warnf != nil {
-		warnf(fmt.Sprintf("could not persist resolved source order: %v", err))
-	}
-	return config.SourceOrder
-}
+// attachCore points the App's component fields at the ones Core built. It is
+// the only place the App learns about them, so desktop and headless share one wiring.
+func (a *App) attachCore(c *core.Core) {
+	a.core = c
+	a.logBuffer = c.LogBuffer()
+	a.db = c.DB()
+	a.tidalClient = c.TidalClient()
+	a.spotifySearch = c.SpotifySearch()
+	a.matcher = c.Matcher()
+	a.downloader = c.Downloader()
+	a.downloadManager = c.DownloadManager()
+	a.sourceManager = c.SourceManager()
+	a.tidalSource = c.TidalSource()
+	a.qobuzSource = c.QobuzSource()
+	a.amazonSource = c.AmazonSource()
+	a.deezerSource = c.DeezerSource()
+	a.spotifySource = c.SpotifySource()
+	a.bandcampSource = c.BandcampSource()
+	a.orchestrator = c.Orchestrator()
 
-// applyPriorityEndpoints hands a configured self-host list to a source's
-// exported SetPriorityEndpoints-style wrapper (setPriority) and logs how many
-// survived filtering, the underlying Core call silently drops anything that
-// isn't https://, or http:// on a loopback/private address, which from the
-// outside is indistinguishable from the setting being ignored altogether.
-// Mirrors cmd/server/main.go's applyPriorityEndpoints helper.
-func applyPriorityEndpoints(logBuffer *core.LogBuffer, label string, setPriority func([]string) int, urls []string) {
-	if len(urls) == 0 {
-		return
-	}
-	accepted := setPriority(urls)
-	if rejected := len(urls) - accepted; rejected > 0 {
-		logBuffer.Warn(fmt.Sprintf("%s priority endpoints: %d configured, %d rejected (needs https://, or http:// on a loopback/private address)", label, accepted, rejected))
-		return
-	}
-	logBuffer.Info(fmt.Sprintf("%s priority endpoints: %d configured (self-hosted, tried first)", label, accepted))
+	// Only backs the Soulseek status and install screens; downloads use Core's native client.
+	cfg := c.Config()
+	a.soulseekSource = NewSldlSource(&cfg, a.logBuffer)
 }
 
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
-	a.logBuffer = core.NewLogBuffer(500)
-	a.logBuffer.EnableFileLog(core.GetLogFilePath())
-	a.logBuffer.Info("Starting FLACidal...")
-
-	// Must run before the downloader is constructed further down, which reads these endpoints.
-	core.SetTidalEndpointLogger(a.logBuffer)
-	core.InitTidalEndpoints()
-
-	if err := core.EnsureDefaultDownloadFolder(); err != nil {
-		a.logBuffer.Warn("Could not prepare the default download folder: " + err.Error())
-	}
-
-	config, err := core.LoadConfig()
+	c, err := core.New("", core.Options{InitEndpoints: core.InitTidalEndpoints})
 	if err != nil {
-		a.logBuffer.Warn("Unable to load config: " + err.Error())
-		config = &core.Config{}
+		log.Printf("Could not start the core: %v", err)
+		return
 	}
-	a.setCfg(*config)
-	a.logBuffer.Success("Config loaded successfully")
-
-	db, err := core.NewDatabase()
-	if err != nil {
-		a.logBuffer.Error("Database init failed: " + err.Error())
-	} else {
-		a.logBuffer.Success("Database ready")
-	}
-	a.db = db
-
-	// Relies on built-in credentials, no user configuration is needed.
-	a.tidalClient = core.NewTidalClientDefault()
-	a.tidalClient.SetCountryCode(config.CountryCode)
-	if config.ProxyURL != "" {
-		if err := a.tidalClient.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Tidal API proxy misconfigured: " + err.Error())
-		} else {
-			a.logBuffer.Info("Using Tidal API proxy: " + config.ProxyURL)
-		}
-	}
-	a.logBuffer.Info("Tidal client is ready")
-
-	// Client Credentials, no login needed.
-	a.spotifySearch = core.NewSpotifyClientForSearch()
-
-	a.matcher = core.NewMatcher(a.spotifySearch, a.db)
-	a.matcher.SetLogger(a.logBuffer)
-
-	a.downloader = core.NewTidalHifiService()
-	// So endpoint rotation shows up on the Terminal page.
-	a.downloader.SetLogger(a.logBuffer)
-	if config.ProxyURL != "" {
-		if err := a.downloader.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Downloader proxy misconfigured: " + err.Error())
-		}
-	}
-	// TidalHifiEndpoints fully replaces the default endpoints.
-	if len(config.TidalHifiEndpoints) > 0 {
-		a.downloader.SetEndpoints(config.TidalHifiEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Tidal HiFi endpoints: %d configured (override)", len(config.TidalHifiEndpoints)))
-	} else {
-		base := core.GetTidalEndpoints()
-		a.downloader.SetEndpoints(base)
-	}
-	tidalPriority := core.ResolvePriorityEndpoints(config.TidalPriorityEndpoints, config.TidalCustomEndpoint)
-	applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (downloader)", a.downloader.SetPriorityEndpoints, tidalPriority)
-	quality := config.DownloadQuality
-	if quality == "" {
-		quality = "LOSSLESS"
-	}
-	fileNameFormat := config.FileNameFormat
-	if fileNameFormat == "" {
-		fileNameFormat = "{artist} - {title}"
-	}
-	a.downloader.SetOptions(core.DownloadOptions{
-		Quality:              quality,
-		FileNameFormat:       fileNameFormat,
-		OrganizeFolders:      config.OrganizeFolders,
-		FolderTemplate:       config.FolderTemplate,
-		EmbedCover:           config.EmbedCover,
-		SaveCoverFile:        config.SaveCoverFile,
-		AutoAnalyze:          config.AutoAnalyze,
-		AutoQualityFallback:  config.AutoQualityFallback,
-		QualityFallbackOrder: config.QualityOrder,
-		FirstArtistOnly:      config.FirstArtistOnly,
-		SkipExisting:         config.SkipExisting,
-		ExternalLibraryPaths: config.ExternalLibraryPaths,
-		ArtistSeparator:      config.ArtistSeparator,
-		PlaylistSubfolder:    config.PlaylistSubfolder,
-		SaveLyricsFile:       config.SaveLyricsFile,
-		SaveFolderCover:      config.SaveFolderCover,
-	})
-	a.logBuffer.Info("FLAC downloader ready")
-
-	a.downloadManager = core.NewDownloadManager(a.downloader, 4)
-	a.downloadManager.SetJellyfin(config.JellyfinEnabled, config.JellyfinURL, config.JellyfinAPIKey)
-	if a.db != nil {
-		a.downloadManager.SetDatabase(a.db)
-		a.downloadManager.SetJobCompleteCallback(func(entry core.HistoryEntry) {
-			if err := a.db.InsertHistoryEntry(entry); err != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Could not save per-track history for '%s - %s': %v", entry.Artist, entry.Title, err))
-			}
-		})
-	}
+	a.attachCore(c)
 
 	// A single-file event channel keeps ExecuteJS calls from overlapping, which otherwise crashes WebKit on Linux.
 	type progressEvent struct {
@@ -306,165 +201,18 @@ func (a *App) Startup(ctx context.Context) {
 		// Blocks briefly if the buffer is full, trivial next to download time.
 		eventCh <- progressEvent{trackID: trackID, status: status, result: result}
 	})
-	a.downloadManager.Start()
-	a.logBuffer.Success("Download manager running (4 workers)")
-
-	if restored, err := a.downloadManager.RestoreQueueState(); err != nil {
-		a.logBuffer.Warn("Could not restore persisted queue: " + err.Error())
-	} else if restored > 0 {
-		a.logBuffer.Info(fmt.Sprintf("Restored %d job(s) from a previous session", restored))
-	}
-
-	a.sourceManager = core.NewSourceManager()
-
-	a.tidalSource = core.NewTidalSource()
-	a.tidalSource.SetAvailable(config.TidalEnabled)
-	if len(config.TidalHifiEndpoints) > 0 {
-		a.tidalSource.GetService().SetEndpoints(config.TidalHifiEndpoints)
-	} else {
-		base := core.GetTidalEndpoints()
-		a.tidalSource.GetService().SetEndpoints(base)
-	}
-	// TidalSource owns a second, independent TidalHifiService (its own
-	// endpoint pool) behind every album/playlist/track fetch, it needs the
-	// identical priority list computed above, same as Core's own wiring does.
-	applyPriorityEndpoints(a.logBuffer, "Tidal HiFi (source)", a.tidalSource.GetService().SetPriorityEndpoints, tidalPriority)
-	a.sourceManager.RegisterSource(a.tidalSource)
-	a.logBuffer.Info("Registered the Tidal source")
-
-	a.qobuzSource = core.NewQobuzSource(config.QobuzAppID, config.QobuzAppSecret)
-	a.qobuzSource.SetLogger(a.logBuffer)
-	if config.ProxyURL != "" {
-		if err := a.qobuzSource.SetProxy(config.ProxyURL); err != nil {
-			a.logBuffer.Warn("Qobuz proxy misconfigured: " + err.Error())
-		}
-	}
-	if len(config.QobuzEndpoints) > 0 {
-		a.qobuzSource.SetEndpoints(config.QobuzEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Qobuz endpoints: %d configured (override)", len(config.QobuzEndpoints)))
-	} else {
-		base := core.DefaultQobuzEndpoints()
-		a.qobuzSource.SetEndpoints(base)
-	}
-	qobuzPriority := core.ResolvePriorityEndpoints(config.QobuzPriorityEndpoints, config.QobuzCustomEndpoint)
-	applyPriorityEndpoints(a.logBuffer, "Qobuz proxy", a.qobuzSource.SetProxyPriorityEndpoints, qobuzPriority)
-	// The proxy pool above is only half of Qobuz: catalog calls (track/album/
-	// playlist/search) go through the separate, tier-less q.endpoints list
-	// set above instead, so priority entries are prepended ahead of that same
-	// catalog base here too, mirroring Core's own qobuzSource.SetEndpoints
-	// call and cmd/server/main.go's identical treatment. The copy-before-append
-	// avoids mutating config.QobuzPriorityEndpoints's backing array through
-	// append's slice aliasing (ResolvePriorityEndpoints can return that slice
-	// by reference).
-	if len(qobuzPriority) > 0 {
-		catalogBase := config.QobuzEndpoints
-		if len(catalogBase) == 0 {
-			catalogBase = core.DefaultQobuzEndpoints()
-		}
-		catalogEndpoints := append(append([]string{}, qobuzPriority...), catalogBase...)
-		a.qobuzSource.SetEndpoints(catalogEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Qobuz catalog endpoints: %d self-hosted configured ahead of the public defaults", len(qobuzPriority)))
-	}
-	if config.QobuzAuthToken != "" {
-		a.qobuzSource.SetCredentials(config.QobuzAppID, config.QobuzAppSecret, config.QobuzAuthToken)
-	}
-	a.sourceManager.RegisterSource(a.qobuzSource)
-	if config.QobuzEnabled && config.QobuzAppID != "" {
-		a.logBuffer.Info("Registered the Qobuz source")
-	}
-
-	if config.PreferredSource != "" {
-		a.sourceManager.SetPreferredSource(config.PreferredSource)
-	}
-
-	if config.QobuzEnabled && a.qobuzSource.IsAvailable() {
-		a.downloadManager.SetFallbackQobuzSource(a.qobuzSource)
-	}
-	// Circuit breaker: give the download manager the TidalSource so selectBestService can check endpoint health
-	a.downloadManager.SetTidalSource(a.tidalSource)
-
-	// No auth needed; routed through the proxy pool.
-	a.amazonSource = core.NewAmazonSource()
-	if len(config.AmazonProxyEndpoints) > 0 {
-		a.amazonSource.SetEndpoints(config.AmazonProxyEndpoints)
-		a.logBuffer.Info(fmt.Sprintf("Amazon endpoints: %d configured (override)", len(config.AmazonProxyEndpoints)))
-	} else {
-		base := core.GetEndpoints("amazon")
-		a.amazonSource.SetEndpoints(base)
-	}
-	// No legacy AmazonCustomEndpoint field exists, so config.AmazonPriorityEndpoints
-	// is used directly without ResolvePriorityEndpoints.
-	applyPriorityEndpoints(a.logBuffer, "Amazon", a.amazonSource.SetPriorityEndpoints, config.AmazonPriorityEndpoints)
-	a.sourceManager.RegisterSource(a.amazonSource)
-	a.logBuffer.Info("Amazon Music fallback source ready")
-
-	// Used for URL routing rather than downloads.
-	a.deezerSource = core.NewDeezerSource()
-	a.sourceManager.RegisterSource(a.deezerSource)
-	a.spotifySource = core.NewSpotifySource(a.spotifySearch)
-	a.sourceManager.RegisterSource(a.spotifySource)
-
-	a.bandcampSource = core.NewBandcampSource()
-	a.sourceManager.RegisterSource(a.bandcampSource)
-	a.logBuffer.Info("Bandcamp source ready")
-
-	// A last-resort P2P path, independent of the streaming proxies.
-	sldlPath := config.SoulseekBinaryPath
-	if sldlPath == "" {
-		sldlPath = DefaultSldlPath()
-	}
-	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
-	}
-	a.soulseekSource = core.NewSoulseekSource(sldlPath, config.SoulseekUsername, config.SoulseekPassword)
-	a.soulseekSource.SetLogger(a.logBuffer)
-	if config.SoulseekEnabled && a.soulseekSource.IsAvailable() {
-		a.sourceManager.RegisterSource(a.soulseekSource)
-		a.logBuffer.Info("Soulseek fallback source ready")
-	} else if config.SoulseekEnabled {
-		if config.SoulseekBinaryPath != "" {
-			if _, err := os.Stat(config.SoulseekBinaryPath); os.IsNotExist(err) {
-				a.logBuffer.Warn(fmt.Sprintf("Soulseek is enabled but no binary was found at %s", config.SoulseekBinaryPath))
-			}
-		} else if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
-			a.logBuffer.Warn(fmt.Sprintf("Soulseek is enabled but no binary exists at the default path %s", sldlPath))
-		}
-		if config.SoulseekUsername == "" || config.SoulseekPassword == "" {
-			a.logBuffer.Warn("Soulseek is enabled but no username/password is set")
-		}
-	}
-
-	// Wire up the multi-source orchestrator; the priority order is shared with
-	// downloadManager below (this used to be a separate hardcoded list that ignored
-	// config.SourceOrder and placed Soulseek last, which contradicted the
-	// Soulseek-first default the README describes).
-	sourceOrder := resolveAndPersistSourceOrder(config, func(msg string) { a.logBuffer.Warn(msg) })
-	a.orchestrator = core.NewDownloadOrchestrator(a.sourceManager, sourceOrder, a.logBuffer)
-	if a.db != nil {
-		a.orchestrator.SetDatabase(a.db)
-		if a.soulseekSource != nil {
-			a.soulseekSource.SetDatabase(a.db)
-		}
-	}
-	a.downloadManager.SetOrchestrator(a.orchestrator)
-	a.downloadManager.SetSourceOrder(sourceOrder)
-	a.downloadManager.SetGenerateM3U8(config.GenerateM3U8)
-	a.downloadManager.SetSkipUnavailable(config.SkipUnavailableTracks)
-
+	// Starts the workers and restores the persisted queue; the callback above is already in place.
+	a.core.Start()
 	a.logBuffer.Success("FLACidal is ready!")
 }
 
 func (a *App) Shutdown(ctx context.Context) {
-	if a.downloadManager != nil {
-		a.downloadManager.Stop()
+	if a.core != nil {
+		a.core.Shutdown()
 	}
 
 	if a.configLoaded() {
 		cfg := a.cfg()
 		core.SaveConfig(&cfg)
-	}
-
-	if a.db != nil {
-		a.db.Close()
 	}
 }

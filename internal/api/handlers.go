@@ -21,6 +21,19 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 	})
 }
 
+// applyConfig persists config and, when running on a Core, reconfigures the
+// live components without a restart.
+func (s *Server) applyConfig(config core.Config) error {
+	if s.core != nil {
+		return s.core.ApplyConfig(config)
+	}
+	if err := core.SaveConfig(&config); err != nil {
+		return err
+	}
+	s.setCfg(config)
+	return nil
+}
+
 func (s *Server) handleGetConfig(c *fiber.Ctx) error {
 	cfg := s.cfg()
 	return c.JSON(&cfg)
@@ -48,10 +61,9 @@ func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	if config.ExternalLibraryPaths != nil {
 		config.ExternalLibraryPaths = libraries
 	}
-	if err := core.SaveConfig(&config); err != nil {
+	if err := s.applyConfig(config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	s.setCfg(config)
 	return c.JSON(fiber.Map{"success": true})
 }
 
@@ -63,11 +75,11 @@ func (s *Server) handleResetConfig(c *fiber.Ctx) error {
 		config.DownloadFolder = folder
 	}
 
-	if err := core.SaveConfig(config); err != nil {
+	if err := s.applyConfig(*config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	s.setCfg(*config)
-	return c.JSON(config)
+	applied := s.cfg()
+	return c.JSON(&applied)
 }
 
 func (s *Server) handleGetSources(c *fiber.Ctx) error {
