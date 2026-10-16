@@ -36,6 +36,13 @@
 - Soulseek reports `untested` until a connection test or a download succeeds.
 - Documentation of `ProbeSources` corrected: it routes requests through the pool and can change endpoint state, so it must only run on a user action; the background probe is `ProbeEndpoints`.
 
+### Changed
+- **Default source order is now self-hosted sources first, then public sources, Soulseek last** (`tidal, qobuz, amazon, bandcamp, soulseek` without any self-hosted instance). Until you pick an order yourself, the default follows your self-hosted endpoints. An order you choose is kept as is, Soulseek first included.
+- **One-time migration of the saved order**: an order that matches a previous default (Soulseek first, or right after the self-hosted sources) is replaced by the new default. Any other saved order is kept. It is logged and does not run twice.
+- **A saved order without Soulseek now gets it appended last**, no longer first.
+- **Desktop, headless server and mobile app share one wiring in Core.** The headless server now registers Deezer, Spotify, Bandcamp and Amazon, restores its persisted download queue after a restart, records per-track history, generates m3u8 playlists, honours the source order and applies settings changes without a restart.
+- **Soulseek downloads now use the native client and require `soulseekEnabled`.** The `sldl` binary is only used by the Soulseek status, connection test and install screens.
+
 ### Fixes
 - **Listing errors were hidden**: an absent, unreadable or non-directory download folder looked like an empty library. Files and File Manager now show an error (and a notification) instead of "no files", and an empty folder is still reported as empty.
 - **Rename templates**: the File Manager offered `{track}`, which the Core does not substitute, so the literal text ended up in file names.
@@ -50,7 +57,7 @@
 - Docker users must set `FLACIDAL_AUTH_TOKEN` (see the README); the compose file refuses to start without it.
 
 ### Dependencies
-- flacidal-core bumped to v0.27.0.
+- flacidal-core bumped to v0.28.0.
 
 ### Development
 - New HTTP e2e suite (`frontend/e2e-http/`) that starts the real headless server on temporary folders, with no Wails mock and no `page.route`: boot of the 13 views, download folder checks, Files on real FLAC files (list, metadata, delete, rename) and the access token. Run it with `npm run test:e2e:http` or `make test-e2e-http`.
