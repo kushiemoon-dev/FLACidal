@@ -87,7 +87,78 @@ jobs:
         run: go build -o /dev/null ./cmd/server
 
       - name: go test
-        run: go test -race ./internal/... ./cmd/...
+        shell: bash  # runs with -eo pipefail, so a failing go test is not hidden by tee
+        run: go test -race -cover ./internal/... ./cmd/... | tee go-test.txt
+
+      - name: Coverage gate (cmd/server)
+        run: |
+          pct=$(grep 'flacidal/cmd/server' go-test.txt | grep -oE 'coverage: [0-9.]+' | grep -oE '[0-9.]+')
+          echo "cmd/server coverage: ${pct}% (minimum 60%)"
+          awk -v c="$pct" 'BEGIN{exit !(c>=60)}'
+
+  e2e:
+    name: E2E (mocked and real server)
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, go-test]
+    env:
+      GOPRIVATE: github.com/kushiemoon-dev/*
+      GONOSUMDB: github.com/kushiemoon-dev/*
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Configure private Go modules
+        run: git config --global url."https://x-access-token:${{ secrets.CORE_ACCESS_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build headless server
+        working-directory: frontend
+        run: npm run build:e2e-server
+
+      - name: Navigation stability (no retry)
+        working-directory: frontend
+        run: npx playwright test e2e/01-navigation.spec.ts:9 --retries=0
+
+      - name: Mocked e2e suite
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: HTTP e2e suite
+        working-directory: frontend
+        run: npx playwright test -c playwright.http.config.ts
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-reports
+          path: |
+            playwright-report
+            playwright-report-http
+            frontend/test-results
+          if-no-files-found: ignore
 
   go-lint:
     name: Go Lint
