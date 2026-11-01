@@ -9,4 +9,13 @@ export const errors = {
   'errors.folder.notWritable': 'FLACidal kann in diesen Ordner nicht schreiben. Prüfen Sie die Berechtigungen oder wählen Sie in den Einstellungen einen anderen Ordner: {detail}',
   'errors.queue.noOutputDir': 'Es ist kein Download-Ordner festgelegt. Wählen Sie in den Einstellungen einen aus und versuchen Sie es erneut.',
   'errors.queue.notReady': 'Die Download-Engine ist nicht bereit. Starten Sie die Anwendung neu und versuchen Sie es erneut.',
+  'errors.extension.invalidId': 'Diese Erweiterung hat eine ungültige Kennung: {detail}',
+  'errors.extension.reservedId': 'Diese Kennung ist für eine eingebaute Quelle reserviert: {detail}',
+  'errors.extension.insecureUrl': 'Erweiterungen akzeptieren nur https-Adressen: {detail}',
+  'errors.extension.tooLarge': 'Diese Erweiterung ist zu groß: {detail}',
+  'errors.extension.invalidZip': 'Das Erweiterungspaket ist ungültig: {detail}',
+  'errors.extension.invalidManifest': 'Die Beschreibung der Erweiterung ist ungültig: {detail}',
+  'errors.extension.notFound': 'Erweiterung nicht gefunden: {detail}',
+  'errors.extension.invalidAuthField': 'Ungültiges Zugangsdatenfeld: {detail}',
+  'errors.extension.registry': 'Verzeichnisproblem: {detail}',
 };

@@ -7,6 +7,7 @@ const sources = import.meta.glob(['/src/**/*.svelte', '/src/stores/*.ts', '/src/
 const MIGRATED: string[] = [
   'App.svelte',
   'components/Sidebar.svelte', 'components/Toast.svelte', 'components/ConfirmDialog.svelte',
+  'components/ExtensionsSection.svelte', 'components/ExtensionDetailDialog.svelte',
   'components/ContextMenu.svelte', 'components/TabBar.svelte', 'components/DropZone.svelte',
   'components/UpdateRequiredScreen.svelte', 'components/AuthPrompt.svelte',
   'pages/Home.svelte', 'pages/Search.svelte', 'pages/Queue.svelte', 'components/QueuePanel.svelte',

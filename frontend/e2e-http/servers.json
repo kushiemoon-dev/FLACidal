@@ -1,5 +1,6 @@
 {
   "openPort": 18471,
   "tokenPort": 18472,
-  "token": "e2e-token-123"
+  "token": "e2e-token-123",
+  "extPort": 18473
 }

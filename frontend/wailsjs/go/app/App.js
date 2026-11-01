@@ -6,12 +6,20 @@ export function AddLog(arg1, arg2) {
   return window['go']['app']['App']['AddLog'](arg1, arg2);
 }
 
+export function AddRegistrySource(arg1) {
+  return window['go']['app']['App']['AddRegistrySource'](arg1);
+}
+
 export function AnalyzeFile(arg1) {
   return window['go']['app']['App']['AnalyzeFile'](arg1);
 }
 
 export function AnalyzeMultiple(arg1) {
   return window['go']['app']['App']['AnalyzeMultiple'](arg1);
+}
+
+export function BrowseRegistry(arg1) {
+  return window['go']['app']['App']['BrowseRegistry'](arg1);
 }
 
 export function CancelDownload(arg1) {
@@ -158,6 +166,10 @@ export function GetDownloadQueueStatus() {
   return window['go']['app']['App']['GetDownloadQueueStatus']();
 }
 
+export function GetEffectiveSourceOrder() {
+  return window['go']['app']['App']['GetEffectiveSourceOrder']();
+}
+
 export function GetFFmpegInfo() {
   return window['go']['app']['App']['GetFFmpegInfo']();
 }
@@ -194,6 +206,10 @@ export function GetRecentAlbums(arg1) {
   return window['go']['app']['App']['GetRecentAlbums'](arg1);
 }
 
+export function GetRegistrySources() {
+  return window['go']['app']['App']['GetRegistrySources']();
+}
+
 export function GetRenameTemplates() {
   return window['go']['app']['App']['GetRenameTemplates']();
 }
@@ -222,6 +238,14 @@ export function ImportConfig() {
   return window['go']['app']['App']['ImportConfig']();
 }
 
+export function InstallExtension(arg1) {
+  return window['go']['app']['App']['InstallExtension'](arg1);
+}
+
+export function InstallExtensionFromRegistry(arg1, arg2) {
+  return window['go']['app']['App']['InstallExtensionFromRegistry'](arg1, arg2);
+}
+
 export function InstallFFmpeg() {
   return window['go']['app']['App']['InstallFFmpeg']();
 }
@@ -244,6 +268,10 @@ export function IsQueuePaused() {
 
 export function ListDownloadedFiles() {
   return window['go']['app']['App']['ListDownloadedFiles']();
+}
+
+export function ListExtensions() {
+  return window['go']['app']['App']['ListExtensions']();
 }
 
 export function ListTrackHistory(arg1, arg2, arg3) {
@@ -314,6 +342,10 @@ export function RefreshTidalEndpoints() {
   return window['go']['app']['App']['RefreshTidalEndpoints']();
 }
 
+export function RemoveRegistrySource(arg1) {
+  return window['go']['app']['App']['RemoveRegistrySource'](arg1);
+}
+
 export function RenameFiles(arg1, arg2) {
   return window['go']['app']['App']['RenameFiles'](arg1, arg2);
 }
@@ -374,6 +406,14 @@ export function SetDownloadOptions(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['app']['App']['SetDownloadOptions'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+export function SetExtensionAuth(arg1, arg2) {
+  return window['go']['app']['App']['SetExtensionAuth'](arg1, arg2);
+}
+
+export function SetExtensionEnabled(arg1, arg2) {
+  return window['go']['app']['App']['SetExtensionEnabled'](arg1, arg2);
+}
+
 export function SetPreferredSource(arg1) {
   return window['go']['app']['App']['SetPreferredSource'](arg1);
 }
@@ -388,6 +428,10 @@ export function SetTidalCredentials(arg1, arg2) {
 
 export function TestSoulseekConnection(arg1, arg2) {
   return window['go']['app']['App']['TestSoulseekConnection'](arg1, arg2);
+}
+
+export function UninstallExtension(arg1) {
+  return window['go']['app']['App']['UninstallExtension'](arg1);
 }
 
 export function UpdateQobuzCredentials(arg1, arg2, arg3) {

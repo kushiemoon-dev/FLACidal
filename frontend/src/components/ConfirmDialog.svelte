@@ -130,7 +130,11 @@
   .btn-confirm.btn-danger {
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    color: #fca5a5;
+  }
+
+  :global([data-theme="light"]) .btn-confirm.btn-danger {
+    color: #b91c1c;
   }
 
   .btn-confirm.btn-danger:hover {

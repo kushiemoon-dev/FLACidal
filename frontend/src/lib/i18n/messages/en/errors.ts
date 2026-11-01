@@ -9,4 +9,13 @@ export const errors = {
   'errors.folder.notWritable': 'FLACidal cannot write in this folder. Check its permissions or choose another folder in Settings: {detail}',
   'errors.queue.noOutputDir': 'No download folder is set. Choose one in Settings, then try again.',
   'errors.queue.notReady': 'The download engine is not ready. Restart the application and try again.',
+  'errors.extension.invalidId': 'This extension has an invalid identifier: {detail}',
+  'errors.extension.reservedId': 'This identifier is reserved for a built-in source: {detail}',
+  'errors.extension.insecureUrl': 'Extensions only accept https addresses: {detail}',
+  'errors.extension.tooLarge': 'This extension is too large: {detail}',
+  'errors.extension.invalidZip': 'The extension package is not valid: {detail}',
+  'errors.extension.invalidManifest': 'The extension description is not valid: {detail}',
+  'errors.extension.notFound': 'Extension not found: {detail}',
+  'errors.extension.invalidAuthField': 'Invalid credential field: {detail}',
+  'errors.extension.registry': 'Registry problem: {detail}',
 };
