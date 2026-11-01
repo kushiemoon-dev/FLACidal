@@ -17,6 +17,18 @@
 - **Extensions in the source order**: installed extensions show up in the source priority list and can be dragged like any other source. By default they sit right before Soulseek.
 - Needs FLACidal-Core v0.30.0.
 
+### Web parity
+- **Server file browser** (English, French, German, keyboard and screen reader friendly) replaces the native pickers in the browser: Analyzer, Converter, Resampler, Lyrics and File Manager choose files and folders on the server. Tools stay inside the download folder and the library paths (`GET /api/browse?scope=tools`); picking a download folder or library works anywhere on the server and lists folders only (`scope=folders`). `GET /api/browse/flac` lists the FLAC files of a chosen folder.
+- **Export and import of the config in the browser**: `GET /api/config/export` and `POST /api/config/import`, same file format as the desktop app, the 7 credentials blanked and the server token never included.
+- **Live logs**: every log entry reaches the Terminal as it is written, in the browser through `/ws` and in the desktop app through the `log` event, which was only sent for a few messages before. The browser reloads the history after a dropped connection.
+- **Discography, artist images and FFmpeg install in the browser**: `POST /api/discography/expand`, `/api/discography/queue`, `/api/artists/assets` and `/api/ffmpeg/install`, sharing their code with the desktop app. FFmpeg progress comes through `/ws` and a second install at the same time is refused.
+- The drop zone buttons work in the browser. The buttons that open the local file manager and the in-app update are hidden there.
+- Needs FLACidal-Core v0.31.0.
+
+### Changed
+- Importing a config no longer erases the credentials already saved when the file has them blank (desktop app and browser). A credential present in the file still replaces the saved one.
+- A race in the `/ws` client counter is fixed.
+
 ### New features
 - **Test endpoints**: a button in Settings > Status sends one reference request to every endpoint (Tidal HiFi, Qobuz proxies, Amazon proxies, self-hosted ones included) and shows the result. It runs in the background, so the interface stays responsive and a download in progress is not slowed down. Every source is probed in parallel; endpoints that share a host are probed one after the other.
 - **Three reference tracks per source** instead of a single one. The next reference is tried only when the previous one is not found on that endpoint. If none is found, the row shows "reference track not found" in grey rather than a failure.
