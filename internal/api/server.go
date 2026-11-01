@@ -213,6 +213,7 @@ func (s *Server) setupRoutes() {
 	api.Post("/sources/preferred", s.handleSetPreferredSource)
 	api.Post("/sources/detect", s.handleDetectSource)
 	api.Post("/sources/order", s.handleSetSourceOrder)
+	s.registerExtensionRoutes(api)
 	api.Post("/sources/soulseek/test", s.handleTestSoulseekConnection)
 	api.Get("/sources/health", s.handleGetSourceHealth)
 	api.Get("/sources/endpoints", s.handleGetEndpointStatuses)
