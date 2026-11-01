@@ -10,6 +10,13 @@
 - File routes of the headless server (delete, metadata, cover, rename, convert, lyrics, analyzer by path) are confined to the download folder and the external library paths, symlinks included. Deleting is limited to `.flac` files.
 - The download folder and external library paths saved through the API must be absolute and cannot be `/`.
 
+### Extensions
+- **Settings > Extensions** (English, French, German, keyboard and screen reader friendly): lists the installed extensions with version, author, category, permissions and the hosts they talk to; installs from a zip URL or from a registry (browse, then install) with a confirmation; enables an extension after a review dialog showing its permissions, author and hosts; uninstalls with a confirmation; stores the credentials an extension declares without ever showing them back. Registries can be added and removed, the official one is offered by default and can be removed for good.
+- **Headless server**: the same operations under `/api/extensions/*` (list, install, install from registry, uninstall, enable, credentials, registries, browse) and `GET /api/sources/order` for the order actually used. They sit behind the access token like the rest of `/api`. Errors come back as `[extension.xxx] detail` with a 400.
+- **Safer extensions**: an installed extension is disabled until you enable it, and that choice survives a restart. Installs only accept `https` zips of at most 5 MiB, never write outside the extensions folder and leave nothing behind when they fail. Calls to an extension's API require the `network` permission and stay on its declared host; credentials never leave that host and are no longer returned by any API.
+- **Extensions in the source order**: installed extensions show up in the source priority list and can be dragged like any other source. By default they sit right before Soulseek.
+- Needs FLACidal-Core v0.30.0.
+
 ### New features
 - **Test endpoints**: a button in Settings > Status sends one reference request to every endpoint (Tidal HiFi, Qobuz proxies, Amazon proxies, self-hosted ones included) and shows the result. It runs in the background, so the interface stays responsive and a download in progress is not slowed down. Every source is probed in parallel; endpoints that share a host are probed one after the other.
 - **Three reference tracks per source** instead of a single one. The next reference is tried only when the previous one is not found on that endpoint. If none is found, the row shows "reference track not found" in grey rather than a failure.

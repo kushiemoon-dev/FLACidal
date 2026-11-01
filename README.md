@@ -59,6 +59,8 @@ FLACidal works through sources one at a time, in order, until one succeeds:
 
 Sources can be reordered under **Settings -> General -> Source Mode**, and whatever order is set gets followed top to bottom with no exceptions. Soulseek is last by default; an order you choose is kept as is, Soulseek first included.
 
+Community **extensions** add more download sources and metadata providers. Manage them under **Settings -> General -> Extensions** (or `/api/extensions/*` on the headless server): an extension is installed disabled, you review its permissions before enabling it, and an enabled download extension is tried right before Soulseek unless you drag it elsewhere in the order.
+
 ### Two things called "proxy": they are different
 
 The **community proxy pool** is relay infrastructure FLACidal maintains for Tidal, Qobuz, and Amazon. It comes built in, needs no setup, and if these servers go down, those sources stop working along with them.
