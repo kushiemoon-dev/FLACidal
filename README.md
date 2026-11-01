@@ -55,7 +55,7 @@ FLACidal works through sources one at a time, in order, until one succeeds:
 | 2 | **Qobuz** | FLAC / Hi-Res (24-bit) | Through the community proxy pool (optional) |
 | 3 | **Amazon Music** | FLAC / UHD | Through the community proxy pool |
 | 4 | **Bandcamp** | FLAC | Direct |
-| 5 | **Soulseek P2P** | FLAC | Through `sldl` (needs a free account) |
+| 5 | **Soulseek P2P** | FLAC | Built-in client (needs a free account, or leave the fields empty for a throwaway one) |
 
 Sources can be reordered under **Settings -> General -> Source Mode**, and whatever order is set gets followed top to bottom with no exceptions. Soulseek is last by default; an order you choose is kept as is, Soulseek first included.
 
@@ -141,23 +141,14 @@ Right now, Soulseek is FLACidal's most dependable source, and getting it running
 - **Already using Nicotine+?** Use your existing username and password; FLACidal shares the same account system.
 - **New user:** Sign up for a free account at [slsknet.org](https://www.slsknet.org/) (no email needed) or through the Nicotine+ app.
 
-### Step 2: Install sldl
+FLACidal downloads without sharing files.
 
-`sldl` (slsk-batchdl) is the command-line tool FLACidal relies on to talk to the Soulseek network.
-
-1. Grab the latest binary for your platform from [github.com/fiso64/slsk-batchdl/releases](https://github.com/fiso64/slsk-batchdl/releases)
-2. Drop it at this exact path:
-   - **Linux / macOS:** `~/.local/share/flacidal/sldl`, then mark it executable: `chmod +x ~/.local/share/flacidal/sldl`
-   - **Windows:** `%APPDATA%\flacidal\sldl.exe` (i.e. `C:\Users\YourName\AppData\Roaming\flacidal\sldl.exe`)
-
-FLACidal picks up the binary on its own. Once found, the Soulseek section under **Settings -> General** shows a green checkmark.
-
-### Step 3: Connect your account
+### Step 2: Connect your account
 
 1. Open FLACidal -> **Settings -> General**
 2. Scroll to **Soulseek (Fallback P2P)**
 3. Switch **Enable Soulseek** on
-4. Fill in your **username** and **password**
+4. Fill in your **username** and **password**, or leave both empty to use a throwaway account created automatically
 5. Click **Login**; FLACidal checks the connection live and reports success or an error
 6. Click **Save Changes**
 
@@ -165,9 +156,9 @@ FLACidal picks up the binary on its own. Once found, the Soulseek section under 
 <img src="docs/screenshots/settings-general.png" alt="Settings, General tab showing Soulseek configuration" width="800">
 </div>
 
-### Step 4: Verify in Settings -> Status
+### Step 3: Verify in Settings -> Status
 
-Head to **Settings -> Status**. The `sldl` row should show green. If any proxy pool endpoints turn red, Soulseek automatically picks up the slack.
+Head to **Settings -> Status**. The Soulseek row shows "not tested" until a login or download succeeds, then turns green. If any proxy pool endpoints turn red, Soulseek automatically picks up the slack.
 
 <div align="center">
 <img src="docs/screenshots/settings-status.png" alt="Settings, Status tab showing endpoint health" width="800">
@@ -281,7 +272,7 @@ Settings live at `~/.flacidal/config.json` and can be edited from within the app
 | Language | `System` | `System` · `English` · `Français` · `Deutsch` |
 | Date format | `full` | `full` (YYYY-MM-DD) · `year` (YYYY), for the DATE tag of FLAC and MP3 files. ORIGINALDATE always keeps the full date |
 
-The config file sits at `~/.flacidal/config.json`, while the `sldl` binary lives separately at `~/.local/share/flacidal/sldl` on Linux and macOS. Two distinct locations, easy to mix up if you're not expecting it.
+The config file sits at `~/.flacidal/config.json`.
 
 The log file is next to the config, at `~/.flacidal/flacidal.log`, and Settings shows its path. It rotates at 5 MB and keeps two backups (`flacidal.log.1` and `flacidal.log.2`). Credentials in URLs, bearer tokens and values written as `password=`, `token=`, `secret=` or `api_key=` are masked, but a secret separated from its keyword by a plain space is not, so skim it before attaching it to a bug report.
 
@@ -313,7 +304,7 @@ FLACidal can also run as a plain HTTP server, with no Wails and no desktop shell
 
 ### Docker
 
-The image bundles the server, the built frontend, `ffmpeg`, `aubio` (BPM), and `sldl` (Soulseek), so nothing extra needs installing. `keyfinder-cli` (musical key) isn't bundled yet, since there's no Debian package for it and it needs a source build, so key detection stays empty in Docker for now.
+The image bundles the server, the built frontend, `ffmpeg`, and `aubio` (BPM), so nothing extra needs installing. `keyfinder-cli` (musical key) isn't bundled yet, since there's no Debian package for it and it needs a source build, so key detection stays empty in Docker for now.
 
 ```bash
 curl -O https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/main/docker-compose.yml

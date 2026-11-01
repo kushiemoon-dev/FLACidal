@@ -107,7 +107,7 @@ func TestRunRestoresPersistedQueue(t *testing.T) {
 }
 
 // Soulseek downloads use Core's native client, so enabling it registers the
-// source even though no sldl binary exists.
+// source.
 func TestRunRegistersNativeSoulseekWhenEnabled(t *testing.T) {
 	h := startRunWith(t, nil, func() {
 		cfg := core.GetDefaultConfig()

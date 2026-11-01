@@ -42,8 +42,6 @@ func (a *App) SaveConfig(config core.Config) error {
 	if err := a.core.ApplyConfig(config); err != nil {
 		return err
 	}
-	// Rebuild the standalone sldl handle so its status follows a changed binary path or credentials.
-	a.soulseekSource = NewSldlSource(&config, a.logBuffer)
 	return nil
 }
 
@@ -72,7 +70,7 @@ func (a *App) SetSourceOrder(order []string) error {
 // intentional omission (see core.NormalizeSourceOrder). An order that already
 // has "soulseek" somewhere in it, first included, is passed through unchanged.
 // This function backs both the desktop (Wails) and HTTP server APIs, the same
-// sharing pattern used above by SldlStatus / TestSoulseekLogin.
+// sharing pattern used by ConvertTidalSearchResults / SearchDeezerTracks in app_search.go.
 func ValidateSourceOrder(order []string) ([]string, error) {
 	if len(order) == 0 {
 		return nil, fmt.Errorf("source order cannot be empty")

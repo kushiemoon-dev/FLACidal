@@ -19,7 +19,7 @@ export const PROPER_NOUNS = [
 ];
 // Untranslated technical tokens (units, codecs, log tags), each matched as an exact whole token.
 export const TECH_TERMS = [
-  'kHz', 'Hz', 'kbps', 'ISRC', 'ms', 'sldl', 'ch', 'VBR', 'feat.', 'sans-serif',
+  'kHz', 'Hz', 'kbps', 'ISRC', 'ms', 'ch', 'VBR', 'feat.', 'sans-serif',
   'B', 'KB', 'MB', 'GB',
   'MP3', 'AAC', 'OGG', 'Opus', 'Vorbis', 'ALAC', 'WAV', 'AIFF', 'FLAC',
 ];

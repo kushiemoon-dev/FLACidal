@@ -679,13 +679,6 @@ export async function SetSourceOrder(order: string[]): Promise<void> {
   await apiPost('/sources/order', { order })
 }
 
-export async function GetSldlStatus(): Promise<WailsResult<'GetSldlStatus'>> {
-  if (isWailsRuntime()) {
-    return Wails.GetSldlStatus()
-  }
-  return apiGet('/sources/soulseek/status')
-}
-
 export async function TestSoulseekConnection(username: string, password: string): Promise<WailsResult<'TestSoulseekConnection'>> {
   if (isWailsRuntime()) {
     return Wails.TestSoulseekConnection(username, password)
@@ -883,11 +876,4 @@ export async function InstallFFmpeg(): Promise<void> {
     return Wails.InstallFFmpeg()
   }
   return unavailableInBrowser('InstallFFmpeg', 'installing a binary onto a server that might be remote requires progress-reporting infrastructure that has not been built yet')
-}
-
-export async function InstallSldl(): Promise<void> {
-  if (isWailsRuntime()) {
-    return Wails.InstallSldl()
-  }
-  return unavailableInBrowser('InstallSldl', 'installing a binary onto a server that might be remote requires progress-reporting infrastructure that has not been built yet')
 }

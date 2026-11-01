@@ -226,10 +226,8 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       AddLog: async (_l: string, _m: string) => {},
 
       GetRecentAlbums: async (_limit: number) => [],
-      GetSldlStatus: async () => ({ installed: false, version: '' }),
-      InstallSldl: async () => {},
-      GetSldlBinaryPath: async () => '',
 
+      TestSoulseekConnection: async () => ({ success: false, message: 'mock', username: '' }),
       CheckAPIStatus: async () => [],
       GetSourceHealth: async () => opts.GetSourceHealth ?? [],
       ProbeEndpoints: async () => opts.GetSourceHealth ?? [],

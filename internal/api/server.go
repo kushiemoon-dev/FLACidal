@@ -37,9 +37,8 @@ type ServerConfig struct {
 	QobuzSource     *core.QobuzSource
 	LyricsClient    *core.LyricsClient
 	Downloader      *core.TidalHifiService // same object as the desktop's a.downloader
-	SoulseekSource  *core.SoulseekSource
-	Core            *core.Core      // owner of the config and the live reconfiguration; optional (tests build Servers without it)
-	LogBuffer       *core.LogBuffer // shared with Core; a private buffer is created when nil
+	Core            *core.Core             // owner of the config and the live reconfiguration; optional (tests build Servers without it)
+	LogBuffer       *core.LogBuffer        // shared with Core; a private buffer is created when nil
 	Version         string
 	Context         context.Context
 	FrontendFS      embed.FS
@@ -64,7 +63,6 @@ type Server struct {
 	tidalSource      *core.TidalSource
 	qobuzSource      *core.QobuzSource
 	downloader       *core.TidalHifiService
-	soulseekSource   *core.SoulseekSource
 	core             *core.Core
 	lyricsClient     *core.LyricsClient
 	wsHub            *WebSocketHub
@@ -104,9 +102,6 @@ func NewServer(cfg ServerConfig) *Server {
 	if cfg.QobuzSource != nil {
 		cfg.QobuzSource.SetLogger(logBuffer)
 	}
-	if cfg.SoulseekSource != nil {
-		cfg.SoulseekSource.SetLogger(logBuffer)
-	}
 
 	server := &Server{
 		app:              app,
@@ -117,7 +112,6 @@ func NewServer(cfg ServerConfig) *Server {
 		tidalSource:      cfg.TidalSource,
 		qobuzSource:      cfg.QobuzSource,
 		downloader:       cfg.Downloader,
-		soulseekSource:   cfg.SoulseekSource,
 		core:             cfg.Core,
 		lyricsClient:     cfg.LyricsClient,
 		wsHub:            wsHub,
@@ -219,7 +213,6 @@ func (s *Server) setupRoutes() {
 	api.Post("/sources/preferred", s.handleSetPreferredSource)
 	api.Post("/sources/detect", s.handleDetectSource)
 	api.Post("/sources/order", s.handleSetSourceOrder)
-	api.Get("/sources/soulseek/status", s.handleGetSldlStatus)
 	api.Post("/sources/soulseek/test", s.handleTestSoulseekConnection)
 	api.Get("/sources/health", s.handleGetSourceHealth)
 	api.Get("/sources/endpoints", s.handleGetEndpointStatuses)

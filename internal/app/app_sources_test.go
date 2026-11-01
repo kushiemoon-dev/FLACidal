@@ -1,8 +1,6 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -10,18 +8,15 @@ import (
 )
 
 // Behavioral snapshot tests covering the source manager methods section of
-// app.go, plus GetSourceHealth/poolSnapshotStatus/InstallSldl/GetSldlStatus/
+// app.go, plus GetSourceHealth/poolSnapshotStatus/
 // TestSoulseekConnection, which live under app.go's "Converter Methods"
 // comment header in the original file despite being about source
 // health/Soulseek (see app_converter_test.go for the actual FFmpeg/conversion
 // methods).
 //
 // Deliberately left uncovered here:
-//   - InstallSldl: pulls a real sldl binary over the network and reports
-//     progress through runtime.EventsEmit, which needs an actual Wails runtime context.
-//   - TestSoulseekConnection's "binary present" branches: these spawn a real
-//     sldl process with a 30s timeout. Only the "binary not found" early
-//     return, before any process is spawned, is covered.
+//   - TestSoulseekConnection's success path: it needs a real Soulseek server.
+//     Only the failure paths against a local closed port are covered.
 //   - FetchContentFromURL / GetSourceTrack / GetSourceAlbum / GetSourcePlaylist
 //     success paths, along with ExpandDiscographyURL / QueueDiscographyAlbums
 //     success paths: each needs live network access to a registered source.
@@ -34,53 +29,43 @@ import (
 func TestGetSourceHealth(t *testing.T) {
 	t.Run("all nil", func(t *testing.T) {
 		a := &App{}
-		if got := a.GetSourceHealth(); len(got) != 0 {
-			t.Errorf("GetSourceHealth() with no sources = %v, want empty", got)
+		// Only the Soulseek row remains, so the user sees why it is off.
+		if got := a.GetSourceHealth(); len(got) != 1 || got[0].Name != "soulseek" || got[0].Status != "dead" {
+			t.Errorf("GetSourceHealth() with no sources = %v, want only a dead soulseek row", got)
 		}
 	})
 
-	t.Run("soulseek: no binary, no credentials -> reason reflects current priority", func(t *testing.T) {
-		a := &App{
-			soulseekSource: core.NewSoulseekSource(filepath.Join(t.TempDir(), "does-not-exist"), "", ""),
-			config:         &core.Config{},
-		}
+	t.Run("soulseek disabled still shows a dead row", func(t *testing.T) {
+		a := &App{config: &core.Config{}}
 		got := a.GetSourceHealth()
 		if len(got) != 1 {
 			t.Fatalf("GetSourceHealth() = %v, want exactly the soulseek entry", got)
 		}
-		if got[0].Name != "soulseek" || got[0].Status != "dead" {
-			t.Errorf("GetSourceHealth() soulseek entry = %+v, want Status=dead", got[0])
+		if got[0].Name != "soulseek" || got[0].Status != "dead" || got[0].Reason != "disabled in settings" {
+			t.Errorf("GetSourceHealth() soulseek entry = %+v", got[0])
 		}
-		// As implemented, the credentials check happens before the check for a
-		// missing binary, so a blank username/password still reports
-		// "credentials not configured" even though the binary is missing too.
-		if got[0].Reason != "credentials not configured" {
-			t.Errorf("GetSourceHealth() soulseek reason = %q, want %q (current priority order)", got[0].Reason, "credentials not configured")
-		}
-		// A reason means the source is dead over local configuration, not over a
-		// network probe, so the UI can name what is missing rather than showing
-		// an upstream-outage message.
 		if got[0].FailureKind != core.FailureKindConfig {
-			t.Errorf("GetSourceHealth() soulseek failureKind = %q, want %q", got[0].FailureKind, core.FailureKindConfig)
+			t.Errorf("failureKind = %q, want %q", got[0].FailureKind, core.FailureKindConfig)
 		}
 	})
 }
 
 func TestBuildSourceHealth_Soulseek(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "sldl")
-	if err := os.WriteFile(bin, []byte("x"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	s := core.NewSoulseekSource(bin, "u", "p")
-	h := HealthSources{Soulseek: s, Config: &core.Config{SoulseekUsername: "u", SoulseekPassword: "p"}}
+	s := core.NewSoulseekNativeSource("u", "p", t.TempDir())
+	enabled := &core.Config{SoulseekEnabled: true}
+	h := HealthSources{Soulseek: s, Config: enabled}
 
 	got := BuildSourceHealth(h)
 	if got[0].Status != "untested" || got[0].FailureKind != core.FailureKindNone {
-		t.Errorf("configured, not connected: %+v, want untested without failure kind", got[0])
+		t.Errorf("enabled, not connected: %+v, want untested without failure kind", got[0])
 	}
 	s.MarkVerified()
 	if got := BuildSourceHealth(h); got[0].Status != "online" {
 		t.Errorf("verified: %+v, want online", got[0])
+	}
+	h.Config = &core.Config{}
+	if got := BuildSourceHealth(h); got[0].Status != "dead" || got[0].Reason != "disabled in settings" {
+		t.Errorf("disabled: %+v, want dead/disabled in settings", got[0])
 	}
 }
 
@@ -178,35 +163,11 @@ func TestPoolSnapshotTier1Status(t *testing.T) {
 	})
 }
 
-func TestGetSldlStatus(t *testing.T) {
-	t.Run("binary missing", func(t *testing.T) {
-		a := &App{config: &core.Config{SoulseekBinaryPath: filepath.Join(t.TempDir(), "does-not-exist")}}
-		got := a.GetSldlStatus()
-		if got["installed"] != false {
-			t.Errorf("GetSldlStatus() with missing binary = %v, want installed=false", got)
-		}
-	})
-	t.Run("binary present but not a real sldl build", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "sldl")
-		if err := os.WriteFile(path, []byte("not an executable"), 0755); err != nil {
-			t.Fatalf("setup: %v", err)
-		}
-		a := &App{config: &core.Config{SoulseekBinaryPath: path}}
-		got := a.GetSldlStatus()
-		if got["installed"] != true {
-			t.Errorf("GetSldlStatus() with a present file = %v, want installed=true", got)
-		}
-		if got["version"] != "" {
-			t.Errorf("GetSldlStatus() version = %q, want empty (garbage binary can't run --version)", got["version"])
-		}
-	})
-}
-
-func TestTestSoulseekConnection_BinaryNotFound(t *testing.T) {
-	a := &App{config: &core.Config{SoulseekBinaryPath: filepath.Join(t.TempDir(), "does-not-exist")}}
+func TestTestSoulseekConnection_NoCore(t *testing.T) {
+	a := &App{}
 	got := a.TestSoulseekConnection("user", "pass")
-	if got["success"] != false || got["message"] != "sldl not found" {
-		t.Errorf("TestSoulseekConnection() with missing binary = %v", got)
+	if got["success"] != false || got["message"] != "core not initialised" {
+		t.Errorf("TestSoulseekConnection() without core = %v", got)
 	}
 }
 

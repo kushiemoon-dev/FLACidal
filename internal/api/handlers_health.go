@@ -17,10 +17,14 @@ const probeRequestTimeout = 30 * time.Second
 // not wired into the headless server yet.
 func (s *Server) healthSources() app.HealthSources {
 	cfg := s.cfg()
+	var soulseek *core.SoulseekNativeSource
+	if s.core != nil {
+		soulseek = s.core.SoulseekSource()
+	}
 	return app.HealthSources{
 		Downloader: s.downloader,
 		Qobuz:      s.qobuzSource,
-		Soulseek:   s.soulseekSource,
+		Soulseek:   soulseek,
 		Config:     &cfg,
 	}
 }

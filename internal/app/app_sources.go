@@ -4,17 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // HealthSources are the sources whose health is reported. Each field may be
@@ -24,17 +21,21 @@ type HealthSources struct {
 	Downloader *core.TidalHifiService
 	Qobuz      *core.QobuzSource
 	Amazon     *core.AmazonSource
-	Soulseek   *core.SoulseekSource
+	Soulseek   *core.SoulseekNativeSource
 	Config     *core.Config
 }
 
 func (a *App) healthSources() HealthSources {
 	cfg := a.cfg()
+	var soulseek *core.SoulseekNativeSource
+	if a.core != nil {
+		soulseek = a.core.SoulseekSource()
+	}
 	return HealthSources{
 		Downloader: a.downloader,
 		Qobuz:      a.qobuzSource,
 		Amazon:     a.amazonSource,
-		Soulseek:   a.soulseekSource,
+		Soulseek:   soulseek,
 		Config:     &cfg,
 	}
 }
@@ -132,39 +133,7 @@ func BuildSourceHealth(h HealthSources) []core.SourceHealth {
 		})
 	}
 
-	if h.Soulseek != nil {
-		status := "dead"
-		reason := ""
-		if h.Soulseek.IsAvailable() {
-			// Configured is not connected: online needs a login or download that worked.
-			if h.Soulseek.IsVerified() {
-				status = "online"
-			} else {
-				status = "untested"
-				reason = "configured, not connected yet"
-			}
-		} else if h.Config != nil && (h.Config.SoulseekUsername == "" || h.Config.SoulseekPassword == "") {
-			reason = "credentials not configured"
-		} else {
-			reason = "sldl not installed"
-		}
-		// A dead status with a reason always means a local configuration problem
-		// (missing credentials or a missing sldl binary), never a network
-		// failure, this branch issues no request at all, so it is exactly
-		// what FailureKindConfig describes, and it lets the UI name what is
-		// missing via Reason instead of blaming an upstream outage.
-		failureKind := core.FailureKindNone
-		if status == "dead" {
-			failureKind = core.FailureKindConfig
-		}
-		results = append(results, core.SourceHealth{
-			Name:        "soulseek",
-			DisplayName: "Soulseek",
-			Status:      status,
-			Reason:      reason,
-			FailureKind: failureKind,
-		})
-	}
+	results = append(results, core.SoulseekHealth(h.Soulseek, h.Config != nil && h.Config.SoulseekEnabled))
 
 	return results
 }
@@ -245,203 +214,27 @@ func poolSnapshotTier1Status(snaps, tier1Snaps []core.EndpointStat, nextRevivalE
 	return tier1, core.FailureKindNone, 0
 }
 
-func (a *App) InstallSldl() error {
-	progressCh := make(chan core.SldlInstallProgress, 10)
-
-	go func() {
-		for p := range progressCh {
-			runtime.EventsEmit(a.ctx, "sldl-install-progress", p)
-		}
-	}()
-
-	if err := core.InstallSldl(progressCh); err != nil {
-		if a.logBuffer != nil {
-			a.logBuffer.Error("sldl install failed: " + err.Error())
-		}
-		return err
-	}
-
-	// Strip the quarantine attribute on macOS and make sure the executable bit is set
-	sldlPath := core.GetSldlPath()
-	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		a.logBuffer.Warn(fmt.Sprintf("sldl binary might not be runnable: %v", err))
-	}
-
-	// Rebuild the sldl handle so its status picks up the change without a restart.
-	if a.configLoaded() {
-		cfg := a.cfg()
-		a.soulseekSource = NewSldlSource(&cfg, a.logBuffer)
-	}
-
-	if a.logBuffer != nil {
-		a.logBuffer.Info("sldl installed to " + sldlPath)
-	}
-	return nil
-}
-
-func (a *App) GetSldlStatus() map[string]interface{} {
-	return SldlStatus(a.cfg().SoulseekBinaryPath)
-}
-
-// SldlStatus is shared by the desktop (Wails) and HTTP server APIs, the same
-// sharing pattern ConvertTidalSearchResults / SearchDeezerTracks use in
-// app_search.go. binaryPath can be left empty, in which case the platform
-// default path is used.
-func SldlStatus(binaryPath string) map[string]interface{} {
-	sldlPath := binaryPath
-	if sldlPath == "" {
-		sldlPath = DefaultSldlPath()
-	}
-
-	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
-		return map[string]interface{}{
-			"installed": false,
-			"path":      sldlPath,
-			"version":   "",
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, sldlPath, "--version").Output()
-	version := ""
-	if err == nil {
-		version = strings.TrimSpace(string(out))
-	}
-
-	return map[string]interface{}{
-		"installed": true,
-		"path":      sldlPath,
-		"version":   version,
-	}
-}
-
-// TestSoulseekConnection judges success by spotting an explicit "Logged in"
-// message in the verbose sldl output, which appears before any search
-// results and doesn't depend on firewall/inbound connectivity.
+// TestSoulseekConnection logs in once with the given credentials through
+// Core's built-in client, without running any external process.
 func (a *App) TestSoulseekConnection(username, password string) map[string]interface{} {
-	sldlPath := a.cfg().SoulseekBinaryPath
-	logf := func(level, msg string) {
-		if a.logBuffer == nil {
-			return
-		}
-		if level == "warn" {
-			a.logBuffer.Warn(msg)
-		} else {
-			a.logBuffer.Info(msg)
-		}
+	if a.core == nil {
+		return SoulseekLoginResultMap(core.SoulseekLoginResult{Message: "core not initialised"})
 	}
-	result := TestSoulseekLogin(sldlPath, username, password, logf)
-	if result["success"] == true && a.soulseekSource != nil {
-		a.soulseekSource.MarkVerifiedFor(username, password)
+	res, err := a.core.TestSoulseekLogin(context.Background(), username, password)
+	if err != nil {
+		res = core.SoulseekLoginResult{Username: username, Message: err.Error()}
 	}
-	return result
+	return SoulseekLoginResultMap(res)
 }
 
-// TestSoulseekLogin backs TestSoulseekConnection and is shared by both the
-// desktop (Wails) and HTTP server APIs, the same sharing pattern
-// ConvertTidalSearchResults / SearchDeezerTracks use in app_search.go.
-// binaryPath can be left empty, in which case the platform default path is
-// used. logf gets best-effort diagnostic lines at "info" or "warn" level;
-// pass nil to skip logging entirely (the password is never logged either way).
-func TestSoulseekLogin(binaryPath, username, password string, logf func(level, msg string)) map[string]interface{} {
-	sldlPath := binaryPath
-	if sldlPath == "" {
-		sldlPath = DefaultSldlPath()
+// SoulseekLoginResultMap is the wire shape shared by the desktop (Wails) and
+// HTTP server APIs for a Soulseek connection test.
+func SoulseekLoginResultMap(res core.SoulseekLoginResult) map[string]interface{} {
+	return map[string]interface{}{
+		"success":  res.Success,
+		"message":  res.Message,
+		"username": res.Username,
 	}
-	log := func(level, msg string) {
-		if logf != nil {
-			logf(level, msg)
-		}
-	}
-
-	if _, err := os.Stat(sldlPath); os.IsNotExist(err) {
-		return map[string]interface{}{"success": false, "message": "sldl not found"}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// -v (verbose) has sldl print "Logged in <user>" on its own line right after
-	// authentication succeeds, regardless of whether search results come back over
-	// inbound P2P connections. Without -v the only success signal was the result
-	// lines ([...]), which need inbound connectivity that's blocked by the default
-	// Windows/macOS firewall.
-	if err := EnsureSldlExecutable(sldlPath); err != nil {
-		log("warn", fmt.Sprintf("sldl binary might not be runnable: %v", err))
-	}
-	cmd := exec.CommandContext(ctx, sldlPath,
-		"test",
-		"--user", username,
-		"--pass", password,
-		"--listen-port", "49996",
-		"--print", "results",
-		"--no-progress",
-		"-v",
-	)
-	out, execErr := cmd.CombinedOutput()
-	rawOutput := strings.ToLower(string(out))
-
-	// The password itself is never logged, even in these diagnostics.
-	log("info", fmt.Sprintf("Soulseek: testing connection for user %q", username))
-	if execErr != nil {
-		log("warn", fmt.Sprintf("Soulseek: sldl process error: %v", execErr))
-	}
-	if trimmed := strings.TrimSpace(string(out)); trimmed != "" {
-		log("info", "Soulseek: sldl output:\n"+trimmed)
-	}
-
-	if ctx.Err() == context.DeadlineExceeded {
-		return map[string]interface{}{"success": false, "message": "Connection timed out"}
-	}
-
-	// No output at all means the process never really started (Gatekeeper/AV/permissions)
-	if strings.TrimSpace(rawOutput) == "" && execErr != nil {
-		hint := "ensure sldl is not blocked by antivirus or SmartScreen"
-		if goruntime.GOOS == "darwin" {
-			hint = "run: xattr -d com.apple.quarantine " + sldlPath
-		}
-		return map[string]interface{}{"success": false, "message": fmt.Sprintf("sldl failed to start, %s", hint)}
-	}
-	if strings.TrimSpace(rawOutput) == "" {
-		return map[string]interface{}{"success": false, "message": "sldl produced no output, verify the binary is valid"}
-	}
-
-	// The .NET runtime isn't installed (a framework-dependent build got downloaded instead of a self-contained one)
-	if strings.Contains(rawOutput, "must install") && strings.Contains(rawOutput, ".net") {
-		return map[string]interface{}{"success": false, "message": ".NET runtime missing, download the self-contained sldl build from github.com/fiso64/slsk-batchdl/releases"}
-	}
-
-	// Check auth failures before the success path, so a rejected login never
-	// gets misreported as a network error.
-	authErrors := []string{
-		"wrong password", "invalid password", "incorrect password",
-		"login failed", "failed to log in", "cannot login", "could not log in",
-		"login rejected", "authentication failed", "invalidpass",
-	}
-	for _, kw := range authErrors {
-		if strings.Contains(rawOutput, kw) {
-			return map[string]interface{}{"success": false, "message": "Invalid credentials"}
-		}
-	}
-
-	// sldl -v emits an explicit "Logged in <username>" line on success
-	if strings.Contains(rawOutput, "logged in ") {
-		return map[string]interface{}{"success": true, "message": "Logged in"}
-	}
-
-	networkErrors := []string{
-		"could not connect", "connection refused", "unable to connect",
-		"no such host", "network is unreachable", "name resolution",
-		"connect: connection", "dial tcp",
-	}
-	for _, kw := range networkErrors {
-		if strings.Contains(rawOutput, kw) {
-			return map[string]interface{}{"success": false, "message": "Connection failed, check network"}
-		}
-	}
-
-	return map[string]interface{}{"success": false, "message": "Connection failed, check network or credentials"}
 }
 
 func (a *App) GetAvailableSources() []core.SourceInfo {

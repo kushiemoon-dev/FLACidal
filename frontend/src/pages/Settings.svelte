@@ -31,9 +31,7 @@
     ImportConfig,
     InstallFFmpeg,
     SetSourceOrder,
-    GetSldlStatus,
     GetSourceHealth,
-    InstallSldl,
     TestSoulseekConnection,
   } from '../lib/api';
   import { EventsOn, EventsOff } from '../lib/websocket';
@@ -94,7 +92,6 @@
   interface ApiStatusRow { name: string; status: string; latencyMs: number; message?: string; referenceNotFound?: boolean }
   interface UpdateInfo { hasUpdate: boolean; version: string; url: string; releaseUrl: string }
   interface FfmpegInfo { available?: boolean; version?: string }
-  interface SldlStatus { installed?: boolean; version?: string; path?: string }
   interface InstallProgress { Stage?: string; stage?: string; Percent?: number; percent?: number }
 
   const PLACEHOLDER_LIBRARY_PATHS = '/mnt/music/navidrome\n/srv/jellyfin/library';
@@ -107,7 +104,6 @@
   let updateInfo: UpdateInfo | null = $state(null);
   let checkingUpdate = $state(false);
   let ffmpegInfo: FfmpegInfo | null = $state(null);
-  let sldlStatus: SldlStatus | null = $state(null);
   // Endpoint and source states arrive as raw enum words from Core.
   const STATUS_KEYS: Record<string, MessageKey> = {
     online: 'settings.status.online', degraded: 'settings.status.degraded', dead: 'settings.status.dead',
@@ -126,8 +122,6 @@
   let sourceHealth: core.SourceHealth[] = $state([]);
   let testing = $state(false);
   let probeError = $state('');
-  let installingSldl = $state(false);
-  let sldlInstallProgress = $state({ stage: '', percent: 0 });
   let folderTemplatePreset = $state('{artist}/{album}');
   let sourceOrder = $state<string[]>([]);
   let dragIndex = $state<number | null>(null);
@@ -323,18 +317,6 @@
     }
   }
 
-  async function installSldlHandler() {
-    installingSldl = true;
-    sldlInstallProgress = { stage: 'downloading', percent: 0 };
-    try {
-      await InstallSldl();
-    } catch (e) {
-      installingSldl = false;
-      sldlInstallProgress = { stage: 'error', percent: 0 };
-      console.error('sldl install failed:', e);
-    }
-  }
-
   let isSaving = $state(false);
   let showResetConfirm = $state(false);
   let isResetting = $state(false);
@@ -379,7 +361,6 @@
     loadConfig();
     GetAppVersion().then(v => { appVersion = v; });
     GetFFmpegInfo().then(info => { ffmpegInfo = info; });
-    GetSldlStatus().then(s => { sldlStatus = s; });
     EventsOn('ffmpeg-install-progress', (progress: InstallProgress) => {
       ffmpegProgress = { stage: progress.Stage || progress.stage || '', percent: progress.Percent || progress.percent || 0 };
       if (ffmpegProgress.stage === 'complete') {
@@ -387,16 +368,8 @@
         GetFFmpegInfo().then(info => { ffmpegInfo = info; });
       }
     });
-    EventsOn('sldl-install-progress', (progress: InstallProgress) => {
-      sldlInstallProgress = { stage: progress.Stage || progress.stage || '', percent: progress.Percent || progress.percent || 0 };
-      if (sldlInstallProgress.stage === 'complete') {
-        installingSldl = false;
-        GetSldlStatus().then(s => { sldlStatus = s; });
-      }
-    });
     return () => {
       EventsOff('ffmpeg-install-progress');
-      EventsOff('sldl-install-progress');
     };
   });
 
@@ -834,31 +807,10 @@
         <div class="group-title" style="margin-top:1.5rem">{$t('settings.soulseek.group')}</div>
 
         <div class="soulseek-info-box">
-          <p>{$t('settings.soulseek.info1a')} <code>sldl</code> {$t('settings.soulseek.info1b')}</p>
+          <p>{$t('settings.soulseek.info1')}</p>
           <p>{$t('settings.soulseek.info2a')} <strong>Nicotine+</strong>{$t('settings.soulseek.info2b')}</p>
           <p>{$t('settings.soulseek.info3a')} <a href="https://www.slsknet.org/news/node/1" target="_blank" rel="noopener">{$t('settings.soulseek.info3link')}</a> {$t('settings.soulseek.info3b')}</p>
-          {#if sldlStatus}
-            {#if sldlStatus.installed}
-              <p class="sldl-status sldl-ok">✓ {$t('settings.soulseek.installed', { version: sldlStatus.version })}</p>
-            {:else}
-              <p class="sldl-status sldl-missing">✗ {$t('settings.soulseek.notFoundAt')} <code>{sldlStatus.path}</code></p>
-              {#if installingSldl}
-                <div class="ffmpeg-progress" style="margin-top:0.5rem">
-                  <div class="ffmpeg-progress-bar">
-                    <div class="ffmpeg-progress-fill" style="width: {sldlInstallProgress.percent}%"></div>
-                  </div>
-                  <span class="ffmpeg-progress-text">
-                    {sldlInstallProgress.stage === 'downloading' ? $t('settings.progress.downloading', { percent: Math.round(sldlInstallProgress.percent) }) : ''}
-                    {sldlInstallProgress.stage === 'extracting' ? $t('settings.progress.extracting') : ''}
-                    {sldlInstallProgress.stage === 'complete' ? $t('settings.progress.done') : ''}
-                    {sldlInstallProgress.stage === 'error' ? $t('settings.progress.failed') : ''}
-                  </span>
-                </div>
-              {:else}
-                <button class="btn-accent" style="margin-top:0.5rem" onclick={installSldlHandler}>{$t('settings.soulseek.install')}</button>
-              {/if}
-            {/if}
-          {/if}
+          <p>{$t('settings.soulseek.noSharing')}</p>
         </div>
 
         <div class="setting-item">
@@ -904,12 +856,13 @@
             />
           </div>
         </div>
+        <p class="firewall-hint">{$t('settings.soulseek.throwawayAccount')}</p>
 
         <div class="soulseek-login-row">
           <button
             class="btn-soulseek-login"
             onclick={testSoulseekLogin}
-            disabled={testingLogin || !config.soulseekUsername || !config.soulseekPassword}
+            disabled={testingLogin}
           >
             {testingLogin ? $t('settings.soulseek.connecting') : $t('settings.soulseek.login')}
           </button>
@@ -920,7 +873,7 @@
             </span>
           {/if}
         </div>
-        <p class="firewall-hint">{$t('settings.soulseek.firewallA')} <code>sldl</code> {$t('settings.soulseek.firewallB')}</p>
+        <p class="firewall-hint">{$t('settings.soulseek.firewall')}</p>
         {/if}
 
         <div class="setting-item">
@@ -1789,11 +1742,7 @@
   }
   .soulseek-info-box p { margin: 0 0 0.35rem; opacity: 0.85; }
   .soulseek-info-box p:last-child { margin-bottom: 0; }
-  .soulseek-info-box code { opacity: 0.9; font-size: 0.8rem; }
   .soulseek-info-box a { color: var(--color-accent, #6366f1); text-decoration: underline; }
-  .sldl-status { font-weight: 600; margin-top: 0.4rem !important; }
-  .sldl-ok { color: #4ade80; }
-  .sldl-missing { color: var(--color-warning, #f59e0b); }
 
   .soulseek-login-row {
     display: flex;

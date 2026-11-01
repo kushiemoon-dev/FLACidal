@@ -41,9 +41,15 @@
 - **One-time migration of the saved order**: an order that matches a previous default (Soulseek first, or right after the self-hosted sources) is replaced by the new default. Any other saved order is kept. It is logged and does not run twice.
 - **A saved order without Soulseek now gets it appended last**, no longer first.
 - **Desktop, headless server and mobile app share one wiring in Core.** The headless server now registers Deezer, Spotify, Bandcamp and Amazon, restores its persisted download queue after a restart, records per-track history, generates m3u8 playlists, honours the source order and applies settings changes without a restart.
-- **Soulseek downloads now use the native client and require `soulseekEnabled`.** The `sldl` binary is only used by the Soulseek status, connection test and install screens.
+- **Soulseek now uses the built-in client everywhere.** It requires `soulseekEnabled`; `sldl`, its installer, its settings and the Docker layer are gone. `soulseekBinaryPath` in existing configs is ignored.
+- **Soulseek health is "not tested" until a login or download succeeds**, then "online". A refused login shows as dead with the server's reason.
+- **The Soulseek connection test works in the desktop app and the web app without running an external process**, and leaving both fields empty uses a throwaway account.
+
+### Removed
+- The `sldl` Soulseek engine, its one-click installer, the `/api/sources/soulseek/status` route and the matching Settings screens. FLACidal downloads from Soulseek without sharing files.
 
 ### Fixes
+- Leftover partial Soulseek downloads are cleaned at startup, and shutdown no longer waits for a Soulseek login in progress.
 - **Listing errors were hidden**: an absent, unreadable or non-directory download folder looked like an empty library. Files and File Manager now show an error (and a notification) instead of "no files", and an empty folder is still reported as empty.
 - **Rename templates**: the File Manager offered `{track}`, which the Core does not substitute, so the literal text ended up in file names.
 - **Endpoints and sources were shown as `online` before anything had been tested**: every endpoint without a recorded failure was displayed in green, so Settings > Status looked healthy even when the proxies were unreachable. Never-tested endpoints now show as grey `untested`, and green appears only after a real success or a successful test. An unknown state is never shown as online either.

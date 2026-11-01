@@ -198,10 +198,6 @@ export function GetRenameTemplates() {
   return window['go']['app']['App']['GetRenameTemplates']();
 }
 
-export function GetSldlStatus() {
-  return window['go']['app']['App']['GetSldlStatus']();
-}
-
 export function GetSourceAlbum(arg1, arg2) {
   return window['go']['app']['App']['GetSourceAlbum'](arg1, arg2);
 }
@@ -228,10 +224,6 @@ export function ImportConfig() {
 
 export function InstallFFmpeg() {
   return window['go']['app']['App']['InstallFFmpeg']();
-}
-
-export function InstallSldl() {
-  return window['go']['app']['App']['InstallSldl']();
 }
 
 export function IsConverterAvailable() {

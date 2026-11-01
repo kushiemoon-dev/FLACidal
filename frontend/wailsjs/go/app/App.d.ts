@@ -101,8 +101,6 @@ export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>
 
 export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
-export function GetSldlStatus():Promise<Record<string, any>>;
-
 export function GetSourceAlbum(arg1:string,arg2:string):Promise<core.SourceAlbum>;
 
 export function GetSourceHealth():Promise<Array<core.SourceHealth>>;
@@ -116,8 +114,6 @@ export function GetUpdateStatus():Promise<app.UpdateStatus>;
 export function ImportConfig():Promise<core.Config>;
 
 export function InstallFFmpeg():Promise<void>;
-
-export function InstallSldl():Promise<void>;
 
 export function IsConverterAvailable():Promise<boolean>;
 

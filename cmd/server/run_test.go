@@ -215,7 +215,6 @@ func TestRunWithSavedConfig(t *testing.T) {
 		cfg.SoulseekEnabled = true
 		cfg.SoulseekUsername = "user"
 		cfg.SoulseekPassword = "pass"
-		cfg.SoulseekBinaryPath = filepath.Join(t.TempDir(), "missing-sldl")
 		if err := core.SaveConfig(cfg); err != nil {
 			t.Fatalf("test setup failed: %v", err)
 		}

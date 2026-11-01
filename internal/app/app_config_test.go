@@ -2,7 +2,6 @@ package app
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
@@ -27,18 +26,11 @@ func TestGetConfig(t *testing.T) {
 func TestSaveConfig(t *testing.T) {
 	core.SetDataDir(t.TempDir())
 
-	// A genuine, if not "available", sldl path so EnsureSldlExecutable doesn't error.
-	sldlPath := filepath.Join(t.TempDir(), "sldl")
-	if err := os.WriteFile(sldlPath, []byte("fake"), 0644); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-
 	a := &App{sourceManager: core.NewSourceManager()}
 	cfg := core.Config{
-		Theme:              "light",
-		SoulseekBinaryPath: sldlPath,
-		SoulseekEnabled:    false,
-		SourceOrder:        []string{"tidal"},
+		Theme:           "light",
+		SoulseekEnabled: false,
+		SourceOrder:     []string{"tidal"},
 	}
 
 	if err := a.SaveConfig(cfg); err != nil {
