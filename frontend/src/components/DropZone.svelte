@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Upload, AlertTriangle } from 'lucide-svelte';
+  import { Upload } from 'lucide-svelte';
   import { isWailsRuntime } from '../lib/api';
   import { t } from '../lib/i18n';
 
@@ -13,11 +13,9 @@
     onFolderSelected?: () => void;
   } = $props();
 
-  // Neither drag-and-drop nor the native file/folder picker can produce a
-  // real result in a plain browser (see lib/runtime.ts's onNativeFileDrop
-  // and lib/api.ts's OpenFLACFilesDialog/SelectDownloadFolder/
-  // SelectFolderForConversion docs), show that honestly instead of
-  // rendering controls that silently do nothing when clicked.
+  // Drag-and-drop hands over real paths only in the desktop app (see
+  // lib/runtime.ts's onNativeFileDrop). The buttons work everywhere: in a
+  // browser they open the server file browser.
   const nativeFileAccessAvailable = isWailsRuntime();
 
   let isDragOver = $state(false);
@@ -56,7 +54,6 @@
 <div
   class="drop-zone"
   class:drag-over={isDragOver}
-  class:unavailable={!nativeFileAccessAvailable}
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
@@ -64,23 +61,20 @@
   role="region"
   aria-label={$t('shell.dropZone.label')}
 >
-  {#if nativeFileAccessAvailable}
-    <Upload size={48} strokeWidth={1.5} color="var(--color-text-tertiary)" />
-    <p class="drop-text">{$t('shell.dropZone.hint')}</p>
-    <div class="drop-actions">
-      {#if onFilesSelected}
-        <button class="btn btn-primary" onclick={onFilesSelected}>{$t('shell.dropZone.selectFiles')}</button>
-      {/if}
-      {#if onFolderSelected}
-        <button class="btn btn-outline" onclick={onFolderSelected}>{$t('shell.dropZone.selectFolder')}</button>
-      {/if}
-    </div>
-    <p class="supported-formats">{$t('shell.dropZone.supportedFormats', { formats: supportedFormats })}</p>
-  {:else}
-    <AlertTriangle size={40} strokeWidth={1.5} color="var(--color-warning, #f59e0b)" />
-    <p class="drop-text">{$t('shell.dropZone.unavailable')}</p>
+  <Upload size={48} strokeWidth={1.5} color="var(--color-text-tertiary)" />
+  <p class="drop-text">{nativeFileAccessAvailable ? $t('shell.dropZone.hint') : $t('shell.dropZone.unavailable')}</p>
+  {#if !nativeFileAccessAvailable}
     <p class="supported-formats">{$t('shell.dropZone.unavailableDetail')}</p>
   {/if}
+  <div class="drop-actions">
+    {#if onFilesSelected}
+      <button class="btn btn-primary" onclick={onFilesSelected}>{$t('shell.dropZone.selectFiles')}</button>
+    {/if}
+    {#if onFolderSelected}
+      <button class="btn btn-outline" onclick={onFolderSelected}>{$t('shell.dropZone.selectFolder')}</button>
+    {/if}
+  </div>
+  <p class="supported-formats">{$t('shell.dropZone.supportedFormats', { formats: supportedFormats })}</p>
 </div>
 
 <style>
@@ -101,11 +95,6 @@
   .drop-zone.drag-over {
     border-color: var(--color-accent);
     background: rgba(244, 114, 182, 0.05);
-  }
-
-  .drop-zone.unavailable {
-    opacity: 0.7;
-    cursor: not-allowed;
   }
 
   .drop-text {

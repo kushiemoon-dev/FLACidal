@@ -22,6 +22,7 @@
   import QueuePanel from './components/QueuePanel.svelte';
   import UpdateRequiredScreen from './components/UpdateRequiredScreen.svelte';
   import AuthPrompt from './components/AuthPrompt.svelte';
+  import FileBrowserHost from './components/FileBrowserHost.svelte';
   import { GetDownloadFolder, GetConfig, IsQueuePaused, GetUpdateStatus, DownloadAndInstallUpdate, type UpdateStatus } from './lib/api';
   import AudioQualityAnalyzer from './pages/tools/AudioQualityAnalyzer.svelte';
   import AudioResampler from './pages/tools/AudioResampler.svelte';
@@ -210,6 +211,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <AuthPrompt />
+<FileBrowserHost />
 
 {#if updateStatus?.blocked}
 <UpdateRequiredScreen status={updateStatus} onUpdate={DownloadAndInstallUpdate} />

@@ -38,4 +38,56 @@ describe('dialogFocus', () => {
     expect(() => action.destroy()).not.toThrow()
     expect(document.activeElement?.id).toBe('ok')
   })
+
+  describe('trap option', () => {
+    const tab = (shiftKey = false) =>
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true })
+
+    it('wraps Tab from the last element to the first', () => {
+      const { dialog } = setup('<button id="a">a</button><button id="b">b</button>')
+      dialogFocus(dialog, { trap: true })
+      const last = dialog.querySelector<HTMLElement>('#b')!
+      last.focus()
+      const ev = tab()
+      dialog.dispatchEvent(ev)
+      expect(ev.defaultPrevented).toBe(true)
+      expect(document.activeElement?.id).toBe('a')
+    })
+
+    it('wraps Shift+Tab from the first element to the last', () => {
+      const { dialog } = setup('<button id="a">a</button><button id="b">b</button>')
+      dialogFocus(dialog, { trap: true })
+      dialog.querySelector<HTMLElement>('#a')!.focus()
+      dialog.dispatchEvent(tab(true))
+      expect(document.activeElement?.id).toBe('b')
+    })
+
+    it('leaves Tab alone in the middle of the dialog', () => {
+      const { dialog } = setup('<button id="a">a</button><button id="b">b</button><button id="c">c</button>')
+      dialogFocus(dialog, { trap: true })
+      dialog.querySelector<HTMLElement>('#b')!.focus()
+      const ev = tab()
+      dialog.dispatchEvent(ev)
+      expect(ev.defaultPrevented).toBe(false)
+    })
+
+    it('does not trap without the option', () => {
+      const { dialog } = setup('<button id="a">a</button><button id="b">b</button>')
+      dialogFocus(dialog)
+      dialog.querySelector<HTMLElement>('#b')!.focus()
+      const ev = tab()
+      dialog.dispatchEvent(ev)
+      expect(ev.defaultPrevented).toBe(false)
+    })
+
+    it('removes the listener on destroy', () => {
+      const { dialog } = setup('<button id="a">a</button><button id="b">b</button>')
+      const action = dialogFocus(dialog, { trap: true })
+      action.destroy()
+      dialog.querySelector<HTMLElement>('#b')!.focus()
+      const ev = tab()
+      dialog.dispatchEvent(ev)
+      expect(ev.defaultPrevented).toBe(false)
+    })
+  })
 })

@@ -75,7 +75,7 @@
 
   async function selectOutputFolder() {
     try {
-      const folder = await SelectDownloadFolder();
+      const folder = await SelectDownloadFolder('tools');
       if (folder) outputDir = folder;
     } catch (err) {
       toastStore.showMsg((err as Error)?.message || { key: 'tools.converter.selectFolderFailed' }, 'error');

@@ -304,10 +304,16 @@
     ffmpegProgress = { stage: 'downloading', percent: 0 };
     try {
       await InstallFFmpeg();
+      if (!isWailsRuntime()) {
+        // In a browser the request itself ends the install, whatever the socket delivered.
+        installingFFmpeg = false;
+        ffmpegInfo = await GetFFmpegInfo();
+      }
     } catch (e) {
       installingFFmpeg = false;
       ffmpegProgress = { stage: 'error', percent: 0 };
       console.error('FFmpeg install failed:', e);
+      toastStore.showMsg(toUiError(e), 'error');
     }
   }
 
@@ -666,10 +672,12 @@
   <div class="settings-header">
     <h1>{$t('settings.title')}</h1>
     <div class="header-actions">
-      <button class="btn-secondary" onclick={openConfig}>
-        <FolderOpen size={16} />
-        {$t('settings.header.openConfigFolder')}
-      </button>
+      {#if isWailsRuntime()}
+        <button class="btn-secondary" onclick={openConfig}>
+          <FolderOpen size={16} />
+          {$t('settings.header.openConfigFolder')}
+        </button>
+      {/if}
       <button class="btn-secondary" onclick={exportConfig}>
         {$t('settings.header.exportConfig')}
       </button>
@@ -710,12 +718,11 @@
               type="text"
               id="download-folder"
               bind:value={config.downloadFolder}
-              readonly={isWailsRuntime()}
               onchange={commitTypedFolder}
               placeholder={$t('settings.download.selectFolder')}
               class="setting-input folder-input"
             />
-            <button class="browse-btn" onclick={selectFolder} disabled={!isWailsRuntime()}>
+            <button class="browse-btn" onclick={selectFolder}>
               <FolderOpen size={16} />
               {$t('settings.download.browse')}
             </button>

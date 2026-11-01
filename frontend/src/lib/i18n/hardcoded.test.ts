@@ -10,6 +10,7 @@ const MIGRATED: string[] = [
   'components/ExtensionsSection.svelte', 'components/ExtensionDetailDialog.svelte',
   'components/ContextMenu.svelte', 'components/TabBar.svelte', 'components/DropZone.svelte',
   'components/UpdateRequiredScreen.svelte', 'components/AuthPrompt.svelte',
+  'components/FileBrowserDialog.svelte', 'components/FileBrowserHost.svelte',
   'pages/Home.svelte', 'pages/Search.svelte', 'pages/Queue.svelte', 'components/QueuePanel.svelte',
   'pages/History.svelte', 'pages/Files.svelte', 'pages/Settings.svelte',
   'components/AnalysisModal.svelte', 'components/ConvertModal.svelte',

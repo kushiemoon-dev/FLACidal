@@ -23,7 +23,7 @@
   }
 
   async function handleSelectFolder() {
-    const folder = await SelectDownloadFolder();
+    const folder = await SelectDownloadFolder('tools');
     if (folder) {
       // Fall back to file dialog for individual paths
       await handleSelectFiles();
@@ -31,7 +31,7 @@
   }
 
   async function selectOutputDir() {
-    const folder = await SelectDownloadFolder();
+    const folder = await SelectDownloadFolder('tools');
     if (folder) {
       outputDir = folder;
     }

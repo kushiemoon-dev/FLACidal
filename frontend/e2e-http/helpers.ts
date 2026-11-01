@@ -60,3 +60,39 @@ export function collectProblems(page: Page) {
   })
   return { errors, badResponses }
 }
+
+/** Opens a tool page from the Tools flyout by its visible title. */
+export async function openTool(page: Page, title: string) {
+  await page.locator('.sidebar button[title="Tools"]').click()
+  await page.locator('.flyout-item', { hasText: title }).click()
+  await page.waitForTimeout(250)
+}
+
+/** Ticks the named files in the open file browser and confirms. */
+export async function pickFiles(page: Page, ...names: string[]) {
+  const dialog = page.locator('[role="dialog"]')
+  await expect(dialog).toBeVisible()
+  for (const name of names) await dialog.getByLabel(name).check()
+  await dialog.getByRole('button', { name: 'Select', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+}
+
+/** Confirms the folder the open file browser currently shows. */
+export async function pickCurrentFolder(page: Page) {
+  const dialog = page.locator('[role="dialog"]')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Choose this folder' }).click()
+  await expect(dialog).toHaveCount(0)
+}
+
+/** Types `target` in the file browser's path field and confirms that folder. */
+export async function pickFolderAt(page: Page, target: string) {
+  const dialog = page.locator('[role="dialog"]')
+  await expect(dialog).toBeVisible()
+  const field = dialog.getByLabel('Folder path')
+  await field.fill(target)
+  await field.press('Enter')
+  await expect(field).toHaveValue(target)
+  await dialog.getByRole('button', { name: 'Choose this folder' }).click()
+  await expect(dialog).toHaveCount(0)
+}

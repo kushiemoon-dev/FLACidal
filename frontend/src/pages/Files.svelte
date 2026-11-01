@@ -381,12 +381,14 @@
             {$t('files.convertFolder')}
           </button>
         {/if}
-        <button class="action-btn primary" onclick={openFolder}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          {$t('files.openFolder')}
-        </button>
+        {#if isWailsRuntime()}
+          <button class="action-btn primary" onclick={openFolder}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            {$t('files.openFolder')}
+          </button>
+        {/if}
       {/if}
     </div>
   </div>
@@ -528,15 +530,17 @@
                   <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
               </button>
-              <button
-                class="file-btn"
-                onclick={() => openInFileManager(file.path)}
-                title={$t('files.showInFolder')}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-              </button>
+              {#if isWailsRuntime()}
+                <button
+                  class="file-btn"
+                  onclick={() => openInFileManager(file.path)}
+                  title={$t('files.showInFolder')}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </button>
+              {/if}
               <button
                 class="file-btn danger"
                 onclick={() => deleteFileHandler(file.path)}
