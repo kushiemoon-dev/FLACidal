@@ -13,6 +13,7 @@
 // reaching into 'wailsjs/go/app/App.js' directly.
 
 import * as Wails from '../../wailsjs/go/app/App.js'
+import type { core } from '../../wailsjs/go/models'
 import { authHeaders, notifyAuthRequired } from './auth'
 
 let cachedIsWails: boolean | null = null
@@ -677,6 +678,87 @@ export async function SetSourceOrder(order: string[]): Promise<void> {
     return Wails.SetSourceOrder(order)
   }
   await apiPost('/sources/order', { order })
+}
+
+export type ExtensionInfo = core.ExtensionInfo
+export type ExtensionManifest = core.ExtensionManifest
+export type RegistryEntry = core.RegistryEntry
+
+export async function ListExtensions(): Promise<ExtensionInfo[]> {
+  if (isWailsRuntime()) {
+    return Wails.ListExtensions()
+  }
+  return apiGet('/extensions')
+}
+
+export async function InstallExtension(url: string): Promise<ExtensionManifest> {
+  if (isWailsRuntime()) {
+    return Wails.InstallExtension(url)
+  }
+  return apiPost('/extensions/install', { url })
+}
+
+export async function InstallExtensionFromRegistry(repo: string, id: string): Promise<ExtensionManifest> {
+  if (isWailsRuntime()) {
+    return Wails.InstallExtensionFromRegistry(repo, id)
+  }
+  return apiPost('/extensions/install/registry', { repo, id })
+}
+
+export async function UninstallExtension(id: string): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.UninstallExtension(id)
+  }
+  await apiPost(`/extensions/${encodeURIComponent(id)}/uninstall`)
+}
+
+export async function SetExtensionEnabled(id: string, enabled: boolean): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.SetExtensionEnabled(id, enabled)
+  }
+  await apiPost(`/extensions/${encodeURIComponent(id)}/enabled`, { enabled })
+}
+
+export async function SetExtensionAuth(id: string, data: Record<string, string>): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.SetExtensionAuth(id, data)
+  }
+  await apiPost(`/extensions/${encodeURIComponent(id)}/auth`, { data })
+}
+
+export async function GetRegistrySources(): Promise<string[]> {
+  if (isWailsRuntime()) {
+    return Wails.GetRegistrySources()
+  }
+  return apiGet('/extensions/registries')
+}
+
+export async function AddRegistrySource(url: string): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.AddRegistrySource(url)
+  }
+  await apiPost('/extensions/registries', { url })
+}
+
+export async function RemoveRegistrySource(url: string): Promise<void> {
+  if (isWailsRuntime()) {
+    return Wails.RemoveRegistrySource(url)
+  }
+  await apiPost('/extensions/registries/remove', { url })
+}
+
+export async function BrowseRegistry(repo: string): Promise<RegistryEntry[]> {
+  if (isWailsRuntime()) {
+    return Wails.BrowseRegistry(repo)
+  }
+  return apiPost('/extensions/registry', { repo })
+}
+
+export async function GetEffectiveSourceOrder(): Promise<string[]> {
+  if (isWailsRuntime()) {
+    return Wails.GetEffectiveSourceOrder()
+  }
+  return apiGet('/sources/order')
 }
 
 export async function TestSoulseekConnection(username: string, password: string): Promise<WailsResult<'TestSoulseekConnection'>> {

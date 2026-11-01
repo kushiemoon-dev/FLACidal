@@ -37,6 +37,8 @@ export interface WailsOverrides {
   SetDownloadFolderError?: string
   ImportConfigError?: string
   GetSourceHealth?: unknown[]
+  Extensions?: unknown[]
+  RegistryEntries?: unknown[]
   // Network: stubbed fetch response for /api/* endpoints
   apiAnalyze?: { ok: boolean; body: unknown }
 }
@@ -71,7 +73,62 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
 
     const config = opts.GetConfig ?? defaultConfig
 
+    // Stateful stand-in for Core's extension management.
+    type MockExt = { manifest: Record<string, unknown>; enabled: boolean; hosts: string[]; authSet: Record<string, boolean>; category: string }
+    let extensions: MockExt[] = JSON.parse(JSON.stringify(opts.Extensions ?? []))
+    let registries = ['https://github.com/kushiemoon-dev/flacidal-extensions']
+    const newExtension = (id: string): MockExt => ({
+      manifest: { id, name: `Installed ${id}`, version: '1.0.0', author: 'Someone', category: 'download', capabilities: ['source'], permissions: ['network'] },
+      enabled: false,
+      hosts: ['api.installed.example'],
+      authSet: {},
+      category: 'download',
+    })
+    const extensionApp = {
+      ListExtensions: async () => JSON.parse(JSON.stringify(extensions)),
+      InstallExtension: async (url: string) => {
+        if (!url.startsWith('https://')) throw new Error('[extension.insecure_url] extensions are installed from https URLs only')
+        const ext = newExtension('from-url')
+        extensions = [...extensions, ext]
+        return ext.manifest
+      },
+      InstallExtensionFromRegistry: async (_repo: string, id: string) => {
+        const ext = newExtension(id)
+        extensions = [...extensions, ext]
+        return ext.manifest
+      },
+      UninstallExtension: async (id: string) => {
+        extensions = extensions.filter((e) => e.manifest.id !== id)
+      },
+      SetExtensionEnabled: async (id: string, enabled: boolean) => {
+        extensions = extensions.map((e) => (e.manifest.id === id ? { ...e, enabled } : e))
+      },
+      SetExtensionAuth: async (id: string, data: Record<string, string>) => {
+        extensions = extensions.map((e) =>
+          e.manifest.id === id
+            ? { ...e, authSet: { ...e.authSet, ...Object.fromEntries(Object.entries(data).filter(([, v]) => v).map(([k]) => [k, true])) } }
+            : e,
+        )
+      },
+      GetRegistrySources: async () => [...registries],
+      AddRegistrySource: async (url: string) => {
+        if (!url.startsWith('https://github.com/')) throw new Error('[extension.registry] registry must be https://github.com/<owner>/<repo>')
+        registries = [...registries, url]
+      },
+      RemoveRegistrySource: async (url: string) => {
+        registries = registries.filter((r) => r !== url)
+      },
+      BrowseRegistry: async (_repo: string) =>
+        opts.RegistryEntries ?? [{ id: 'registry-ext', name: 'Registry Ext', description: 'From the registry', category: 'download', latestVersion: '2.0.0', downloadURL: 'https://example.com/r.zip', permissions: ['network'] }],
+      GetEffectiveSourceOrder: async () => [
+        'tidal', 'qobuz', 'amazon', 'bandcamp',
+        ...extensions.filter((e) => e.enabled && e.category === 'download').map((e) => e.manifest.id as string),
+        'soulseek',
+      ],
+    }
+
     const App = {
+      ...extensionApp,
       GetConfig: async () => config,
       SaveConfig: async (_c: unknown) => {},
       ResetToDefaults: async () => defaultConfig,

@@ -103,6 +103,24 @@ export namespace core {
 	        this.musicalKey = source["musicalKey"];
 	    }
 	}
+	export class AuthField {
+	    key: string;
+	    label: string;
+	    type: string;
+	    required: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuthField(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.type = source["type"];
+	        this.required = source["required"];
+	    }
+	}
 	export class Config {
 	    tidalClientId?: string;
 	    tidalClientSecret?: string;
@@ -145,6 +163,8 @@ export namespace core {
 	    qobuzPriorityEndpoints?: string[];
 	    amazonPriorityEndpoints?: string[];
 	    sourceOrder?: string[];
+	    sourceOrderCustom?: boolean;
+	    sourceOrderMigrated?: boolean;
 	    qualityOrder?: string[];
 	    generateM3u8: boolean;
 	    skipUnavailableTracks: boolean;
@@ -216,6 +236,8 @@ export namespace core {
 	        this.qobuzPriorityEndpoints = source["qobuzPriorityEndpoints"];
 	        this.amazonPriorityEndpoints = source["amazonPriorityEndpoints"];
 	        this.sourceOrder = source["sourceOrder"];
+	        this.sourceOrderCustom = source["sourceOrderCustom"];
+	        this.sourceOrderMigrated = source["sourceOrderMigrated"];
 	        this.qualityOrder = source["qualityOrder"];
 	        this.generateM3u8 = source["generateM3u8"];
 	        this.skipUnavailableTracks = source["skipUnavailableTracks"];
@@ -432,6 +454,7 @@ export namespace core {
 	export class EndpointProbe {
 	    kind: string;
 	    message?: string;
+	    // Go type: time
 	    at: any;
 	    latencyMs?: number;
 	
@@ -443,9 +466,27 @@ export namespace core {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.kind = source["kind"];
 	        this.message = source["message"];
-	        this.at = source["at"];
+	        this.at = this.convertValues(source["at"], null);
 	        this.latencyMs = source["latencyMs"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class EndpointStat {
 	    url: string;
@@ -470,7 +511,7 @@ export namespace core {
 	        this.cooldownSecs = source["cooldownSecs"];
 	        this.probe = this.convertValues(source["probe"], EndpointProbe);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -489,6 +530,155 @@ export namespace core {
 		    return a;
 		}
 	}
+	export class MetadataExtCfg {
+	    baseUrl: string;
+	    lookupEndpoint: string;
+	    fieldMapping?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataExtCfg(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.baseUrl = source["baseUrl"];
+	        this.lookupEndpoint = source["lookupEndpoint"];
+	        this.fieldMapping = source["fieldMapping"];
+	    }
+	}
+	export class SourceExtCfg {
+	    name: string;
+	    displayName: string;
+	    urlPattern: string;
+	    baseUrl: string;
+	    trackEndpoint?: string;
+	    albumEndpoint?: string;
+	    playlistEndpoint?: string;
+	    searchEndpoint?: string;
+	    streamEndpoint?: string;
+	    trackMapping?: Record<string, string>;
+	    albumMapping?: Record<string, string>;
+	    streamUrlField?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceExtCfg(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.displayName = source["displayName"];
+	        this.urlPattern = source["urlPattern"];
+	        this.baseUrl = source["baseUrl"];
+	        this.trackEndpoint = source["trackEndpoint"];
+	        this.albumEndpoint = source["albumEndpoint"];
+	        this.playlistEndpoint = source["playlistEndpoint"];
+	        this.searchEndpoint = source["searchEndpoint"];
+	        this.streamEndpoint = source["streamEndpoint"];
+	        this.trackMapping = source["trackMapping"];
+	        this.albumMapping = source["albumMapping"];
+	        this.streamUrlField = source["streamUrlField"];
+	    }
+	}
+	export class ExtensionManifest {
+	    id: string;
+	    name: string;
+	    version: string;
+	    minAppVersion: string;
+	    author: string;
+	    description?: string;
+	    category?: string;
+	    capabilities: string[];
+	    permissions: string[];
+	    canDownload?: boolean;
+	    downloadPriority?: number;
+	    sourceConfig?: SourceExtCfg;
+	    canEnrichMetadata?: boolean;
+	    metadataPriority?: number;
+	    metadataConfig?: MetadataExtCfg;
+	    authFields?: AuthField[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ExtensionManifest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.minAppVersion = source["minAppVersion"];
+	        this.author = source["author"];
+	        this.description = source["description"];
+	        this.category = source["category"];
+	        this.capabilities = source["capabilities"];
+	        this.permissions = source["permissions"];
+	        this.canDownload = source["canDownload"];
+	        this.downloadPriority = source["downloadPriority"];
+	        this.sourceConfig = this.convertValues(source["sourceConfig"], SourceExtCfg);
+	        this.canEnrichMetadata = source["canEnrichMetadata"];
+	        this.metadataPriority = source["metadataPriority"];
+	        this.metadataConfig = this.convertValues(source["metadataConfig"], MetadataExtCfg);
+	        this.authFields = this.convertValues(source["authFields"], AuthField);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExtensionInfo {
+	    manifest: ExtensionManifest;
+	    enabled: boolean;
+	    hosts: string[];
+	    authSet: Record<string, boolean>;
+	    category: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExtensionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.manifest = this.convertValues(source["manifest"], ExtensionManifest);
+	        this.enabled = source["enabled"];
+	        this.hosts = source["hosts"];
+	        this.authSet = source["authSet"];
+	        this.category = source["category"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class FLACMetadata {
 	    path: string;
 	    title: string;
@@ -780,6 +970,31 @@ export namespace core {
 		    return a;
 		}
 	}
+	
+	export class RegistryEntry {
+	    id: string;
+	    name: string;
+	    description: string;
+	    category: string;
+	    latestVersion: string;
+	    downloadURL: string;
+	    permissions: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RegistryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.category = source["category"];
+	        this.latestVersion = source["latestVersion"];
+	        this.downloadURL = source["downloadURL"];
+	        this.permissions = source["permissions"];
+	    }
+	}
 	export class RenamePreview {
 	    oldPath: string;
 	    oldName: string;
@@ -924,6 +1139,7 @@ export namespace core {
 		    return a;
 		}
 	}
+	
 	export class Tier1Status {
 	    configured: boolean;
 	    healthy: boolean;

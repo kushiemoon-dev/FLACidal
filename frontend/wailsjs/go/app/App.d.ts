@@ -5,9 +5,13 @@ import {app} from '../models';
 
 export function AddLog(arg1:string,arg2:string):Promise<void>;
 
+export function AddRegistrySource(arg1:string):Promise<void>;
+
 export function AnalyzeFile(arg1:string):Promise<core.AnalysisResult>;
 
 export function AnalyzeMultiple(arg1:Array<string>):Promise<Array<core.AnalysisResult>>;
+
+export function BrowseRegistry(arg1:string):Promise<Array<core.RegistryEntry>>;
 
 export function CancelDownload(arg1:number):Promise<void>;
 
@@ -81,6 +85,8 @@ export function GetDownloadOptions():Promise<Record<string, any>>;
 
 export function GetDownloadQueueStatus():Promise<Record<string, any>>;
 
+export function GetEffectiveSourceOrder():Promise<Array<string>>;
+
 export function GetFFmpegInfo():Promise<Record<string, any>>;
 
 export function GetFFmpegInstallStatus():Promise<Record<string, any>>;
@@ -99,6 +105,8 @@ export function GetPreferredSource():Promise<string>;
 
 export function GetRecentAlbums(arg1:number):Promise<Array<Record<string, any>>>;
 
+export function GetRegistrySources():Promise<Array<string>>;
+
 export function GetRenameTemplates():Promise<Array<Record<string, string>>>;
 
 export function GetSourceAlbum(arg1:string,arg2:string):Promise<core.SourceAlbum>;
@@ -113,6 +121,10 @@ export function GetUpdateStatus():Promise<app.UpdateStatus>;
 
 export function ImportConfig():Promise<core.Config>;
 
+export function InstallExtension(arg1:string):Promise<core.ExtensionManifest>;
+
+export function InstallExtensionFromRegistry(arg1:string,arg2:string):Promise<core.ExtensionManifest>;
+
 export function InstallFFmpeg():Promise<void>;
 
 export function IsConverterAvailable():Promise<boolean>;
@@ -124,6 +136,8 @@ export function IsQobuzConfigured():Promise<boolean>;
 export function IsQueuePaused():Promise<boolean>;
 
 export function ListDownloadedFiles():Promise<Array<core.DownloadedFileInfo>>;
+
+export function ListExtensions():Promise<Array<core.ExtensionInfo>>;
 
 export function ListTrackHistory(arg1:string,arg2:number,arg3:number):Promise<Record<string, any>>;
 
@@ -159,6 +173,8 @@ export function RefetchFromHistory(arg1:string):Promise<Record<string, any>>;
 
 export function RefreshTidalEndpoints():Promise<Array<string>>;
 
+export function RemoveRegistrySource(arg1:string):Promise<void>;
+
 export function RenameFiles(arg1:Array<string>,arg2:string):Promise<Array<core.RenameResult>>;
 
 export function ResetToDefaults():Promise<core.Config>;
@@ -189,6 +205,10 @@ export function SetDownloadFolder(arg1:string):Promise<void>;
 
 export function SetDownloadOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean,arg6:boolean):Promise<void>;
 
+export function SetExtensionAuth(arg1:string,arg2:Record<string, string>):Promise<void>;
+
+export function SetExtensionEnabled(arg1:string,arg2:boolean):Promise<void>;
+
 export function SetPreferredSource(arg1:string):Promise<void>;
 
 export function SetSourceOrder(arg1:Array<string>):Promise<void>;
@@ -196,6 +216,8 @@ export function SetSourceOrder(arg1:Array<string>):Promise<void>;
 export function SetTidalCredentials(arg1:string,arg2:string):Promise<void>;
 
 export function TestSoulseekConnection(arg1:string,arg2:string):Promise<Record<string, any>>;
+
+export function UninstallExtension(arg1:string):Promise<void>;
 
 export function UpdateQobuzCredentials(arg1:string,arg2:string,arg3:string):Promise<void>;
 

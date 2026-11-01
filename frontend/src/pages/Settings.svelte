@@ -8,6 +8,7 @@
   import { toastStore } from '../stores/toast';
   import { toUiError } from '../lib/errors';
   import TabBar from '../components/TabBar.svelte';
+  import ExtensionsSection from '../components/ExtensionsSection.svelte';
   import { t, tm, setLanguage, type MessageKey, type UiMsg } from '../lib/i18n';
   import { FolderOpen } from 'lucide-svelte';
   import {
@@ -31,6 +32,8 @@
     ImportConfig,
     InstallFFmpeg,
     SetSourceOrder,
+    GetEffectiveSourceOrder,
+    ListExtensions,
     GetSourceHealth,
     TestSoulseekConnection,
   } from '../lib/api';
@@ -129,6 +132,19 @@
   let qobuzPriorityText = $state('');
   let amazonPriorityText = $state('');
   let externalLibraryPathsText = $state('');
+
+  // Installed extensions take part in the order list under their own name.
+  let extensionNames = $state<Record<string, string>>({});
+
+  async function refreshSourceOrder() {
+    try {
+      const [order, extensions] = await Promise.all([GetEffectiveSourceOrder(), ListExtensions()]);
+      extensionNames = Object.fromEntries(extensions.map((ext) => [ext.manifest.id, ext.manifest.name]));
+      if (order.length > 0) sourceOrder = order;
+    } catch (e) {
+      console.error('Source order refresh failed:', e);
+    }
+  }
 
   const sourceLabels: Record<string, string> = {
     tidal: 'Tidal',
@@ -403,6 +419,7 @@
         sourceOrder = config.sourceOrder.length > 0
           ? config.sourceOrder
           : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
+        refreshSourceOrder();
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.proxyUrl = result.proxyUrl || '';
         config.tidalCustomEndpoint = result.tidalCustomEndpoint || '';
@@ -617,6 +634,7 @@
         sourceOrder = config.sourceOrder.length > 0
           ? config.sourceOrder
           : ['tidal', 'qobuz', 'amazon', 'bandcamp', 'soulseek'];
+        refreshSourceOrder();
         config.qualityOrder = result.qualityOrder?.length ? result.qualityOrder : ['HI_RES', 'LOSSLESS', 'HIGH'];
         config.skipExisting = result.skipExisting !== false;
         config.externalLibraryPaths = result.externalLibraryPaths || [];
@@ -940,12 +958,14 @@
                 ondragend={() => { dragIndex = null; }}
               >
                 <span class="drag-handle">⠿</span>
-                <span class="source-priority-name">{sourceLabels[source] ?? source}</span>
+                <span class="source-priority-name">{sourceLabels[source] ?? extensionNames[source] ?? source}</span>
                 <span class="priority-badge">{i + 1}</span>
               </div>
             {/each}
           </div>
         </div>
+
+        <ExtensionsSection onChanged={refreshSourceOrder} />
 
         <div class="setting-item">
           <div class="setting-info">

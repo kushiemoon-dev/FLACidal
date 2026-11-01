@@ -34,6 +34,30 @@ const BLOCKING_IDS = new Set([
   'heading-order',
 ])
 
+// context scopes the scan; a modal's backdrop makes the page behind it unreliable to score.
+async function expectNoBlockingViolations(page: Page, label: string, context?: string) {
+  await page.addScriptTag({ path: axePath })
+
+  const violations = await page.evaluate(async (ctx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = await (window as any).axe.run(ctx ? document.querySelector(ctx) : document)
+    return results.violations.map((v: { id: string; impact: string; nodes: { target: unknown[] }[] }) => ({
+      id: v.id,
+      impact: v.impact,
+      targets: v.nodes.map((n) => n.target.join(' ')),
+    }))
+  }, context)
+
+  const blocking = violations.filter(
+    (v: { id: string; impact: string }) =>
+      v.impact === 'serious' || v.impact === 'critical' || BLOCKING_IDS.has(v.id),
+  )
+  const report = blocking
+    .map((v: { id: string; targets: string[] }) => `${v.id} [${label}]\n  ${v.targets.join('\n  ')}`)
+    .join('\n')
+  expect(blocking, report).toEqual([])
+}
+
 async function openView(page: Page, view: string) {
   if (view.startsWith('tool-')) {
     await page.locator('.sidebar button[title="Tools"]').click()
@@ -57,26 +81,57 @@ for (const viewport of VIEWPORTS) {
           await openView(page, view)
           await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
           await page.waitForTimeout(400) // let colour transitions settle
-          await page.addScriptTag({ path: axePath })
+          await expectNoBlockingViolations(page, `${view} ${theme} ${viewport.width}px`)
+        })
+      }
+    })
+  }
+}
 
-          const violations = await page.evaluate(async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const results = await (window as any).axe.run(document)
-            return results.violations.map((v: { id: string; impact: string; nodes: { target: unknown[] }[] }) => ({
-              id: v.id,
-              impact: v.impact,
-              targets: v.nodes.map((n) => n.target.join(' ')),
-            }))
-          })
+const INSTALLED_EXTENSION = {
+  manifest: {
+    id: 'demo-ext',
+    name: 'Demo Ext',
+    version: '1.2.3',
+    author: 'Ada Author',
+    category: 'download',
+    capabilities: ['source'],
+    permissions: ['network'],
+    authFields: [{ key: 'X-Api-Key', label: 'API key', type: 'password', required: true }],
+  },
+  enabled: false,
+  hosts: ['api.demo.example'],
+  authSet: {},
+  category: 'download',
+}
 
-          const blocking = violations.filter(
-            (v: { id: string; impact: string }) =>
-              v.impact === 'serious' || v.impact === 'critical' || BLOCKING_IDS.has(v.id),
+for (const viewport of VIEWPORTS) {
+  for (const theme of THEMES) {
+    test.describe(`axe Settings > Extensions ${viewport.width}px ${theme}`, () => {
+      test.use({ viewport })
+
+      for (const state of ['installed extension', 'activation dialog open', 'uninstall confirmation open'] as const) {
+        test(state, async ({ page }) => {
+          await injectWailsMocks(page, { Extensions: [INSTALLED_EXTENSION] })
+          await page.goto('/')
+          await expect(page.locator('.sidebar')).toBeVisible()
+          await openView(page, 'Settings')
+          await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+          await expect(page.getByLabel('Enable Demo Ext')).toBeVisible()
+          if (state === 'activation dialog open') {
+            await page.getByLabel('Enable Demo Ext').click()
+            await expect(page.getByRole('dialog', { name: 'Enable Demo Ext?' })).toBeVisible()
+          }
+          if (state === 'uninstall confirmation open') {
+            await page.getByRole('button', { name: 'Uninstall Demo Ext' }).click()
+            await expect(page.getByRole('dialog', { name: 'Uninstall Demo Ext?' })).toBeVisible()
+          }
+          await page.waitForTimeout(400) // let colour transitions settle
+          await expectNoBlockingViolations(
+            page,
+            `extensions ${state} ${theme} ${viewport.width}px`,
+            state === 'installed extension' ? undefined : '[role="dialog"]',
           )
-          const report = blocking
-            .map((v: { id: string; targets: string[] }) => `${v.id} [${view} ${theme} ${viewport.width}px]\n  ${v.targets.join('\n  ')}`)
-            .join('\n')
-          expect(blocking, report).toEqual([])
         })
       }
     })

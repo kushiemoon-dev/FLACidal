@@ -10,3 +10,4 @@ export const TOKEN_PORT: number = cfg.tokenPort
 export const OPEN_URL = `http://127.0.0.1:${OPEN_PORT}`
 export const TOKEN_URL = `http://127.0.0.1:${TOKEN_PORT}`
 export const TOKEN: string = cfg.token
+export const EXT_PORT: number = cfg.extPort

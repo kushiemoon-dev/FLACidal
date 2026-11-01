@@ -10,6 +10,15 @@ describe('toUiError', () => {
     ['folder.not_writable', 'errors.folder.notWritable'],
     ['queue.no_output_dir', 'errors.queue.noOutputDir'],
     ['queue.not_ready', 'errors.queue.notReady'],
+    ['extension.invalid_id', 'errors.extension.invalidId'],
+    ['extension.reserved_id', 'errors.extension.reservedId'],
+    ['extension.insecure_url', 'errors.extension.insecureUrl'],
+    ['extension.too_large', 'errors.extension.tooLarge'],
+    ['extension.invalid_zip', 'errors.extension.invalidZip'],
+    ['extension.invalid_manifest', 'errors.extension.invalidManifest'],
+    ['extension.not_found', 'errors.extension.notFound'],
+    ['extension.invalid_auth_field', 'errors.extension.invalidAuthField'],
+    ['extension.registry', 'errors.extension.registry'],
   ]
 
   it.each(cases)('maps %s', (code, key) => {

@@ -9,4 +9,13 @@ export const errors = {
   'errors.folder.notWritable': 'FLACidal ne peut pas écrire dans ce dossier. Vérifiez ses droits ou choisissez un autre dossier dans les Paramètres : {detail}',
   'errors.queue.noOutputDir': 'Aucun dossier de téléchargement n\'est défini. Choisissez-en un dans les Paramètres, puis réessayez.',
   'errors.queue.notReady': 'Le moteur de téléchargement n\'est pas prêt. Redémarrez l\'application et réessayez.',
+  'errors.extension.invalidId': 'Cette extension a un identifiant invalide : {detail}',
+  'errors.extension.reservedId': 'Cet identifiant est réservé à une source intégrée : {detail}',
+  'errors.extension.insecureUrl': 'Les extensions n\'acceptent que des adresses https : {detail}',
+  'errors.extension.tooLarge': 'Cette extension est trop volumineuse : {detail}',
+  'errors.extension.invalidZip': 'Le paquet de l\'extension n\'est pas valide : {detail}',
+  'errors.extension.invalidManifest': 'La description de l\'extension n\'est pas valide : {detail}',
+  'errors.extension.notFound': 'Extension introuvable : {detail}',
+  'errors.extension.invalidAuthField': 'Champ d\'identifiant invalide : {detail}',
+  'errors.extension.registry': 'Problème de registre : {detail}',
 };
