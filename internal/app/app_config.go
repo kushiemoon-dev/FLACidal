@@ -46,12 +46,13 @@ func (a *App) SaveConfig(config core.Config) error {
 }
 
 func (a *App) SetSourceOrder(order []string) error {
-	validated, err := ValidateSourceOrder(order)
-	if err != nil {
+	// Core validates against the native sources and the installed extensions.
+	if a.core != nil {
+		_, err := a.core.SetSourceOrder(order)
 		return err
 	}
-	if a.core != nil {
-		_, err := a.core.SetSourceOrder(validated)
+	validated, err := ValidateSourceOrder(order)
+	if err != nil {
 		return err
 	}
 	if a.configLoaded() {

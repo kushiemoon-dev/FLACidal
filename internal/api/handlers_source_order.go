@@ -19,16 +19,17 @@ func (s *Server) handleSetSourceOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Core validates against the native sources and the installed extensions.
+	if s.core != nil {
+		if _, err := s.core.SetSourceOrder(req.Order); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"success": true})
+	}
+
 	validated, err := app.ValidateSourceOrder(req.Order)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	if s.core != nil {
-		if _, err := s.core.SetSourceOrder(validated); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-		}
-		return c.JSON(fiber.Map{"success": true})
 	}
 
 	if s.downloadManager != nil {
