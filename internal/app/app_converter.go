@@ -19,22 +19,9 @@ func (a *App) GetFFmpegInfo() map[string]interface{} {
 }
 
 func (a *App) InstallFFmpeg() error {
-	progressCh := make(chan core.FFmpegInstallProgress, 10)
-
-	go func() {
-		for p := range progressCh {
-			runtime.EventsEmit(a.ctx, "ffmpeg-install-progress", p)
-		}
-	}()
-
-	err := core.InstallFFmpeg(progressCh)
-	if err != nil {
-		return err
-	}
-
-	// So it picks up the newly installed binary's path.
-	core.ResetConverter()
-	return nil
+	return a.ffmpeg.Install(func(p core.FFmpegInstallProgress) {
+		runtime.EventsEmit(a.ctx, "ffmpeg-install-progress", p)
+	})
 }
 
 func (a *App) GetFFmpegInstallStatus() map[string]interface{} {

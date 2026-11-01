@@ -146,6 +146,44 @@ describe('EventsOn/EventsOff over websocket (browser mode)', () => {
     expect(cb2).not.toHaveBeenCalled()
   })
 
+  it('delivers log messages in the Wails shape', async () => {
+    const { EventsOn } = await import('./websocket')
+    const cb = vi.fn()
+    EventsOn('log', cb)
+
+    MockWebSocket.instances[0].emit({ type: 'log', timestamp: '12:00:01', level: 'info', message: 'hello' })
+
+    expect(cb).toHaveBeenCalledWith({ timestamp: '12:00:01', level: 'info', message: 'hello' })
+  })
+
+  it('delivers ffmpeg-install-progress messages without the type wrapper', async () => {
+    const { EventsOn } = await import('./websocket')
+    const cb = vi.fn()
+    EventsOn('ffmpeg-install-progress', cb)
+
+    MockWebSocket.instances[0].emit({ type: 'ffmpeg-install-progress', stage: 'downloading', percent: 40, error: '' })
+
+    expect(cb).toHaveBeenCalledWith({ stage: 'downloading', percent: 40, error: '' })
+  })
+
+  it('emits ws-reconnected on a later open, never on the first one', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    const { EventsOn } = await import('./websocket')
+    const cb = vi.fn()
+    EventsOn('ws-reconnected', cb)
+
+    const first = MockWebSocket.instances[0]
+    first.onopen?.()
+    expect(cb).not.toHaveBeenCalled()
+
+    first.close() // schedules a reconnect
+    vi.runOnlyPendingTimers()
+    const second = MockWebSocket.instances[1]
+    second.onopen?.()
+    expect(cb).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
   it('reuses the existing socket for a second subscription rather than opening a new one', async () => {
     const { EventsOn } = await import('./websocket')
     const socket = MockWebSocket.instances

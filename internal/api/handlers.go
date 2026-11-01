@@ -39,27 +39,37 @@ func (s *Server) handleGetConfig(c *fiber.Ctx) error {
 	return c.JSON(&cfg)
 }
 
+// validateIncomingConfig checks the folders of a config sent by a client and
+// returns it with them normalised. The client sends the whole config back, so
+// only a changed download folder is checked: a vanished one (unmounted disk)
+// cannot block saving other settings.
+func (s *Server) validateIncomingConfig(config core.Config) (core.Config, error) {
+	folder := config.DownloadFolder
+	if folder != s.cfg().DownloadFolder {
+		var err error
+		if folder, err = validateDownloadFolder(folder); err != nil {
+			return config, err
+		}
+	}
+	libraries, err := validateLibraryPaths(config.ExternalLibraryPaths)
+	if err != nil {
+		return config, err
+	}
+	config.DownloadFolder = folder
+	if config.ExternalLibraryPaths != nil {
+		config.ExternalLibraryPaths = libraries
+	}
+	return config, nil
+}
+
 func (s *Server) handleSaveConfig(c *fiber.Ctx) error {
 	var config core.Config
 	if err := c.BodyParser(&config); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	// The client sends the whole config back: only a changed folder is checked,
-	// so a vanished one (unmounted disk) cannot block saving other settings.
-	folder := config.DownloadFolder
-	if folder != s.cfg().DownloadFolder {
-		var err error
-		if folder, err = validateDownloadFolder(folder); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-		}
-	}
-	libraries, err := validateLibraryPaths(config.ExternalLibraryPaths)
+	config, err := s.validateIncomingConfig(config)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-	config.DownloadFolder = folder
-	if config.ExternalLibraryPaths != nil {
-		config.ExternalLibraryPaths = libraries
 	}
 	if err := s.applyConfig(config); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

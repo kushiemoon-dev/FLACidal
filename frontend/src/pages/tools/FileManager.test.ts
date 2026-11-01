@@ -99,10 +99,9 @@ describe('FileManager', () => {
     expect(target.textContent).not.toMatch(/lyric|cover/i)
   })
 
-  it('disables Browse outside the desktop app', async () => {
+  it('keeps Browse enabled outside the desktop app, where it opens the server file browser', async () => {
     api.isWailsRuntime.mockReturnValue(false)
     const { target } = await mountPage()
-    expect((target.querySelector('.folder-bar .btn-accent') as HTMLButtonElement).disabled).toBe(true)
-    expect(target.textContent).toContain('Settings')
+    expect((target.querySelector('.folder-bar .btn-accent') as HTMLButtonElement).disabled).toBe(false)
   })
 })

@@ -37,15 +37,8 @@ func (s *Server) allowedRoots() []string {
 // following symlinks. Callers keep operating on the original (cleaned) path:
 // responses reference input paths that the front matches by value.
 func (s *Server) confine(path string) error {
-	if path == "" || strings.ContainsRune(path, 0) || !filepath.IsAbs(path) {
-		return errPathInvalid
-	}
-	// Clean would fold "link/.." away while the OS resolves the symlink first,
-	// so a ".." segment is refused outright instead of normalised.
-	for _, seg := range strings.Split(filepath.ToSlash(path), "/") {
-		if seg == ".." {
-			return errPathOutside
-		}
+	if err := rejectBadPath(path); err != nil {
+		return err
 	}
 	resolved, err := resolveExisting(filepath.Clean(path))
 	if err != nil {
@@ -62,6 +55,21 @@ func (s *Server) confine(path string) error {
 		}
 	}
 	return errPathOutside
+}
+
+// rejectBadPath refuses empty, relative and NUL-containing paths and any ".."
+// segment. Clean would fold "link/.." away while the OS resolves the symlink
+// first, so a ".." segment is refused outright instead of normalised.
+func rejectBadPath(path string) error {
+	if path == "" || strings.ContainsRune(path, 0) || !filepath.IsAbs(path) {
+		return errPathInvalid
+	}
+	for _, seg := range strings.Split(filepath.ToSlash(path), "/") {
+		if seg == ".." {
+			return errPathOutside
+		}
+	}
+	return nil
 }
 
 // resolveExisting resolves symlinks on the longest existing prefix of p and

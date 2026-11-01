@@ -344,6 +344,8 @@ The server reads from the same `~/.flacidal/config.json` as the desktop app. It'
 
 **File confinement.** In headless mode, file routes (delete, rename, convert, lyrics, analyzer by path) only accept paths under the download folder and the `externalLibraryPaths` entries. Symlinks that lead outside are refused.
 
+**Same tools as the desktop app.** In the browser, file and folder pickers open a server-side file browser. Tool inputs and outputs stay under the download folder and library paths; choosing a download folder or library can go anywhere on the server (folders only). Config export and import, live logs in the Terminal, discography, artist images and the FFmpeg install all work. Drag and drop, "open the folder in the file manager" and in-app updates exist only in the desktop app.
+
 Note that `GET /api/config` still returns the Qobuz and Soulseek credentials to any authenticated client.
 
 Running `go run ./cmd/server` before the frontend is built works fine: the server still comes up and the API works on its own, though requests to `/` return a 503 nudging you to run `npm run build` first.

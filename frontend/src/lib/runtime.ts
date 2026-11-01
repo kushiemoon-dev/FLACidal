@@ -19,14 +19,11 @@ export function OpenExternalURL(url: string): void {
 }
 
 /**
- * Browser mode does nothing and returns a no-op cleanup. A browser's HTML5
- * drop event only ever exposes File objects (name plus content), never an
- * absolute filesystem path, and none of this app's REST endpoints accept
- * uploads for the batch operations that consume these paths (AnalyzeMultiple,
- * ConvertFiles, and FetchAndEmbedLyricsMultiple all take arrays of paths).
- * There's no honest way to support this in browser mode right now; callers
- * should rely on DropZone's own browser-mode messaging instead of pretending
- * drops work. See the migration report for the known-gap writeup.
+ * Native file drop is a Wails feature: a browser's HTML5 drop event only
+ * exposes File objects (name plus content), never an absolute filesystem
+ * path, and the batch operations take server paths. Browser mode returns a
+ * no-op cleanup; DropZone says so and its buttons open the server file
+ * browser (components/FileBrowserDialog.svelte) instead.
  */
 export function onNativeFileDrop(
   callback: (x: number, y: number, paths: string[]) => void,
