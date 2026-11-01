@@ -1,7 +1,9 @@
 package app
 
 import (
+	"sync"
 	"testing"
+	"time"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
@@ -51,4 +53,59 @@ func TestClearLogs(t *testing.T) {
 func TestAddLog_NilLogBufferNoOp(t *testing.T) {
 	a := &App{}
 	a.AddLog("info", "hello")
+}
+
+type logEvents struct {
+	mu     sync.Mutex
+	events []core.LogEntry
+}
+
+func (l *logEvents) emit(name string, data any) {
+	if name != "log" {
+		return
+	}
+	l.mu.Lock()
+	l.events = append(l.events, data.(core.LogEntry))
+	l.mu.Unlock()
+}
+
+func (l *logEvents) count() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.events)
+}
+
+func waitEvents(t *testing.T, l *logEvents, want int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && l.count() < want {
+		time.Sleep(5 * time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond) // let a stray duplicate show up
+	if got := l.count(); got != want {
+		t.Fatalf("log events = %d, want %d", got, want)
+	}
+}
+
+func TestWireLogEvents_BufferEntryEmitsOneEvent(t *testing.T) {
+	ev := &logEvents{}
+	a := &App{logBuffer: core.NewLogBuffer(10), emit: ev.emit}
+	a.wireLogEvents()
+	defer a.cancelLogs()
+
+	a.logBuffer.Info("from downloader")
+	waitEvents(t, ev, 1)
+	if ev.events[0].Message != "from downloader" {
+		t.Errorf("event = %+v", ev.events[0])
+	}
+}
+
+func TestAddLog_EmitsExactlyOneEvent(t *testing.T) {
+	ev := &logEvents{}
+	a := &App{logBuffer: core.NewLogBuffer(10), emit: ev.emit}
+	a.wireLogEvents()
+	defer a.cancelLogs()
+
+	a.AddLog("info", "hello")
+	waitEvents(t, ev, 1)
 }

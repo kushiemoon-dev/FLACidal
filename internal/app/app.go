@@ -27,6 +27,9 @@ type App struct {
 	logBuffer       *core.LogBuffer
 	sourceManager   *core.SourceManager
 	tidalSource     *core.TidalSource
+	ffmpeg          FFmpegInstaller
+	emit            func(event string, data any) // Wails event sink, injectable in tests
+	cancelLogs      func()
 	qobuzSource     *core.QobuzSource
 	amazonSource    *core.AmazonSource
 	deezerSource    *core.DeezerSource         // metadata only
@@ -70,6 +73,7 @@ func (a *App) Startup(ctx context.Context) {
 		return
 	}
 	a.attachCore(c)
+	a.wireLogEvents()
 
 	// A single-file event channel keeps ExecuteJS calls from overlapping, which otherwise crashes WebKit on Linux.
 	type progressEvent struct {
@@ -168,6 +172,9 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 func (a *App) Shutdown(ctx context.Context) {
+	if a.cancelLogs != nil {
+		a.cancelLogs()
+	}
 	if a.core != nil {
 		a.core.Shutdown()
 	}

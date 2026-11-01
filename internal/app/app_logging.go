@@ -21,9 +21,19 @@ func (a *App) ClearLogs() {
 // Intended for testing and debugging.
 func (a *App) AddLog(level, message string) {
 	if a.logBuffer != nil {
-		entry := a.logBuffer.Add(level, message)
-		runtime.EventsEmit(a.ctx, "log", entry)
+		a.logBuffer.Add(level, message)
 	}
+}
+
+// wireLogEvents forwards every log buffer entry to the front end as a "log"
+// event, so entries written by the downloader and the queue show up live too.
+// This is the only place that emits "log".
+func (a *App) wireLogEvents() {
+	emit := a.emit
+	if emit == nil {
+		emit = func(event string, data any) { runtime.EventsEmit(a.ctx, event, data) }
+	}
+	a.cancelLogs = a.logBuffer.Subscribe(func(e core.LogEntry) { emit("log", e) })
 }
 
 func (a *App) GetLogFilePath() string {

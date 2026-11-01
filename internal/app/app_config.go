@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -112,7 +111,7 @@ func (a *App) ResetToDefaults() (*core.Config, error) {
 
 	if a.logBuffer != nil {
 		a.logBuffer.Info("Settings reverted to defaults")
-		runtime.EventsEmit(a.ctx, "log", a.logBuffer.Info("Defaults restored"))
+		a.logBuffer.Info("Defaults restored")
 	}
 
 	return defaultCfg, nil
@@ -216,17 +215,9 @@ func (a *App) ExportConfig() error {
 	if err != nil || path == "" {
 		return err
 	}
-	cfg := a.cfg()
-	cfg.TidalClientID = ""
-	cfg.TidalClientSecret = ""
-	cfg.SoulseekUsername = ""
-	cfg.SoulseekPassword = ""
-	cfg.QobuzAppID = ""
-	cfg.QobuzAppSecret = ""
-	cfg.QobuzAuthToken = ""
-	data, err := json.MarshalIndent(configExport{SchemaVersion: 1, Config: cfg}, "", "  ")
+	data, err := BuildConfigExport(a.cfg())
 	if err != nil {
-		return fmt.Errorf("could not marshal config: %w", err)
+		return err
 	}
 	return os.WriteFile(path, data, 0644)
 }
@@ -247,14 +238,11 @@ func (a *App) ImportConfig() (*core.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not read import file: %w", err)
 	}
-	var export configExport
-	if err := json.Unmarshal(data, &export); err != nil {
-		return nil, fmt.Errorf("could not parse import file: %w", err)
+	merged, err := MergeImportedConfig(data, a.cfg())
+	if err != nil {
+		return nil, err
 	}
-	if export.SchemaVersion != 1 {
-		return nil, fmt.Errorf("not a FLACidal config export (schemaVersion %d)", export.SchemaVersion)
-	}
-	if err := a.SaveConfig(export.Config); err != nil {
+	if err := a.SaveConfig(merged); err != nil {
 		return nil, err
 	}
 	return a.GetConfig(), nil
