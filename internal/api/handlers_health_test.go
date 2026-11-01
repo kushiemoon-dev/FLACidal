@@ -41,10 +41,22 @@ func decodeBody[T any](t *testing.T, resp *http.Response) T {
 	return v
 }
 
+// withoutSoulseek drops the Soulseek row, which is always present so the user
+// sees why it is off; these tests are about the pool sources.
+func withoutSoulseek(h []core.SourceHealth) []core.SourceHealth {
+	out := make([]core.SourceHealth, 0, len(h))
+	for _, r := range h {
+		if r.Name != "soulseek" {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func TestHealthRoutes_FreshConfigIsUntested(t *testing.T) {
 	s := healthServer(t, http.StatusOK, nil)
 
-	h := decodeBody[[]core.SourceHealth](t, send(t, s, "GET", "/api/sources/health", nil, ""))
+	h := withoutSoulseek(decodeBody[[]core.SourceHealth](t, send(t, s, "GET", "/api/sources/health", nil, "")))
 	if len(h) != 1 || h[0].Name != "tidal" || h[0].Status != "untested" {
 		t.Fatalf("health = %+v, want tidal untested", h)
 	}
@@ -64,17 +76,19 @@ func TestHealthRoutes_FreshConfigIsUntested(t *testing.T) {
 
 func TestHealthRoutes_EmptyServerReturnsArrays(t *testing.T) {
 	s := newServerWith(t, func(c *ServerConfig) { c.QobuzSource = nil })
-	for _, path := range []string{"/api/sources/health", "/api/sources/endpoints"} {
-		resp := send(t, s, "GET", path, nil, "")
-		if raw := decodeBody[json.RawMessage](t, resp); string(raw) != "[]" {
-			t.Errorf("%s = %s, want []", path, raw)
-		}
+	resp := send(t, s, "GET", "/api/sources/endpoints", nil, "")
+	if raw := decodeBody[json.RawMessage](t, resp); string(raw) != "[]" {
+		t.Errorf("/api/sources/endpoints = %s, want []", raw)
+	}
+	h := decodeBody[[]core.SourceHealth](t, send(t, s, "GET", "/api/sources/health", nil, ""))
+	if len(h) != 1 || h[0].Name != "soulseek" {
+		t.Errorf("/api/sources/health = %+v, want only the soulseek row", h)
 	}
 }
 
 func TestProbeRoute_SuccessMakesSourceOnline(t *testing.T) {
 	s := healthServer(t, http.StatusOK, nil)
-	h := decodeBody[[]core.SourceHealth](t, send(t, s, "POST", "/api/sources/health/probe", nil, ""))
+	h := withoutSoulseek(decodeBody[[]core.SourceHealth](t, send(t, s, "POST", "/api/sources/health/probe", nil, "")))
 	if len(h) != 1 || h[0].Status != "online" || h[0].Endpoints[0].State != "live" {
 		t.Fatalf("after probe = %+v, want tidal online with a live endpoint", h)
 	}
@@ -82,7 +96,7 @@ func TestProbeRoute_SuccessMakesSourceOnline(t *testing.T) {
 
 func TestProbeRoute_FailureIsDeadButNotBlacklisted(t *testing.T) {
 	s := healthServer(t, http.StatusInternalServerError, nil)
-	h := decodeBody[[]core.SourceHealth](t, send(t, s, "POST", "/api/sources/health/probe", nil, ""))
+	h := withoutSoulseek(decodeBody[[]core.SourceHealth](t, send(t, s, "POST", "/api/sources/health/probe", nil, "")))
 	if len(h) != 1 || h[0].Status != "dead" {
 		t.Fatalf("after failed probe = %+v, want tidal dead", h)
 	}

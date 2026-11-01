@@ -133,7 +133,6 @@ export namespace core {
 	    soulseekEnabled: boolean;
 	    soulseekUsername?: string;
 	    soulseekPassword?: string;
-	    soulseekBinaryPath?: string;
 	    qobuzAppId?: string;
 	    qobuzAppSecret?: string;
 	    qobuzAuthToken?: string;
@@ -205,7 +204,6 @@ export namespace core {
 	        this.soulseekEnabled = source["soulseekEnabled"];
 	        this.soulseekUsername = source["soulseekUsername"];
 	        this.soulseekPassword = source["soulseekPassword"];
-	        this.soulseekBinaryPath = source["soulseekBinaryPath"];
 	        this.qobuzAppId = source["qobuzAppId"];
 	        this.qobuzAppSecret = source["qobuzAppSecret"];
 	        this.qobuzAuthToken = source["qobuzAuthToken"];

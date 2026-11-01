@@ -45,9 +45,6 @@ func TestAttachCoreRegistersSameSourcesAsHeadless(t *testing.T) {
 	if got := registeredSources(a); !slices.Equal(got, want) {
 		t.Errorf("sources = %v, want %v", got, want)
 	}
-	if a.soulseekSource == nil {
-		t.Error("the standalone sldl handle is missing")
-	}
 	if _, ok := a.sourceManager.GetSource("soulseek"); ok {
 		t.Error("soulseek registered although it is disabled")
 	}

@@ -24,23 +24,6 @@ COPY . .
 RUN VERSION=$(grep -m1 '"version"' wails.json | sed -E 's/.*"version": *"([^"]+)".*/\1/') \
     && CGO_ENABLED=1 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/flacidal-server ./cmd/server
 
-# --- sldl (Soulseek client binary, pinned to the same release the desktop app installs) ---
-FROM debian:bookworm-slim AS sldl
-ARG TARGETARCH
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-# Same pinned tag + per-arch asset names as sldlDownloadURLs in flacidal-core/sldl_installer.go.
-RUN case "$TARGETARCH" in \
-      amd64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.4/sockseek_3.0.4_linux-x64.tar.gz' ;; \
-      arm64) SLDL_URL='https://github.com/fiso64/sockseek/releases/download/v3.0.4/sockseek_3.0.4_linux-arm.tar.gz' ;; \
-      *) echo "unsupported arch: $TARGETARCH" >&2; exit 1 ;; \
-    esac \
-    && curl -fsSL "$SLDL_URL" -o /tmp/sldl.tar.gz \
-    && mkdir -p /out \
-    && tar -xzf /tmp/sldl.tar.gz -C /out sockseek \
-    && mv /out/sockseek /out/sldl \
-    && chmod +x /out/sldl
-
 # --- runtime ---------------------------------------------------------------
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg aubio-tools \
@@ -56,7 +39,6 @@ ENV HOME=/home/flacidal \
 
 COPY --from=backend --chown=flacidal:flacidal /out/flacidal-server /app/flacidal-server
 COPY --from=frontend --chown=flacidal:flacidal /src/frontend/dist /app/frontend/dist
-COPY --from=sldl --chown=flacidal:flacidal /out/sldl /home/flacidal/.local/share/flacidal/sldl
 
 EXPOSE 8080
 VOLUME ["/home/flacidal/.flacidal", "/home/flacidal/Music"]

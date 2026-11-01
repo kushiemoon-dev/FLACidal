@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
-	"path/filepath"
-	goruntime "runtime"
 	"sync"
 	"time"
 
@@ -33,7 +29,6 @@ type App struct {
 	tidalSource     *core.TidalSource
 	qobuzSource     *core.QobuzSource
 	amazonSource    *core.AmazonSource
-	soulseekSource  *core.SoulseekSource
 	deezerSource    *core.DeezerSource         // metadata only
 	spotifySource   *core.SpotifySource        // metadata only
 	bandcampSource  *core.BandcampSource       // pay-what-you-want downloads
@@ -43,36 +38,6 @@ type App struct {
 
 func NewApp(version string) *App {
 	return &App{version: version}
-}
-
-func DefaultSldlPath() string {
-	if goruntime.GOOS == "windows" {
-		appData := os.Getenv("APPDATA")
-		if appData == "" {
-			appData, _ = os.UserConfigDir()
-		}
-		return filepath.Join(appData, "flacidal", "sldl.exe")
-	}
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".local", "share", "flacidal", "sldl")
-}
-
-// EnsureSldlExecutable makes sure the sldl binary can run and isn't quarantined by the OS.
-// On Linux and macOS this sets the executable bit, the same way the FFmpeg installer does.
-// On macOS it additionally strips the com.apple.quarantine xattr that Gatekeeper attaches to
-// browser-downloaded files; skipping this causes the process to be killed at launch even
-// when os.Stat confirms the file exists.
-func EnsureSldlExecutable(path string) error {
-	if goruntime.GOOS == "windows" {
-		return nil
-	}
-	if err := os.Chmod(path, 0755); err != nil {
-		return fmt.Errorf("failed to chmod +x sldl: %w", err)
-	}
-	if goruntime.GOOS == "darwin" {
-		exec.Command("xattr", "-d", "com.apple.quarantine", path).Run() //nolint:errcheck // attr commonly absent, not an error
-	}
-	return nil
 }
 
 // attachCore points the App's component fields at the ones Core built. It is
@@ -94,10 +59,6 @@ func (a *App) attachCore(c *core.Core) {
 	a.spotifySource = c.SpotifySource()
 	a.bandcampSource = c.BandcampSource()
 	a.orchestrator = c.Orchestrator()
-
-	// Only backs the Soulseek status and install screens; downloads use Core's native client.
-	cfg := c.Config()
-	a.soulseekSource = NewSldlSource(&cfg, a.logBuffer)
 }
 
 func (a *App) Startup(ctx context.Context) {

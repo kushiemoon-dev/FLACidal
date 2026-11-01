@@ -15,7 +15,7 @@
 // needs no changes.
 //
 // Known gap: 'queue-paused', 'endpoint-cooldown', 'log',
-// 'ffmpeg-install-progress', and 'sldl-install-progress' have no
+// and 'ffmpeg-install-progress' have no
 // server-side broadcaster in headless mode yet (those are Wails-app-only
 // features, see migration report). Subscribing to them in browser mode is
 // harmless (no error), but the callback will just never fire.

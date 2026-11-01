@@ -32,7 +32,7 @@ Describe the behavior you were expecting.
 - [ ] Not download-related
 
 **Settings → Status at the time**
-Were the proxy pool endpoints green, yellow, or red? Was `sldl` detected? Was FFmpeg available?
+Were the proxy pool endpoints green, yellow, or red? Did the Soulseek row turn green? Was FFmpeg available?
 
 **Logs**
 Paste the relevant output from FLACidal's **Terminal** tab below:

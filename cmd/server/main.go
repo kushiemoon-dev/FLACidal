@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"flacidal/internal/api"
-	"flacidal/internal/app"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
 )
@@ -84,10 +83,6 @@ func run(ctx context.Context, getenv func(string) string, deps runDeps) error {
 
 	lyricsClient := core.NewLyricsClient()
 
-	// The sldl handle only backs the Soulseek status and test screens; downloads use Core's native client.
-	soulseekSource := app.NewSldlSource(&config, c.LogBuffer())
-	log.Println("Soulseek downloads use the native client; the sldl binary is only used for the status screens")
-
 	server := api.NewServer(api.ServerConfig{
 		Config:          &config,
 		Core:            c,
@@ -99,7 +94,6 @@ func run(ctx context.Context, getenv func(string) string, deps runDeps) error {
 		QobuzSource:     c.QobuzSource(),
 		LyricsClient:    lyricsClient,
 		Downloader:      c.Downloader(),
-		SoulseekSource:  soulseekSource,
 		Version:         version,
 		Context:         ctx,
 		FrontendFS:      frontendFS,
