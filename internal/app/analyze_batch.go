@@ -79,10 +79,8 @@ func (a *App) AnalyzeBatch(batchID string, paths []string) ([]core.AnalysisResul
 	defer release()
 
 	results := core.AnalyzeBatch(ctx, paths, core.DefaultAnalyzeWorkers(), enrichWithAudioFeatures, func(p core.BatchProgress) {
-		if a.ctx == nil {
-			return
-		}
-		runtime.EventsEmit(a.ctx, "analyze-progress", map[string]any{
+		// Send, not a coalesced send: every row matters, none may be merged.
+		a.emitEvent("analyze-progress", map[string]any{
 			"batchId": batchID, "done": p.Done, "total": p.Total, "result": p.Result,
 		})
 	})

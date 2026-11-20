@@ -3,7 +3,9 @@ package app
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestBatchRegistry(t *testing.T) {
@@ -54,5 +56,47 @@ func TestAnalyzeBatch_Guards(t *testing.T) {
 	}
 	if a.CancelAnalyzeBatch("b") {
 		t.Error("nothing should be registered after a refused batch")
+	}
+}
+
+// Progress must go through the serial emitter (one ExecuteJS at a time, in
+// order, none merged), not straight to the Wails runtime.
+func TestAnalyzeBatch_ProgressUsesSerialEmitter(t *testing.T) {
+	var mu sync.Mutex
+	var got []map[string]any
+	a := &App{events: newSerialEmitter(func(name string, data any) {
+		if name != "analyze-progress" {
+			return
+		}
+		mu.Lock()
+		got = append(got, data.(map[string]any))
+		mu.Unlock()
+	}, 0)}
+
+	paths := []string{"/nonexistent/a.flac", "/nonexistent/b.flac", "/nonexistent/c.flac"}
+	results, err := a.AnalyzeBatch("b1", paths)
+	if err != nil || len(results) != 3 {
+		t.Fatalf("results=%d err=%v", len(results), err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		n := len(got)
+		mu.Unlock()
+		if n == 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != 3 {
+		t.Fatalf("%d progress events, wanted 3 (none may be dropped or merged)", len(got))
+	}
+	for i, e := range got {
+		if e["batchId"] != "b1" || e["done"] != i+1 || e["total"] != 3 {
+			t.Errorf("event %d = %v", i, e)
+		}
 	}
 }
