@@ -3,9 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -452,91 +449,22 @@ func (a *App) FetchContentFromURL(rawURL string) (map[string]interface{}, error)
 	return result, nil
 }
 
+func (a *App) discographyDeps() DiscographyDeps {
+	return DiscographyDeps{
+		Spotify:    a.spotifySearch,
+		Tidal:      a.tidalSource,
+		Downloader: a.downloader,
+		Queue:      a.downloadManager,
+		Log:        a.logBuffer,
+	}
+}
+
 func (a *App) ExpandDiscographyURL(rawURL string) ([]string, error) {
-	info := core.ParseDiscographyURL(rawURL)
-	if info == nil {
-		return nil, fmt.Errorf("not a Spotify discography URL: %s", rawURL)
-	}
-	if a.spotifySearch == nil {
-		return nil, fmt.Errorf("Spotify client not initialized")
-	}
-	urls, err := a.spotifySearch.FetchDiscographyAlbumURLs(info.ArtistID, info.Kind)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch discography for artist %s: %w", info.ArtistID, err)
-	}
-	if a.logBuffer != nil {
-		a.logBuffer.Info(fmt.Sprintf("Discography expanded: %d albums for artist %s (kind=%s)", len(urls), info.ArtistID, info.Kind))
-	}
-	return urls, nil
+	return ExpandDiscography(a.discographyDeps(), rawURL)
 }
 
 func (a *App) QueueDiscographyAlbums(spotifyAlbumURLs []string, outputDir string) (int, error) {
-	if a.downloadManager == nil {
-		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
-	}
-	if outputDir == "" {
-		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
-	}
-	if a.spotifySearch == nil {
-		return 0, fmt.Errorf("Spotify client not initialized")
-	}
-	if a.tidalSource == nil {
-		return 0, fmt.Errorf("Tidal source not initialized")
-	}
-
-	tidalClient := a.tidalSource.GetAPIClient()
-	spotifyIDRe := regexp.MustCompile(`open\.spotify\.com/album/([^/?#]+)`)
-
-	queued := 0
-	for _, albumURL := range spotifyAlbumURLs {
-		m := spotifyIDRe.FindStringSubmatch(albumURL)
-		if m == nil {
-			continue
-		}
-		spotifyAlbumID := m[1]
-
-		albumName, artistName, err := a.spotifySearch.GetAlbumMetadata(spotifyAlbumID)
-		if err != nil {
-			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: skipping %s, Spotify metadata lookup failed: %v", spotifyAlbumID, err))
-			}
-			continue
-		}
-
-		query := albumName + " " + artistName
-		tidalAlbums, err := tidalClient.SearchAlbums(query, 5)
-		if err != nil || len(tidalAlbums) == 0 {
-			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: found no Tidal match for %q by %s", albumName, artistName))
-			}
-			continue
-		}
-
-		tidalAlbum := tidalAlbums[0]
-		albumIDStr := strconv.Itoa(tidalAlbum.ID)
-
-		album, err := a.downloader.GetAlbumFromProxy(albumIDStr)
-		if err != nil {
-			if a.logBuffer != nil {
-				a.logBuffer.Warn(fmt.Sprintf("Discography: unable to fetch Tidal album %s: %v", albumIDStr, err))
-			}
-			continue
-		}
-
-		artistFolder := core.SanitizeFileName(tidalAlbum.Artist)
-		if artistFolder == "" {
-			artistFolder = core.SanitizeFileName(artistName)
-		}
-		albumDir := filepath.Join(outputDir, artistFolder, core.SanitizeFileName(tidalAlbum.Title))
-		if err := os.MkdirAll(albumDir, 0755); err != nil {
-			continue
-		}
-
-		n := a.downloadManager.QueueMultiple(album.Tracks, albumDir)
-		queued += n
-	}
-
-	return queued, nil
+	return QueueDiscography(a.discographyDeps(), spotifyAlbumURLs, outputDir)
 }
 
 func (a *App) GetSourceTrack(sourceName, trackID string) (*core.SourceTrack, error) {

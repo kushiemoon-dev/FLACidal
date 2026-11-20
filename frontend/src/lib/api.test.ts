@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import apiSource from './api.ts?raw'
 
 type WailsWindow = { go?: unknown; runtime?: unknown }
 
@@ -200,42 +201,167 @@ describe('API call routing in browser mode', () => {
     await expect(QueueSingleDownload(1, '', 'Track', 'Artist')).rejects.toThrow('no output directory specified')
   })
 
-  it('OpenFLACFilesDialog resolves to [] rather than throwing, since the native dialog has no browser counterpart', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch')
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const { OpenFLACFilesDialog } = await import('./api')
-    const paths = await OpenFLACFilesDialog()
-
-    expect(paths).toEqual([])
-    expect(fetchSpy).not.toHaveBeenCalled()
-    warnSpy.mockRestore()
-  })
-
-  it('SelectDownloadFolder resolves to "" rather than throwing', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const { SelectDownloadFolder } = await import('./api')
-    expect(await SelectDownloadFolder()).toBe('')
-    warnSpy.mockRestore()
-  })
-
-  it('GetUpdateStatus warns and resolves to undefined, forced-update blocking does not apply headless', async () => {
+  it('GetUpdateStatus resolves to null silently, forced-update blocking does not apply headless', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { GetUpdateStatus } = await import('./api')
-    expect(await GetUpdateStatus()).toBeUndefined()
-    expect(warnSpy).toHaveBeenCalled()
+    expect(await GetUpdateStatus()).toBeNull()
+    expect(warnSpy).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it('DownloadAndInstallUpdate warns rather than throwing', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it.each(['OpenDownloadFolder', 'OpenConfigFolder', 'DownloadAndInstallUpdate'] as const)(
+    '%s rejects with an explicit desktop-only error instead of a silent no-op',
+    async (name) => {
+      const api = await import('./api')
+      const call = name === 'OpenDownloadFolder' ? api.OpenDownloadFolder('/x') : api[name]()
+      await expect(call).rejects.toThrow('only available in the desktop app')
+    }
+  )
+})
 
-    const { DownloadAndInstallUpdate } = await import('./api')
-    await DownloadAndInstallUpdate()
-    expect(warnSpy).toHaveBeenCalled()
-    warnSpy.mockRestore()
+describe('server parity in browser mode', () => {
+  const requestPick = vi.fn()
+  vi.doMock('./filePicker', () => ({ requestPick }))
+
+  function mockFetch(body: unknown) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200, statusText: 'OK',
+      json: async () => body,
+      blob: async () => new Blob([JSON.stringify(body)]),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    clearWailsRuntime()
+    vi.doMock('./filePicker', () => ({ requestPick }))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('BrowseFolder and ListFlacInFolder call the browse routes', async () => {
+    const fetchMock = mockFetch({ path: '/m', parent: '', entries: [], truncated: false })
+    const { BrowseFolder, ListFlacInFolder } = await import('./api')
+    await BrowseFolder('/m', 'tools', true)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/browse?path=%2Fm&scope=tools&files=1')
+    await ListFlacInFolder('/m')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/browse/flac?path=%2Fm')
+  })
+
+  it('OpenFLACFilesDialog returns the picked files, [] when cancelled', async () => {
+    const { OpenFLACFilesDialog } = await import('./api')
+    requestPick.mockResolvedValueOnce(['/a.flac', '/b.flac'])
+    expect(await OpenFLACFilesDialog()).toEqual(['/a.flac', '/b.flac'])
+    expect(requestPick).toHaveBeenCalledWith({ kind: 'files', scope: 'tools' })
+    requestPick.mockResolvedValueOnce(null)
+    expect(await OpenFLACFilesDialog()).toEqual([])
+  })
+
+  it('SelectDownloadFolder browses anywhere by default, and honours the tools scope', async () => {
+    const { SelectDownloadFolder } = await import('./api')
+    requestPick.mockResolvedValueOnce(['/music'])
+    expect(await SelectDownloadFolder()).toBe('/music')
+    expect(requestPick).toHaveBeenLastCalledWith({ kind: 'folder', scope: 'anywhere' })
+    requestPick.mockResolvedValueOnce(['/out'])
+    await SelectDownloadFolder('tools')
+    expect(requestPick).toHaveBeenLastCalledWith({ kind: 'folder', scope: 'tools' })
+    requestPick.mockResolvedValueOnce(null)
+    expect(await SelectDownloadFolder()).toBe('')
+  })
+
+  it.each(['SelectFolderForConversion', 'SelectFolderForAnalysis'] as const)(
+    '%s picks a folder then lists its FLAC files, [] when cancelled',
+    async (name) => {
+      const fetchMock = mockFetch({ paths: ['/m/a.flac'], truncated: false })
+      const api = await import('./api')
+      requestPick.mockResolvedValueOnce(['/m'])
+      expect(await api[name]()).toEqual(['/m/a.flac'])
+      expect(requestPick).toHaveBeenCalledWith({ kind: 'folder', scope: 'tools' })
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/browse/flac?path=%2Fm')
+      requestPick.mockResolvedValueOnce(null)
+      expect(await api[name]()).toEqual([])
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('ExportConfig downloads /api/config/export through a temporary link', async () => {
+    const fetchMock = mockFetch({ schemaVersion: 1 })
+    const create = vi.fn(() => 'blob:x')
+    const revoke = vi.fn()
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }))
+    let downloadName = ''
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloadName = this.download
+    })
+    const { ExportConfig } = await import('./api')
+    await ExportConfig()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/config/export')
+    expect(downloadName).toBe('flacidal-config.json')
+    expect(revoke).toHaveBeenCalledWith('blob:x')
+  })
+
+  it('ImportConfig sends the chosen file, then returns the reloaded config', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ success: true }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ language: 'de' }) })
+    vi.stubGlobal('fetch', fetchMock)
+    const file = new File(['{"schemaVersion":1}'], 'c.json', { type: 'application/json' })
+    Object.defineProperty(file, 'text', { value: async () => '{"schemaVersion":1}' }) // jsdom lacks File.text
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      Object.defineProperty(this, 'files', { value: [file] })
+      this.dispatchEvent(new Event('change'))
+    })
+    const { ImportConfig } = await import('./api')
+    const cfg = await ImportConfig()
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/config/import')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe('{"schemaVersion":1}')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/config')
+    expect(cfg).toEqual({ language: 'de' })
+    expect(document.querySelector('input[type=file]')).toBeNull()
+  })
+
+  it('ImportConfig resolves undefined when the file chooser is cancelled', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      this.dispatchEvent(new Event('cancel'))
+    })
+    const { ImportConfig } = await import('./api')
+    expect(await ImportConfig()).toBeUndefined()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('discography, artist assets and FFmpeg install hit their routes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ albums: ['u1'] }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ queued: 4 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ count: 2 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK', json: async () => ({ success: true }) })
+    vi.stubGlobal('fetch', fetchMock)
+    const api = await import('./api')
+    expect(await api.ExpandDiscographyURL('https://open.spotify.com/artist/x/discography/all')).toEqual(['u1'])
+    expect(await api.QueueDiscographyAlbums(['u1'], '/m')).toBe(4)
+    expect(await api.DownloadArtistAssets('7', 'Name', '/m')).toBe(2)
+    await expect(api.InstallFFmpeg()).resolves.toBeUndefined()
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      '/api/discography/expand', '/api/discography/queue', '/api/artists/assets', '/api/ffmpeg/install',
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ albumUrls: ['u1'], outputDir: '/m' })
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ artistId: '7', artistName: 'Name', outputDir: '/m' })
+  })
+})
+
+describe('api.ts source hygiene', () => {
+  it('never falls back to console.warn: every web path is a real call or an explicit error', () => {
+    expect(apiSource).not.toMatch(/console\.warn\(/)
   })
 })
 

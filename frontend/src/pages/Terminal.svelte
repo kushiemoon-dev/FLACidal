@@ -12,15 +12,22 @@
 
   let logs: LogEntry[] = [];
   let unsubscribe: () => void;
+  let unsubscribeReconnect: () => void;
   let terminalContent: HTMLDivElement;
 
-  onMount(async () => {
-    // Load existing logs
+  async function reloadLogs() {
     try {
       logs = await GetLogs();
     } catch (error) {
       console.error('Error loading logs:', error);
     }
+  }
+
+  onMount(async () => {
+    await reloadLogs();
+
+    // After a socket drop (browser only) entries may have been missed: replace the whole list.
+    unsubscribeReconnect = EventsOn('ws-reconnected', reloadLogs);
 
     // Listen for new log events
     unsubscribe = EventsOn('log', (entry: LogEntry) => {
@@ -37,6 +44,9 @@
   onDestroy(() => {
     if (unsubscribe) {
       unsubscribe();
+    }
+    if (unsubscribeReconnect) {
+      unsubscribeReconnect();
     }
   });
 

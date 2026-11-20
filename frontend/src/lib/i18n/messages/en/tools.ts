@@ -61,7 +61,6 @@ export const tools = {
   'tools.files.noTracks': 'No track files found',
   'tools.files.renameFailedCount': '{failed} of {total} files could not be renamed',
   'tools.files.renameFailuresTitle': 'Files not renamed',
-  'tools.files.browseUnavailable': 'The folder picker is only available in the desktop app. Set the download folder in Settings.',
   'tools.lyrics.title': 'Lyrics Manager',
   'tools.lyrics.subtitle': 'Fetch and embed lyrics into FLAC files via LRCLIB',
   'tools.lyrics.selectFilesFailed': 'Failed to select files',

@@ -61,7 +61,6 @@ export const tools = {
   'tools.files.noTracks': 'Keine Titeldateien gefunden',
   'tools.files.renameFailedCount': '{failed} von {total} Dateien konnten nicht umbenannt werden',
   'tools.files.renameFailuresTitle': 'Nicht umbenannte Dateien',
-  'tools.files.browseUnavailable': 'Die Ordnerauswahl gibt es nur in der Desktop-App. Legen Sie den Download-Ordner in den Einstellungen fest.',
   'tools.lyrics.title': 'Songtext-Manager',
   'tools.lyrics.subtitle': 'Songtexte über LRCLIB abrufen und in FLAC-Dateien einbetten',
   'tools.lyrics.selectFilesFailed': 'Dateien konnten nicht ausgewählt werden',

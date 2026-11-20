@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import {
     ListDownloadedFiles, PreviewRename, RenameFiles, SelectDownloadFolder, SetDownloadFolder,
-    GetDownloadFolder, GetRenameTemplates, isWailsRuntime,
+    GetDownloadFolder, GetRenameTemplates,
   } from '../../lib/api';
   import { formatBytes } from '../../lib/format';
   import { toUiError } from '../../lib/errors';
@@ -33,7 +33,6 @@
   let selectAll = $state(false);
   let templates = $state<Array<{ name: string; template: string }>>([]);
   let selectedTemplate = $state('');
-  const canBrowse = isWailsRuntime();
 
   function toggleSelectAll() {
     selectAll = !selectAll;
@@ -159,7 +158,7 @@
 
   <div class="folder-bar">
     <input type="text" class="input folder-input" value={currentFolder} readonly placeholder={$t('tools.files.noFolder')} />
-    <button class="btn btn-accent" onclick={browseFolder} disabled={!canBrowse}>
+    <button class="btn btn-accent" onclick={browseFolder}>
       <FolderOpen size={16} />
       {$t('tools.files.browse')}
     </button>
@@ -167,9 +166,6 @@
       <RefreshCw size={16} />
     </button>
   </div>
-  {#if !canBrowse}
-    <p class="browse-note">{$t('tools.files.browseUnavailable')}</p>
-  {/if}
 
     <div class="rename-section">
       <h2 class="section-title">{$t('tools.files.renameFormat')}</h2>
@@ -282,11 +278,6 @@
     min-width: 0;
   }
 
-  .browse-note {
-    margin: -12px 0 20px;
-    font-size: 13px;
-    color: var(--color-text-tertiary);
-  }
 
   .empty-state.error-state {
     color: var(--color-error, #e5484d);

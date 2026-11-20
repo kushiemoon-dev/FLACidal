@@ -15,6 +15,7 @@
 import * as Wails from '../../wailsjs/go/app/App.js'
 import type { core } from '../../wailsjs/go/models'
 import { authHeaders, notifyAuthRequired } from './auth'
+import { requestPick, type PickScope } from './filePicker'
 
 let cachedIsWails: boolean | null = null
 
@@ -543,54 +544,68 @@ export async function FetchAndEmbedLyricsMultiple(filePaths: string[]): Promise<
   return apiPost('/lyrics/fetch-embed/multiple', { filePaths })
 }
 
-// These four Wails calls pop open a native OS dialog (file picker, folder
-// picker) or the system file manager. A browser sandbox never has access to
-// real filesystem paths, an <input type="file"> only ever hands back a
-// filename, never an absolute path, nor to the local file manager, and the
-// server might not even share a machine with the browser. There's simply no
-// truthful way to implement these in browser mode.
-//
-// Every call site for these four functions already treats a falsy/empty
-// result as "the user cancelled" and no-ops accordingly, so returning that
-// same cancelled-style value in browser mode degrades gracefully.
+export interface BrowseResult {
+  path: string
+  parent: string
+  entries: { name: string; path: string; isDir: boolean }[]
+  truncated: boolean
+}
+
+/** Lists one server folder for the web file browser. 'folders' scope is folders only, anywhere on the server. */
+export function BrowseFolder(path: string, scope: 'tools' | 'folders', files: boolean): Promise<BrowseResult> {
+  return apiGet(`/browse${qs({ path, scope, files: files ? 1 : undefined })}`)
+}
+
+export async function ListFlacInFolder(path: string): Promise<string[]> {
+  const { paths } = await apiGet<{ paths: string[] }>(`/browse/flac${qs({ path })}`)
+  return paths
+}
+
+// In a browser the native pickers are replaced by the server file browser
+// (components/FileBrowserDialog.svelte). A cancelled pick keeps the empty
+// result every caller already treats as "the user cancelled".
 
 export async function OpenFLACFilesDialog(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.OpenFLACFilesDialog()
   }
-  console.warn('OpenFLACFilesDialog: unavailable in browser mode, a browser file picker cannot hand back a server-side file path')
-  return []
+  return (await requestPick({ kind: 'files', scope: 'tools' })) ?? []
 }
 
-export async function SelectDownloadFolder(): Promise<string> {
+/** `scope` only matters in a browser: 'anywhere' for a download or library folder, 'tools' for a processing target. */
+export async function SelectDownloadFolder(scope: PickScope = 'anywhere'): Promise<string> {
   if (isWailsRuntime()) {
     return Wails.SelectDownloadFolder()
   }
-  console.warn('SelectDownloadFolder: unavailable in browser mode, browsers have no native folder picker')
-  return ''
+  return (await requestPick({ kind: 'folder', scope }))?.[0] ?? ''
+}
+
+async function pickFolderThenListFlac(): Promise<string[]> {
+  const folder = (await requestPick({ kind: 'folder', scope: 'tools' }))?.[0]
+  return folder ? ListFlacInFolder(folder) : []
 }
 
 export async function SelectFolderForConversion(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.SelectFolderForConversion()
   }
-  console.warn('SelectFolderForConversion: unavailable in browser mode, same limitation as OpenFLACFilesDialog')
-  return []
+  return pickFolderThenListFlac()
 }
 
 export async function SelectFolderForAnalysis(): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.SelectFolderForAnalysis()
   }
-  console.warn('SelectFolderForAnalysis: unavailable in browser mode, same limitation as OpenFLACFilesDialog')
-  return []
+  return pickFolderThenListFlac()
 }
+
+const DESKTOP_ONLY = (name: string) => new Error(`${name} is only available in the desktop app`)
 
 export async function OpenDownloadFolder(path: string): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.OpenDownloadFolder(path)
   }
-  console.warn('OpenDownloadFolder: unavailable in browser mode, a web page cannot reach the local file manager')
+  throw DESKTOP_ONLY('OpenDownloadFolder')
 }
 
 export async function SetDownloadFolder(folder: string): Promise<void> {
@@ -600,13 +615,7 @@ export async function SetDownloadFolder(folder: string): Promise<void> {
   await apiPost('/folder', { folder })
 }
 
-/**
- * Known gap: the REST handler, unlike Wails, only saves the config, it
- * doesn't push live settings to the download manager, the downloader's
- * proxy/quality options, or restart the Soulseek source. In browser mode,
- * some settings may not take effect until the server restarts. See the
- * migration report.
- */
+/** In both modes the config is applied live (the REST handler goes through core.ApplyConfig). */
 export async function SaveConfig(config: object): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.SaveConfig(config as Parameters<typeof Wails.SaveConfig>[0])
@@ -646,21 +655,56 @@ export async function OpenConfigFolder(): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.OpenConfigFolder()
   }
-  console.warn('OpenConfigFolder: unavailable in browser mode, a web page cannot reach the local file manager')
+  throw DESKTOP_ONLY('OpenConfigFolder')
 }
 
 export async function ExportConfig(): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.ExportConfig()
   }
-  console.warn('ExportConfig: unavailable in browser mode')
+  const res = await fetch(`${API_BASE}/config/export`, { headers: authHeaders() })
+  if (!res.ok) {
+    if (res.status === 401) notifyAuthRequired()
+    throw new Error(`${res.status} ${res.statusText}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'flacidal-config.json'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+// The one place a browser file is sent to the server: a local config export.
+function chooseLocalJsonFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'application/json,.json'
+    input.style.display = 'none'
+    const done = (file: File | null) => {
+      input.remove()
+      resolve(file)
+    }
+    input.addEventListener('change', () => done(input.files?.[0] ?? null))
+    input.addEventListener('cancel', () => done(null))
+    document.body.appendChild(input)
+    input.click()
+  })
 }
 
 export async function ImportConfig(): Promise<WailsResult<'ImportConfig'>> {
   if (isWailsRuntime()) {
     return Wails.ImportConfig()
   }
-  console.warn('ImportConfig: unavailable in browser mode')
+  const file = await chooseLocalJsonFile()
+  if (!file) return undefined as unknown as WailsResult<'ImportConfig'>
+  await apiFetch('/config/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: await file.text(),
+  })
+  return GetConfig()
 }
 
 export async function DetectSourceFromURL(url: string): Promise<WailsResult<'DetectSourceFromURL'>> {
@@ -886,50 +930,40 @@ export interface UpdateStatus {
   releaseUrl: string
 }
 
-export async function GetUpdateStatus(): Promise<UpdateStatus | undefined> {
+// A headless server has no forced-update screen, so a browser always gets null.
+export async function GetUpdateStatus(): Promise<UpdateStatus | null | undefined> {
   if (isWailsRuntime()) {
     return Wails.GetUpdateStatus() as unknown as Promise<UpdateStatus>
   }
-  console.warn('GetUpdateStatus: unavailable in browser mode, forced-update blocking does not apply to headless')
+  return null
 }
 
 export async function DownloadAndInstallUpdate(): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.DownloadAndInstallUpdate()
   }
-  console.warn('DownloadAndInstallUpdate: unavailable in browser mode')
-}
-
-// Wails mode is unaffected; in browser mode these throw a clear, catchable
-// error rather than crashing on an undefined window.go binding or silently
-// no-op'ing something the user explicitly triggered (Install buttons,
-// discography queueing, etc.). Unlike the native-OS dialogs above, an
-// empty/falsy result here could be mistaken for a genuine negative result
-// instead of "not implemented", so these throw.
-
-function unavailableInBrowser(name: string, reason: string): never {
-  throw new Error(`${name} is unavailable in browser mode: ${reason}`)
+  throw DESKTOP_ONLY('DownloadAndInstallUpdate')
 }
 
 export async function DownloadArtistAssets(artistId: string, artistName: string, outputDir: string): Promise<number> {
   if (isWailsRuntime()) {
     return Wails.DownloadArtistAssets(artistId, artistName, outputDir)
   }
-  return unavailableInBrowser('DownloadArtistAssets', 'a Tidal artist-image client is not yet wired up on the headless server')
+  return (await apiPost<{ count: number }>('/artists/assets', { artistId, artistName, outputDir })).count
 }
 
 export async function ExpandDiscographyURL(url: string): Promise<string[]> {
   if (isWailsRuntime()) {
     return Wails.ExpandDiscographyURL(url)
   }
-  return unavailableInBrowser('ExpandDiscographyURL', 'a Spotify search client is not yet wired up on the headless server')
+  return (await apiPost<{ albums: string[] }>('/discography/expand', { url })).albums
 }
 
 export async function QueueDiscographyAlbums(albumUrls: string[], outputDir: string): Promise<number> {
   if (isWailsRuntime()) {
     return Wails.QueueDiscographyAlbums(albumUrls, outputDir)
   }
-  return unavailableInBrowser('QueueDiscographyAlbums', 'a Spotify search client is not yet wired up on the headless server')
+  return (await apiPost<{ queued: number }>('/discography/queue', { albumUrls, outputDir })).queued
 }
 
 export async function CheckAPIStatus(): Promise<WailsResult<'CheckAPIStatus'>> {
@@ -957,5 +991,5 @@ export async function InstallFFmpeg(): Promise<void> {
   if (isWailsRuntime()) {
     return Wails.InstallFFmpeg()
   }
-  return unavailableInBrowser('InstallFFmpeg', 'installing a binary onto a server that might be remote requires progress-reporting infrastructure that has not been built yet')
+  await apiPost('/ffmpeg/install')
 }

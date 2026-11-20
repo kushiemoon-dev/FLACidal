@@ -6,18 +6,16 @@
 // changes.
 //
 // Browser mode: connects to the headless server's /ws WebSocket hub
-// (internal/api/server.go), which broadcasts download-progress events as
-// {"type":"download-progress","trackId":N,"status":"...","result":{...}}
-// (see cmd/server/main.go's DownloadManager.SetProgressCallback, this is
-// the only event type the hub currently emits). Messages get unwrapped and
-// redispatched to 'download-progress' listeners using the exact payload
-// shape Wails emits ({trackId, status, result}), so App.svelte's handler
-// needs no changes.
+// (internal/api/server.go). Messages get unwrapped and redispatched under the
+// exact payload shape Wails emits, so listeners need no change:
+//   download-progress      {type, trackId, status, result}
+//   log                    {type, timestamp, level, message}
+//   ffmpeg-install-progress {type, stage, percent, error}
+// ws-reconnected is local: fired when the socket opens again after a drop,
+// so a listener can reload what it may have missed (Terminal reloads its logs).
 //
-// Known gap: 'queue-paused', 'endpoint-cooldown', 'log',
-// and 'ffmpeg-install-progress' have no
-// server-side broadcaster in headless mode yet (those are Wails-app-only
-// features, see migration report). Subscribing to them in browser mode is
+// Known gap: 'queue-paused' and 'endpoint-cooldown' have no server-side
+// broadcaster in headless mode yet. Subscribing to them in browser mode is
 // harmless (no error), but the callback will just never fire.
 
 import { EventsOn as WailsEventsOn, EventsOff as WailsEventsOff } from '../../wailsjs/runtime/runtime.js'
@@ -32,6 +30,7 @@ const browserListeners = new Map<string, Set<EventCallback>>()
 let socket: WebSocket | null = null
 let reconnectAttempt = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let hasConnectedBefore = false
 
 function backoffDelayMs(attempt: number): number {
   return Math.min(1000 * 2 ** attempt, 30000)
@@ -57,7 +56,18 @@ function dispatch(eventName: string, payload: unknown): void {
 }
 
 function handleMessage(event: MessageEvent): void {
-  let msg: { type?: string; trackId?: number; status?: string; result?: unknown } | null
+  let msg: {
+    type?: string
+    trackId?: number
+    status?: string
+    result?: unknown
+    timestamp?: string
+    level?: string
+    message?: string
+    stage?: string
+    percent?: number
+    error?: string
+  } | null
   try {
     msg = JSON.parse(event.data)
   } catch {
@@ -66,6 +76,10 @@ function handleMessage(event: MessageEvent): void {
 
   if (msg?.type === 'download-progress') {
     dispatch('download-progress', { trackId: msg.trackId, status: msg.status, result: msg.result })
+  } else if (msg?.type === 'log') {
+    dispatch('log', { timestamp: msg.timestamp, level: msg.level, message: msg.message })
+  } else if (msg?.type === 'ffmpeg-install-progress') {
+    dispatch('ffmpeg-install-progress', { stage: msg.stage, percent: msg.percent, error: msg.error })
   }
 }
 
@@ -87,6 +101,8 @@ function connect(): void {
   socket.onopen = () => {
     opened = true
     reconnectAttempt = 0
+    if (hasConnectedBefore) dispatch('ws-reconnected', null)
+    hasConnectedBefore = true
   }
   socket.onmessage = handleMessage
   socket.onerror = () => {

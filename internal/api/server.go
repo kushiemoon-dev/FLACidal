@@ -22,6 +22,8 @@ import (
 	"github.com/gofiber/websocket/v2"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
+
+	"flacidal/internal/app"
 )
 
 // defaultFrontendDir is where the compiled Svelte SPA lives on disk; it's
@@ -72,6 +74,8 @@ type Server struct {
 	frontendDir      string
 	logBuffer        *core.LogBuffer
 	version          string
+	ffmpeg           app.FFmpegInstaller
+	cancelLogs       func()
 }
 
 func NewServer(cfg ServerConfig) *Server {
@@ -122,6 +126,13 @@ func NewServer(cfg ServerConfig) *Server {
 		logBuffer:        logBuffer,
 		version:          cfg.Version,
 	}
+
+	// Every log entry reaches /ws clients. No logging in the callback: it would loop.
+	server.cancelLogs = logBuffer.Subscribe(func(e core.LogEntry) {
+		wsHub.Broadcast(map[string]interface{}{
+			"type": "log", "timestamp": e.Timestamp, "level": e.Level, "message": e.Message,
+		})
+	})
 
 	// So every queued/downloading/completed/failed transition reaches WS subscribers.
 	if cfg.DownloadManager != nil {
@@ -207,6 +218,12 @@ func (s *Server) setupRoutes() {
 	api.Get("/config", s.handleGetConfig)
 	api.Post("/config", s.handleSaveConfig)
 	api.Post("/config/reset", s.handleResetConfig)
+	api.Post("/discography/expand", s.handleDiscographyExpand)
+	api.Post("/discography/queue", s.handleDiscographyQueue)
+	api.Post("/artists/assets", s.handleArtistAssets)
+	api.Post("/ffmpeg/install", s.handleFFmpegInstall)
+	api.Get("/config/export", s.handleExportConfig)
+	api.Post("/config/import", s.handleImportConfig)
 
 	api.Get("/sources", s.handleGetSources)
 	api.Get("/sources/preferred", s.handleGetPreferredSource)
@@ -250,6 +267,8 @@ func (s *Server) setupRoutes() {
 	api.Get("/history/recent", s.handleGetRecentAlbums)
 
 	api.Get("/files", s.handleListFiles)
+	api.Get("/browse", s.handleBrowse)
+	api.Get("/browse/flac", s.handleBrowseFlac)
 	api.Delete("/files", s.handleDeleteFile)
 	api.Get("/files/metadata", s.handleGetMetadata)
 	api.Get("/files/cover", s.handleGetCoverArt)
@@ -350,12 +369,14 @@ func (s *Server) Serve(ln net.Listener) error {
 // ShutdownWithTimeout closes WS connections, then waits at most timeout for
 // open connections to finish before giving up.
 func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
+	s.cancelLogs()
 	s.wsHub.Close()
 	return s.app.ShutdownWithTimeout(timeout)
 }
 
 // Shutdown closes WS connections first, before shutting down the app.
 func (s *Server) Shutdown() error {
+	s.cancelLogs()
 	s.wsHub.Close()
 	return s.app.Shutdown()
 }
@@ -396,16 +417,18 @@ func (h *WebSocketHub) Run() {
 		case conn := <-h.register:
 			h.mu.Lock()
 			h.clients[conn] = true
+			n := len(h.clients)
 			h.mu.Unlock()
-			log.Printf("WebSocket client joined (now %d connected)", len(h.clients))
+			log.Printf("WebSocket client joined (now %d connected)", n)
 		case conn := <-h.unregister:
 			h.mu.Lock()
 			if _, ok := h.clients[conn]; ok {
 				delete(h.clients, conn)
 				conn.Close()
 			}
+			n := len(h.clients)
 			h.mu.Unlock()
-			log.Printf("WebSocket client left (now %d connected)", len(h.clients))
+			log.Printf("WebSocket client left (now %d connected)", n)
 		case message := <-h.broadcast:
 			h.mu.RLock()
 			for conn := range h.clients {

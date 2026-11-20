@@ -60,7 +60,7 @@ test.describe('Folder errors are visible and translated', () => {
 
     const input = page.locator('#download-folder')
     await expect(input).toBeEditable()
-    await expect(page.locator('.browse-btn').first()).toBeDisabled()
+    await expect(page.locator('.browse-btn').first()).toBeEnabled()
     await input.fill('/typed/path')
     await input.blur()
 

@@ -61,7 +61,6 @@ export const tools = {
   'tools.files.noTracks': 'Aucun fichier de piste trouvé',
   'tools.files.renameFailedCount': "{failed} fichier(s) sur {total} n'ont pas pu être renommés",
   'tools.files.renameFailuresTitle': 'Fichiers non renommés',
-  'tools.files.browseUnavailable': "Le sélecteur de dossier n'existe que dans l'application de bureau. Définissez le dossier de téléchargement dans les Paramètres.",
   'tools.lyrics.title': 'Gestionnaire de paroles',
   'tools.lyrics.subtitle': 'Récupérez et intégrez les paroles dans vos fichiers FLAC via LRCLIB',
   'tools.lyrics.selectFilesFailed': 'Échec de la sélection des fichiers',

@@ -18,6 +18,7 @@
     ExpandDiscographyURL,
     QueueDiscographyAlbums,
     GetRecentAlbums,
+    isWailsRuntime,
   } from '../lib/api';
   import { OpenExternalURL } from '../lib/runtime';
   import { queueStore, queueStats, downloadFolder, currentContent, type TidalContent, type TidalTrack } from '../stores/queue';
@@ -827,7 +828,7 @@
             </svg>
             {folder ? folder.split('/').pop() : $t('home.selectFolder')}
           </button>
-          {#if folder}
+          {#if folder && isWailsRuntime()}
             <button class="btn-ghost" onclick={openFolder}>{$t('home.openFolder')}</button>
           {/if}
         </div>
