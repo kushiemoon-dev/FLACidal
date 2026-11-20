@@ -12,6 +12,11 @@ const wailsMock = {
   IsQueuePaused: vi.fn(),
   CancelDownload: vi.fn(),
   QueueDownloads: vi.fn(),
+  QueueSingleDownload: vi.fn(),
+  QueueArtistAlbum: vi.fn(),
+  AnalyzeBatch: vi.fn(),
+  CancelAnalyzeBatch: vi.fn(),
+  ExportAnalysisReport: vi.fn(),
   AnalyzeMultiple: vi.fn(),
   OpenFLACFilesDialog: vi.fn(),
   GetUpdateStatus: vi.fn(),
@@ -77,7 +82,7 @@ describe('API call routing in Wails mode', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('QueueDownloads passes all five positional arguments through to the Wails binding', async () => {
+  it('QueueDownloads passes all positional arguments through to the Wails binding, with an empty quality by default', async () => {
     wailsMock.QueueDownloads.mockResolvedValue(3)
     const tracks = [{ id: 1 }]
 
@@ -85,7 +90,41 @@ describe('API call routing in Wails mode', () => {
     const queued = await QueueDownloads(tracks, '/music', 'Discovery', 'content-1', 'album')
 
     expect(queued).toBe(3)
-    expect(wailsMock.QueueDownloads).toHaveBeenCalledWith(tracks, '/music', 'Discovery', 'content-1', 'album')
+    expect(wailsMock.QueueDownloads).toHaveBeenCalledWith(tracks, '/music', 'Discovery', 'content-1', 'album', '')
+  })
+
+  it('QueueSingleDownload sends the quality as the last Wails argument', async () => {
+    wailsMock.QueueSingleDownload.mockResolvedValue(undefined)
+    const { QueueSingleDownload } = await import('./api')
+    await QueueSingleDownload(7, '/music', 'T', 'A', 'ATMOS')
+    expect(wailsMock.QueueSingleDownload).toHaveBeenCalledWith(7, '/music', 'T', 'A', 'ATMOS')
+    await QueueSingleDownload(7, '/music', 'T', 'A')
+    expect(wailsMock.QueueSingleDownload).toHaveBeenLastCalledWith(7, '/music', 'T', 'A', '')
+  })
+
+  it('QueueArtistAlbum sends the quality as the last Wails argument', async () => {
+    wailsMock.QueueArtistAlbum.mockResolvedValue(10)
+    const { QueueArtistAlbum } = await import('./api')
+    await QueueArtistAlbum('1', 'Artist', '/music', 'ATMOS')
+    expect(wailsMock.QueueArtistAlbum).toHaveBeenCalledWith('1', 'Artist', '/music', 'ATMOS')
+  })
+
+  it('AnalyzeBatch derives cancelled from the returned count', async () => {
+    wailsMock.AnalyzeBatch.mockResolvedValue([{ filePath: '/a' }])
+    const { AnalyzeBatch } = await import('./api')
+    const res = await AnalyzeBatch('b1', ['/a', '/b'])
+    expect(wailsMock.AnalyzeBatch).toHaveBeenCalledWith('b1', ['/a', '/b'])
+    expect(res).toEqual({ results: [{ filePath: '/a' }], cancelled: true })
+  })
+
+  it('CancelAnalyzeBatch and ExportAnalysisReport reach the Wails bindings', async () => {
+    wailsMock.CancelAnalyzeBatch.mockResolvedValue(true)
+    wailsMock.ExportAnalysisReport.mockResolvedValue('/tmp/r.csv')
+    const { CancelAnalyzeBatch, ExportAnalysisReport } = await import('./api')
+    expect(await CancelAnalyzeBatch('b1')).toBe(true)
+    const results = [{ filePath: '/a' }] as never
+    expect(await ExportAnalysisReport(results, 'csv')).toBe('/tmp/r.csv')
+    expect(wailsMock.ExportAnalysisReport).toHaveBeenCalledWith('csv', results)
   })
 
   it('OpenFLACFilesDialog hands off to the native Wails dialog', async () => {
@@ -169,6 +208,35 @@ describe('API call routing in browser mode', () => {
     expect(url).toBe('/api/downloads/queue')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ tracks, outputDir: '/music', contentName: 'Discovery' })
+  })
+
+  it('QueueSingleDownload sends quality in the body only when given', async () => {
+    const fetchMock = mockFetchOnce({ success: true })
+    const { QueueSingleDownload } = await import('./api')
+    await QueueSingleDownload(7, '/music', 'T', 'A', 'ATMOS')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ trackId: 7, outputDir: '/music', title: 'T', artist: 'A', quality: 'ATMOS' })
+    mockFetchOnce({ success: true })
+    const second = vi.mocked(globalThis.fetch)
+    await QueueSingleDownload(7, '/music', 'T', 'A')
+    const body = JSON.parse((second.mock.calls.at(-1) as [string, { body: string }])[1].body)
+    expect(body).not.toHaveProperty('quality')
+  })
+
+  it('AnalyzeBatch POSTs the batch and returns results and cancelled untouched', async () => {
+    const fetchMock = mockFetchOnce({ results: [{ filePath: '/a', verdict: 'error' }], cancelled: false, total: 1 })
+    const { AnalyzeBatch } = await import('./api')
+    const res = await AnalyzeBatch('b1', ['/a'])
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/analyze/batch')
+    expect(JSON.parse(init.body)).toEqual({ batchId: 'b1', paths: ['/a'] })
+    expect(res).toEqual({ results: [{ filePath: '/a', verdict: 'error' }], cancelled: false })
+  })
+
+  it('CancelAnalyzeBatch POSTs to the cancel route', async () => {
+    const fetchMock = mockFetchOnce({ cancelled: true })
+    const { CancelAnalyzeBatch } = await import('./api')
+    expect(await CancelAnalyzeBatch('b 1')).toBe(true)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/analyze/batch/b%201/cancel')
   })
 
   it('AnalyzeMultiple converts the REST response shape into the AnalysisResult shape', async () => {

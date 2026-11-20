@@ -77,4 +77,12 @@ export const tools = {
   'tools.lyrics.plain': 'texte brut',
   'tools.files.templateAria': 'Modèle de renommage',
   'tools.files.refreshAria': 'Recharger les fichiers',
+  'tools.analyzer.progress': '{done} sur {total}',
+  'tools.analyzer.cancel': 'Annuler',
+  'tools.analyzer.cancelled': 'Analyse annulée, {done} résultats sur {total}',
+  'tools.analyzer.errors.title': 'Fichiers en erreur',
+  'tools.analyzer.export.csv': 'Exporter en CSV',
+  'tools.analyzer.export.json': 'Exporter en JSON',
+  'tools.analyzer.tooMany': 'Trop de fichiers : {count} (maximum {max})',
+  'tools.analyzer.failed': "Échec de l'analyse : {error}",
 };

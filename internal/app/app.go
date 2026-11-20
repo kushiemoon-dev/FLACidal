@@ -24,6 +24,7 @@ type App struct {
 	matcher           *core.Matcher
 	downloader        *core.TidalHifiService
 	downloadManager   *core.DownloadManager
+	analyzeBatches    BatchRegistry
 	logBuffer         *core.LogBuffer
 	sourceManager     *core.SourceManager
 	tidalSource       *core.TidalSource

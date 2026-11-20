@@ -16,6 +16,7 @@ export interface WinAny {
   go: { main: { App: Record<string, (...args: unknown[]) => Promise<unknown>> } }
   __marker?: number
   __analyzeRes?: unknown
+  __calls?: Array<{ name: string; args: unknown[] }>
 }
 
 export interface WailsOverrides {
@@ -39,6 +40,11 @@ export interface WailsOverrides {
   GetSourceHealth?: unknown[]
   Extensions?: unknown[]
   RegistryEntries?: unknown[]
+  SearchTidal?: unknown[]
+  SearchTidalAlbums?: unknown[]
+  OpenFLACFilesDialog?: string[]
+  // Batch analysis: rows streamed one by one on 'analyze-progress', delayMs between rows
+  AnalyzeBatch?: { results: unknown[]; delayMs?: number }
   // Network: stubbed fetch response for /api/* endpoints
   apiAnalyze?: { ok: boolean; body: unknown }
 }
@@ -72,6 +78,15 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
     }
 
     const config = opts.GetConfig ?? defaultConfig
+
+    const w = window as unknown as { __calls?: Array<{ name: string; args: unknown[] }> }
+    w.__calls = []
+    const record = (name: string, args: unknown[]) => { w.__calls?.push({ name, args }) }
+    const listeners = new Map<string, Set<(p: unknown) => void>>()
+    const emit = (name: string, payload: unknown) => {
+      for (const cb of listeners.get(name) ?? []) cb(payload)
+    }
+    const cancelledBatches = new Set<string>()
 
     // Stateful stand-in for Core's extension management.
     type MockExt = { manifest: Record<string, unknown>; enabled: boolean; hosts: string[]; authSet: Record<string, boolean>; category: string }
@@ -210,14 +225,14 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       }),
       FetchTidalPlaylist: async (_u: string) => ({}),
 
-      SearchTidal: async (_q: string) => [],
-      SearchTidalAlbums: async (_q: string) => [],
+      SearchTidal: async (_q: string) => opts.SearchTidal ?? [],
+      SearchTidalAlbums: async (_q: string) => opts.SearchTidalAlbums ?? [],
       SearchTidalArtists: async (_q: string) => [],
 
       QueueDownloads: async (..._a: unknown[]) => 0,
       QueueQobuzDownloads: async (..._a: unknown[]) => 0,
-      QueueSingleDownload: async (..._a: unknown[]) => {},
-      QueueArtistAlbum: async (..._a: unknown[]) => 0,
+      QueueSingleDownload: async (...a: unknown[]) => { record('QueueSingleDownload', a) },
+      QueueArtistAlbum: async (...a: unknown[]) => { record('QueueArtistAlbum', a); return 0 },
       DownloadArtistAssets: async (..._a: unknown[]) => 0,
       DownloadTrack: async (..._a: unknown[]) => ({ success: true }),
       CancelDownload: async (_id: number) => {},
@@ -243,7 +258,7 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
         return opts.ListDownloadedFiles ?? []
       },
       DeleteFile: async (_p: string) => {},
-      OpenFLACFilesDialog: async () => [],
+      OpenFLACFilesDialog: async () => opts.OpenFLACFilesDialog ?? [],
       SelectFolderForConversion: async () => [],
 
       AnalyzeFile: async (_p: string) => ({ verdict: 'lossless' }),
@@ -251,6 +266,26 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
         opts.AnalyzeMultiple ?? [
           { fileName: 'test.flac', verdict: 'lossless', message: 'Authentic lossless' },
         ],
+      AnalyzeBatch: async (id: string, paths: string[]) => {
+        const rows = opts.AnalyzeBatch?.results ?? []
+        const delay = opts.AnalyzeBatch?.delayMs ?? 0
+        const done: unknown[] = []
+        for (const row of rows) {
+          if (delay) await new Promise((r) => setTimeout(r, delay))
+          if (cancelledBatches.has(id)) break
+          done.push(row)
+          emit('analyze-progress', { batchId: id, done: done.length, total: paths.length, result: row })
+        }
+        return done
+      },
+      CancelAnalyzeBatch: async (id: string) => {
+        cancelledBatches.add(id)
+        return true
+      },
+      ExportAnalysisReport: async (...a: unknown[]) => {
+        record('ExportAnalysisReport', a)
+        return ''
+      },
       QuickAnalyze: async (_p: string) => ({ verdict: 'lossless' }),
 
       IsConverterAvailable: async () => opts.IsConverterAvailable ?? true,
@@ -319,7 +354,12 @@ export function injectWailsMocks(page: Page, overrides: WailsOverrides = {}) {
       EventsOff: noop,
       EventsEmit: noop,
       EventsOnce: (_n: string, _cb: unknown) => offFn,
-      EventsOnMultiple: (_n: string, _cb: unknown, _max: number) => offFn,
+      EventsOnMultiple: (n: string, cb: (p: unknown) => void, _max: number) => {
+        const set = listeners.get(n) ?? new Set()
+        set.add(cb)
+        listeners.set(n, set)
+        return () => set.delete(cb)
+      },
       LogPrint: noop,
       LogTrace: noop,
       LogDebug: noop,

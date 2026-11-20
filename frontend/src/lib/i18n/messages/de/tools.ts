@@ -77,4 +77,12 @@ export const tools = {
   'tools.lyrics.plain': 'Klartext',
   'tools.files.templateAria': 'Umbenennungsvorlage',
   'tools.files.refreshAria': 'Dateien neu laden',
+  'tools.analyzer.progress': '{done} von {total}',
+  'tools.analyzer.cancel': 'Abbrechen',
+  'tools.analyzer.cancelled': 'Analyse abgebrochen, {done} Ergebnisse von {total}',
+  'tools.analyzer.errors.title': 'Fehlerhafte Dateien',
+  'tools.analyzer.export.csv': 'Als CSV exportieren',
+  'tools.analyzer.export.json': 'Als JSON exportieren',
+  'tools.analyzer.tooMany': 'Zu viele Dateien: {count} (Maximum {max})',
+  'tools.analyzer.failed': 'Analyse fehlgeschlagen: {error}',
 };

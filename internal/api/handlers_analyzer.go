@@ -43,6 +43,9 @@ func (s *Server) handleAnalyzeMultipleImpl(c *fiber.Ctx) error {
 	if len(req.Paths) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "at least one path is required in the paths array"})
 	}
+	if len(req.Paths) > core.MaxAnalyzeBatch {
+		return tooManyFiles(c, len(req.Paths))
+	}
 
 	results := make([]core.AnalysisResult, len(req.Paths))
 	var valid []string
@@ -91,6 +94,9 @@ func RegisterAnalyzerRoutes(router fiber.Router, s *Server) {
 	router.Post("/analyze", s.handleAnalyzeFileImpl)
 	router.Post("/analyze/multiple", s.handleAnalyzeMultipleImpl)
 	router.Post("/analyze/quick", s.handleQuickAnalyzeImpl)
+	router.Post("/analyze/batch", s.handleAnalyzeBatch)
+	router.Post("/analyze/batch/:id/cancel", s.handleCancelAnalyzeBatch)
+	router.Post("/analyze/report", s.handleAnalyzeReport)
 }
 
 // core.AnalyzeAudioFile runs full fake-lossless detection for FLAC; every

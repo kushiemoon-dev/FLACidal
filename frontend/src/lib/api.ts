@@ -120,6 +120,7 @@ export interface DownloadedFileInfo {
   title: string
   artist: string
   album: string
+  codec?: string
   [key: string]: unknown
 }
 
@@ -155,6 +156,64 @@ interface RestAnalysis {
   message: string
   sampleRate: number
   bitDepth: number
+}
+
+export interface AnalyzeBatchOutcome {
+  results: AnalysisResult[]
+  cancelled: boolean
+}
+
+/**
+ * Analyzes a batch with progress on the 'analyze-progress' event (same payload
+ * in Wails and in the browser). Unlike AnalyzeMultiple the results keep the
+ * core.AnalysisResult shape, no normalisation.
+ */
+export async function AnalyzeBatch(batchId: string, paths: string[]): Promise<AnalyzeBatchOutcome> {
+  if (isWailsRuntime()) {
+    const results = (await Wails.AnalyzeBatch(batchId, paths)) as unknown as AnalysisResult[]
+    return { results, cancelled: results.length < paths.length }
+  }
+  const { results, cancelled } = await apiPost<AnalyzeBatchOutcome & { total: number }>('/analyze/batch', { batchId, paths })
+  return { results, cancelled }
+}
+
+export async function CancelAnalyzeBatch(batchId: string): Promise<boolean> {
+  if (isWailsRuntime()) {
+    return Wails.CancelAnalyzeBatch(batchId)
+  }
+  const { cancelled } = await apiPost<{ cancelled: boolean }>(`/analyze/batch/${encodeURIComponent(batchId)}/cancel`)
+  return cancelled
+}
+
+/**
+ * Wails: native "Save As" dialog, resolves to the chosen path ('' if cancelled).
+ * Browser: the server builds the file and it is handed to the browser's
+ * download mechanism, resolving to ''.
+ */
+export async function ExportAnalysisReport(results: AnalysisResult[], format: 'csv' | 'json'): Promise<string> {
+  if (isWailsRuntime()) {
+    return Wails.ExportAnalysisReport(format, results as unknown as Parameters<typeof Wails.ExportAnalysisReport>[1])
+  }
+  const res = await fetch(`${API_BASE}/analyze/report?format=${encodeURIComponent(format)}`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ results }),
+  })
+  if (!res.ok) {
+    if (res.status === 401) notifyAuthRequired()
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error || `${res.status} ${res.statusText}`)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `analysis_report.${format}`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+  return ''
 }
 
 export async function AnalyzeMultiple(paths: string[]): Promise<AnalysisResult[]> {
@@ -267,16 +326,17 @@ export async function QueueDownloads(
   outputDir: string,
   contentName: string,
   contentId: string,
-  contentType: string
+  contentType: string,
+  quality = ''
 ): Promise<number> {
   if (isWailsRuntime()) {
-    return Wails.QueueDownloads(tracks as Parameters<typeof Wails.QueueDownloads>[0], outputDir, contentName, contentId, contentType)
+    return Wails.QueueDownloads(tracks as Parameters<typeof Wails.QueueDownloads>[0], outputDir, contentName, contentId, contentType, quality)
   }
   // Known gap: unlike Wails, the REST endpoint doesn't yet save a
   // content-level DownloadRecord for contentId/contentType, so History
   // won't show playlist/album progress for downloads queued via the
   // headless server. See migration report.
-  const { queued } = await apiPost<{ queued: number }>('/downloads/queue', { tracks, outputDir, contentName })
+  const { queued } = await apiPost<{ queued: number }>('/downloads/queue', { tracks, outputDir, contentName, ...(quality && { quality }) })
   return queued
 }
 
@@ -284,19 +344,20 @@ export async function QueueSingleDownload(
   trackId: number,
   outputDir: string,
   title: string,
-  artist: string
+  artist: string,
+  quality = ''
 ): Promise<void> {
   if (isWailsRuntime()) {
-    return Wails.QueueSingleDownload(trackId, outputDir, title, artist)
+    return Wails.QueueSingleDownload(trackId, outputDir, title, artist, quality)
   }
-  await apiPost('/downloads/single', { trackId, outputDir, title, artist })
+  await apiPost('/downloads/single', { trackId, outputDir, title, artist, ...(quality && { quality }) })
 }
 
-export async function QueueArtistAlbum(albumId: string, artistName: string, outputDir: string): Promise<number> {
+export async function QueueArtistAlbum(albumId: string, artistName: string, outputDir: string, quality = ''): Promise<number> {
   if (isWailsRuntime()) {
-    return Wails.QueueArtistAlbum(albumId, artistName, outputDir)
+    return Wails.QueueArtistAlbum(albumId, artistName, outputDir, quality)
   }
-  const { queued } = await apiPost<{ queued: number }>('/downloads/queue/album', { albumId, artistName, outputDir })
+  const { queued } = await apiPost<{ queued: number }>('/downloads/queue/album', { albumId, artistName, outputDir, ...(quality && { quality }) })
   return queued
 }
 

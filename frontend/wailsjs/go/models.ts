@@ -430,6 +430,7 @@ export namespace core {
 	    format: string;
 	    discNumber: number;
 	    trackNumber: number;
+	    codec?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DownloadedFileInfo(source);
@@ -449,6 +450,7 @@ export namespace core {
 	        this.format = source["format"];
 	        this.discNumber = source["discNumber"];
 	        this.trackNumber = source["trackNumber"];
+	        this.codec = source["codec"];
 	    }
 	}
 	export class EndpointProbe {

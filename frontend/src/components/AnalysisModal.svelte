@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dialogFocus } from '../lib/dialogFocus';
   import { onMount } from 'svelte';
-  import { AnalyzeMultiple } from '../lib/api';
+  import { startAnalyzeBatch, MAX_ANALYZE_BATCH } from '../lib/analyzeBatch';
   import { t, tm, type UiMsg } from '../lib/i18n';
 
   let { files, onClose }: { files: string[]; onClose: () => void } = $props();
@@ -23,6 +23,9 @@
   let results: AnalysisResult[] = $state([]);
   let isAnalyzing = $state(true);
   let error = $state<UiMsg>('');
+  let done = $state(0);
+  let cancelRequested = $state(false);
+  let cancelBatch: (() => Promise<boolean>) | null = null;
 
   let summary = $derived({
     total: results.length,
@@ -39,13 +42,34 @@
   async function analyzeFiles() {
     isAnalyzing = true;
     error = '';
+    if (files.length > MAX_ANALYZE_BATCH) {
+      error = { key: 'tools.analyzer.tooMany', vars: { count: files.length, max: MAX_ANALYZE_BATCH } };
+      isAnalyzing = false;
+      return;
+    }
 
     try {
-      results = await AnalyzeMultiple(files);
+      const run = startAnalyzeBatch(files, (d, _total, r) => {
+        done = d;
+        results = [...results, r];
+      });
+      cancelBatch = run.cancel;
+      results = (await run.done).results;
     } catch (e) {
       error = (e as Error).message || { key: 'modals.analysis.failedFallback' };
     } finally {
       isAnalyzing = false;
+      cancelBatch = null;
+    }
+  }
+
+  async function cancelAnalysis() {
+    cancelRequested = true;
+    try {
+      // false: the server does not know the batch yet, so let the user try again
+      if (!(await cancelBatch?.())) cancelRequested = false;
+    } catch {
+      cancelRequested = false;
     }
   }
 
@@ -107,6 +131,9 @@
         <div class="loader"></div>
         <p>{$t('modals.analysis.analyzing')}</p>
         <span class="loading-hint">{$t('modals.analysis.analyzingHint')}</span>
+        <progress value={done} max={files.length} aria-valuenow={done} aria-valuemin="0" aria-valuemax={files.length} aria-label={$t('modals.analysis.analyzing')}></progress>
+        <p class="progress-text" aria-live="polite">{$t('tools.analyzer.progress', { done, total: files.length })}</p>
+        <button class="btn-cancel-analysis" onclick={cancelAnalysis} disabled={cancelRequested}>{$t('tools.analyzer.cancel')}</button>
       </div>
     {:else if error}
       <div class="error-state">
@@ -348,6 +375,27 @@
   .loading-state p {
     margin: 0 0 4px 0;
     color: #888;
+  }
+
+  .progress-text {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+  }
+
+  .btn-cancel-analysis {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .btn-cancel-analysis:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .loading-hint {
