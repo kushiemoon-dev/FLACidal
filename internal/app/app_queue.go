@@ -316,18 +316,15 @@ func (a *App) SetDownloadOptions(quality, fileNameFormat string, organizeFolders
 		c.AutoAnalyze = autoAnalyze
 	})
 
-	// AutoQualityFallback isn't a SetDownloadOptions parameter, so preserve it from the existing config.
 	if a.downloader != nil {
-		autoQualityFallback := next.AutoQualityFallback
-		a.downloader.SetOptions(core.DownloadOptions{
-			Quality:             quality,
-			FileNameFormat:      fileNameFormat,
-			OrganizeFolders:     organizeFolders,
-			EmbedCover:          embedCover,
-			SaveCoverFile:       saveCoverFile,
-			AutoAnalyze:         autoAnalyze,
-			AutoQualityFallback: autoQualityFallback,
-		})
+		opts := a.downloader.GetOptions()
+		opts.Quality = quality
+		opts.FileNameFormat = fileNameFormat
+		opts.OrganizeFolders = organizeFolders
+		opts.EmbedCover = embedCover
+		opts.SaveCoverFile = saveCoverFile
+		opts.AutoAnalyze = autoAnalyze
+		a.downloader.SetOptions(opts)
 	}
 
 	return core.SaveConfig(&next)

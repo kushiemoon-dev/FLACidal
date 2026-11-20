@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"testing"
 
 	core "github.com/kushiemoon-dev/flacidal-core"
@@ -206,6 +207,44 @@ func TestSetDownloadOptions(t *testing.T) {
 	}
 	if a.config.DownloadQuality != "HI_RES" || a.config.FileNameFormat != "{title}" {
 		t.Errorf("SetDownloadOptions() did not persist to config: %+v", a.config)
+	}
+}
+
+func TestSetDownloadOptions_PreservesOtherDownloaderOptions(t *testing.T) {
+	core.SetDataDir(t.TempDir())
+	svc := core.NewTidalHifiService()
+	initial := core.DownloadOptions{
+		Quality:              "LOSSLESS",
+		FolderTemplate:       "{artist}/{album}",
+		QualityFallbackOrder: []string{"HI_RES", "LOSSLESS"},
+		SkipExisting:         true,
+		ExternalLibraryPaths: []string{"/lib"},
+		ArtistSeparator:      ", ",
+		PlaylistSubfolder:    true,
+		SaveLyricsFile:       true,
+		SeparateSingles:      true,
+		EnableReplayGain:     true,
+		FirstArtistOnly:      true,
+		SaveFolderCover:      true,
+		AutoQualityFallback:  true,
+	}
+	svc.SetOptions(initial)
+	a := &App{downloader: svc}
+
+	if err := a.SetDownloadOptions("HI_RES", "{title}", true, true, true, true); err != nil {
+		t.Fatalf("SetDownloadOptions() error = %v", err)
+	}
+
+	got := svc.GetOptions()
+	want := initial
+	want.Quality = "HI_RES"
+	want.FileNameFormat = "{title}"
+	want.OrganizeFolders = true
+	want.EmbedCover = true
+	want.SaveCoverFile = true
+	want.AutoAnalyze = true
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SetDownloadOptions() options = %+v, want %+v", got, want)
 	}
 }
 

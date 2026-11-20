@@ -20,7 +20,6 @@
     SaveConfig,
     SetDownloadFolder,
     GetDownloadOptions,
-    SetDownloadOptions,
     ResetToDefaults,
     CheckAPIStatus,
     ProbeEndpoints,
@@ -572,15 +571,6 @@
         enableReplayGain: config.enableReplayGain,
       });
 
-      // Save download options
-      await SetDownloadOptions(
-        'LOSSLESS',
-        config.fileNameFormat,
-        false,
-        config.embedCover,
-        config.saveCoverFile,
-        config.autoAnalyze
-      );
       toastStore.showKey('settings.toast.saved');
     } catch (error) {
       console.error('Error saving config:', error);

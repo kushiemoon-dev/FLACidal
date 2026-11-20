@@ -65,6 +65,7 @@
 - Rename templates containing `..` or an absolute path are rejected, and `{artist}/{album}/{title}` now creates the missing sub-folders (via flacidal-core v0.23.0).
 - **Slow library listing**: listing read every FLAC file whole, one after the other. It now reads only the file headers, in parallel, and keeps a per-file cache that is dropped when a file's size or modification time changes. On a generated library of 1189 files with 500 KB covers, the listing went from about 158 ms to 14 ms on a first pass and 6 ms on a repeat (files already in the OS page cache, so a cold disk will be slower).
 - **Wrong source label**: a file with an ISRC but no source named in its comment was labelled `tidal`. It is now `unknown`, so the source filter of the mobile library no longer lists such files under Tidal.
+- **Download quality reverted to Lossless on save** (#24): saving Settings wrote `LOSSLESS` and reset the legacy `organizeFolders` option whatever you had chosen. Save now keeps the chosen quality, and changing download options no longer drops the other live downloader options (folder template, fallback order, skip existing, and so on) until the next restart.
 
 ### Breaking
 - Docker users must set `FLACIDAL_AUTH_TOKEN` (see the README); the compose file refuses to start without it.
