@@ -7,11 +7,15 @@ export function AddLog(arg1:string,arg2:string):Promise<void>;
 
 export function AddRegistrySource(arg1:string):Promise<void>;
 
+export function AnalyzeBatch(arg1:string,arg2:Array<string>):Promise<Array<core.AnalysisResult>>;
+
 export function AnalyzeFile(arg1:string):Promise<core.AnalysisResult>;
 
 export function AnalyzeMultiple(arg1:Array<string>):Promise<Array<core.AnalysisResult>>;
 
 export function BrowseRegistry(arg1:string):Promise<Array<core.RegistryEntry>>;
+
+export function CancelAnalyzeBatch(arg1:string):Promise<boolean>;
 
 export function CancelDownload(arg1:number):Promise<void>;
 
@@ -44,6 +48,8 @@ export function DownloadTrackFromTidal(arg1:core.TidalTrack,arg2:string):Promise
 export function EmbedLyricsToFile(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ExpandDiscographyURL(arg1:string):Promise<Array<string>>;
+
+export function ExportAnalysisReport(arg1:string,arg2:Array<core.AnalysisResult>):Promise<string>;
 
 export function ExportConfig():Promise<void>;
 
@@ -157,15 +163,15 @@ export function PreviewRename(arg1:Array<string>,arg2:string):Promise<Array<core
 
 export function ProbeEndpoints():Promise<Array<core.SourceHealth>>;
 
-export function QueueArtistAlbum(arg1:string,arg2:string,arg3:string):Promise<number>;
+export function QueueArtistAlbum(arg1:string,arg2:string,arg3:string,arg4:string):Promise<number>;
 
 export function QueueDiscographyAlbums(arg1:Array<string>,arg2:string):Promise<number>;
 
-export function QueueDownloads(arg1:Array<core.TidalTrack>,arg2:string,arg3:string,arg4:string,arg5:string):Promise<number>;
+export function QueueDownloads(arg1:Array<core.TidalTrack>,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<number>;
 
 export function QueueQobuzDownloads(arg1:Array<core.SourceTrack>,arg2:string,arg3:string):Promise<number>;
 
-export function QueueSingleDownload(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;
+export function QueueSingleDownload(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
 export function QuickAnalyze(arg1:string):Promise<core.AnalysisResult>;
 

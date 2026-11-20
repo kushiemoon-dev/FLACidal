@@ -108,6 +108,17 @@ describe('EventsOn/EventsOff over websocket (browser mode)', () => {
     expect(cb).toHaveBeenCalledWith({ trackId: 42, status: 'completed', result: { filePath: '/music/a.flac' } })
   })
 
+  it('redistributes analyze-progress with its payload and the type stripped', async () => {
+    const { EventsOn } = await import('./websocket')
+    const cb = vi.fn()
+    EventsOn('analyze-progress', cb)
+
+    const result = { filePath: '/a.flac', verdict: 'lossless' }
+    MockWebSocket.instances[0].emit({ type: 'analyze-progress', batchId: 'b1', done: 2, total: 5, result })
+
+    expect(cb).toHaveBeenCalledWith({ batchId: 'b1', done: 2, total: 5, result })
+  })
+
   it('skips listeners for event names the /ws hub never broadcasts', async () => {
     const { EventsOn } = await import('./websocket')
     const cb = vi.fn()

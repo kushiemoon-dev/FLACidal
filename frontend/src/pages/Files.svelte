@@ -22,6 +22,8 @@
     title: string;
     artist: string;
     album: string;
+    format?: string;
+    codec?: string;
   }
 
   let files: DownloadedFile[] = $state([]);
@@ -183,7 +185,7 @@
     unsubscribeFileDrop = onNativeFileDrop((x, y, paths) => {
       dragCounter = 0;
       isDragOver = false;
-      const flacPaths = paths.filter((p: string) => p.toLowerCase().endsWith('.flac'));
+      const flacPaths = paths.filter((p: string) => /\.(flac|m4a)$/i.test(p));
       if (flacPaths.length > 0) {
         externalAnalysisFiles = flacPaths;
         showAnalysisModal = true;
@@ -510,7 +512,14 @@
                 <circle cx="18" cy="16" r="3"/>
               </svg>
               <div class="file-info">
-                <span class="file-name">{file.title || file.name}</span>
+                <span class="file-name">
+                  {file.title || file.name}
+                  {#if file.codec === 'eac3'}
+                    <span class="format-badge atmos">{$t('files.badge.atmos')}</span>
+                  {:else if file.format === 'm4a'}
+                    <span class="format-badge m4a">{$t('files.badge.m4a')}</span>
+                  {/if}
+                </span>
                 <span class="file-path">{file.name}</span>
               </div>
             </div>
@@ -867,6 +876,27 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .format-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .format-badge.atmos {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+  }
+
+  :global([data-theme="light"]) .format-badge.atmos { color: #7e22ce; }
+
+  .format-badge.m4a {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--color-text-tertiary);
   }
 
   .file-path {

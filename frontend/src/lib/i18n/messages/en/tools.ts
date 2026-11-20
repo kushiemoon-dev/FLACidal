@@ -77,4 +77,12 @@ export const tools = {
   'tools.lyrics.plain': 'plain',
   'tools.files.templateAria': 'Rename template',
   'tools.files.refreshAria': 'Reload files',
+  'tools.analyzer.progress': '{done} of {total}',
+  'tools.analyzer.cancel': 'Cancel',
+  'tools.analyzer.cancelled': 'Analysis cancelled, {done} results out of {total}',
+  'tools.analyzer.errors.title': 'Files in error',
+  'tools.analyzer.export.csv': 'Export as CSV',
+  'tools.analyzer.export.json': 'Export as JSON',
+  'tools.analyzer.tooMany': 'Too many files: {count} (maximum {max})',
+  'tools.analyzer.failed': 'Analysis failed: {error}',
 };

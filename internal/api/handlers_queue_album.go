@@ -15,9 +15,14 @@ func (s *Server) handleQueueArtistAlbum(c *fiber.Ctx) error {
 		AlbumID    string `json:"albumId"`
 		ArtistName string `json:"artistName"`
 		OutputDir  string `json:"outputDir"`
+		Quality    string `json:"quality"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	quality, qErr := core.NormalizeDownloadQuality(req.Quality)
+	if qErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": qErr.Error()})
 	}
 	if req.OutputDir == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": core.NewCodedError(core.CodeQueueNoOutputDir, "").Error()})
@@ -41,6 +46,6 @@ func (s *Server) handleQueueArtistAlbum(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("failed to create album folder: %v", err)})
 	}
 
-	queued := s.downloadManager.QueueMultiple(album.Tracks, albumDir)
+	queued := s.downloadManager.QueueMultipleWithQuality(album.Tracks, albumDir, quality)
 	return c.JSON(fiber.Map{"queued": queued})
 }

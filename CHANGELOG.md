@@ -7,7 +7,7 @@
 - With `AUTH_TOKEN` set, `/api`, `/ws` and `/ws/queue` require a bearer token; `GET /api/health` and the web app stay public. The browser asks for the token on first access.
 - Without a token on a loopback address, requests with a foreign `Host` header are rejected.
 - The wildcard CORS policy is gone: cross-origin calls need an origin listed in the new `CORS_ORIGINS` variable.
-- File routes of the headless server (delete, metadata, cover, rename, convert, lyrics, analyzer by path) are confined to the download folder and the external library paths, symlinks included. Deleting is limited to `.flac` files.
+- File routes of the headless server (delete, metadata, cover, rename, convert, lyrics, analyzer by path) are confined to the download folder and the external library paths, symlinks included. Deleting is limited to `.flac` and `.m4a` files.
 - The download folder and external library paths saved through the API must be absolute and cannot be `/`.
 
 ### Extensions
@@ -16,6 +16,19 @@
 - **Safer extensions**: an installed extension is disabled until you enable it, and that choice survives a restart. Installs only accept `https` zips of at most 5 MiB, never write outside the extensions folder and leave nothing behind when they fail. Calls to an extension's API require the `network` permission and stay on its declared host; credentials never leave that host and are no longer returned by any API.
 - **Extensions in the source order**: installed extensions show up in the source priority list and can be dragged like any other source. By default they sit right before Soulseek.
 - Needs FLACidal-Core v0.30.0.
+
+### Search, Files and Analyzer
+- **Label filter in Search > Albums**: filters the albums already found by the text search, without starting a new search, and shows the label on each card. Albums without a known label are left out while the filter is on, and counted under the field. The label comes from a detail lookup for the first 20 results (4 at a time); a failed lookup leaves that label empty and never breaks the search. Latency added by the lookups: up to 5 rounds of one request, not measured against the live proxies yet.
+- **Atmos button** on every Tidal track and album in Search: queues that item as Dolby Atmos (lossy `.m4a`) without changing the quality setting. A track with no Atmos version fails with `this track has no Dolby Atmos version` instead of falling back to another quality. Other sources can still be tried after a Tidal failure, as before, so a track without Atmos may end up as FLAC from another source. Without a quality in the request, nothing changes.
+- **`quality` in the headless API**: `POST /api/downloads/queue`, `/api/downloads/single` and `/api/downloads/queue/album` accept `quality` (`HI_RES`, `HI_RES_LOSSLESS`, `LOSSLESS`, `HIGH`, `LOW`, `ATMOS`); anything else is a 400 before any side effect.
+- **Files lists `.m4a`** (Atmos and AAC downloads) with a badge, and they can be analyzed and deleted. FLAC rows have no badge. The file list gains an additive `codec` field; mobile callers are unaffected.
+- **Analyzer by batch**: progress (`n of total`), a Cancel button that keeps the results already received, files in error listed apart with their message, and CSV or JSON export (a save dialog on the desktop, a download in the browser). Up to 5000 files per batch, analyzed `min(NumCPU, 4)` at a time. The batch is also used by the analysis dialog of Files.
+- **Headless analyzer**: `POST /api/analyze/batch` (progress on `/ws` as `analyze-progress`), `POST /api/analyze/batch/:id/cancel` and `POST /api/analyze/report?format=csv|json`. More than 5000 files is a 413; each path is still confined to the allowed folders and a refused path becomes an error row. CSV cells starting with `=`, `+`, `-` or `@` are neutralised.
+- Light theme: the verdict badges of the Analyzer and the download buttons of Search now meet the contrast ratio.
+- Needs FLACidal-Core v0.32.0.
+
+### AppImage updates
+- The AppImage embeds its update information (`gh-releases-zsync`) and each release publishes a `flacidal-x86_64.AppImage.zsync`, so AppImageUpdate can fetch deltas. The `.zsync` name has no `linux` in it on purpose, to keep the in-app updater's asset choice unambiguous (covered by a test).
 
 ### Web parity
 - **Server file browser** (English, French, German, keyboard and screen reader friendly) replaces the native pickers in the browser: Analyzer, Converter, Resampler, Lyrics and File Manager choose files and folders on the server. Tools stay inside the download folder and the library paths (`GET /api/browse?scope=tools`); picking a download folder or library works anywhere on the server and lists folders only (`scope=folders`). `GET /api/browse/flac` lists the FLAC files of a chosen folder.

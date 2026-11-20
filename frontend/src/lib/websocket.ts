@@ -11,6 +11,7 @@
 //   download-progress      {type, trackId, status, result}
 //   log                    {type, timestamp, level, message}
 //   ffmpeg-install-progress {type, stage, percent, error}
+//   analyze-progress       {type, batchId, done, total, result}
 // ws-reconnected is local: fired when the socket opens again after a drop,
 // so a listener can reload what it may have missed (Terminal reloads its logs).
 //
@@ -67,6 +68,9 @@ function handleMessage(event: MessageEvent): void {
     stage?: string
     percent?: number
     error?: string
+    batchId?: string
+    done?: number
+    total?: number
   } | null
   try {
     msg = JSON.parse(event.data)
@@ -80,6 +84,8 @@ function handleMessage(event: MessageEvent): void {
     dispatch('log', { timestamp: msg.timestamp, level: msg.level, message: msg.message })
   } else if (msg?.type === 'ffmpeg-install-progress') {
     dispatch('ffmpeg-install-progress', { stage: msg.stage, percent: msg.percent, error: msg.error })
+  } else if (msg?.type === 'analyze-progress') {
+    dispatch('analyze-progress', { batchId: msg.batchId, done: msg.done, total: msg.total, result: msg.result })
   }
 }
 

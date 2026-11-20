@@ -16,6 +16,7 @@
     trackCount: number;
     coverUrl: string;
     albumType?: string;
+    label?: string;
   }
 
   interface SearchArtist {
@@ -48,6 +49,7 @@
   let isSearching = $state(false);
   let hasSearched = $state(false);
   let filterText = $state('');
+  let labelFilter = $state('');
   let filterTimeout: ReturnType<typeof setTimeout> | undefined;
   let debouncedFilter = $state('');
   const downloadingAlbums = new SvelteSet<number>();
@@ -82,7 +84,7 @@
         })
   );
 
-  const filteredAlbums = $derived(
+  const textFilteredAlbums = $derived(
     debouncedFilter.trim() === ''
       ? albumResults
       : albumResults.filter(album => {
@@ -92,6 +94,19 @@
             album.artist.toLowerCase().includes(q)
           );
         })
+  );
+
+  const labelQuery = $derived(labelFilter.trim().toLowerCase());
+
+  const filteredAlbums = $derived(
+    labelQuery === ''
+      ? textFilteredAlbums
+      : textFilteredAlbums.filter(album => (album.label ?? '').toLowerCase().includes(labelQuery))
+  );
+
+  // Albums the label filter cannot judge, since their label is unknown.
+  const unknownLabelCount = $derived(
+    labelQuery === '' ? 0 : textFilteredAlbums.filter(album => !album.label).length
   );
 
   const filteredArtists = $derived(
@@ -116,6 +131,7 @@
     albumResults = [];
     artistResults = [];
     deezerResults = [];
+    labelFilter = '';
     clearFilter();
 
     if (searchType === 'universal') {
@@ -160,7 +176,7 @@
     return releaseDate.substring(0, 4);
   }
 
-  async function downloadTrack(track: TidalTrack) {
+  async function downloadTrack(track: TidalTrack, quality = '') {
     if (!$downloadFolder) {
       toastStore.showKey('search.toast.setFolder', {}, 'error');
       return;
@@ -174,7 +190,7 @@
     });
 
     try {
-      await QueueSingleDownload(track.id, $downloadFolder, track.title, track.artist);
+      await QueueSingleDownload(track.id, $downloadFolder, track.title, track.artist, quality);
     } catch (error) {
       console.error('Download error:', error);
       queueStore.updateItem(track.id, {
@@ -190,7 +206,7 @@
     }
   }
 
-  async function downloadAlbum(album: SearchAlbum) {
+  async function downloadAlbum(album: SearchAlbum, quality = '') {
     if (!$downloadFolder) {
       toastStore.showKey('search.toast.setFolder', {}, 'error');
       return;
@@ -199,7 +215,7 @@
     downloadingAlbums.add(album.id);
 
     try {
-      await QueueArtistAlbum(String(album.id), album.artist, $downloadFolder);
+      await QueueArtistAlbum(String(album.id), album.artist, $downloadFolder, quality);
     } catch (error) {
       console.error('Album download error:', error);
     } finally {
@@ -324,6 +340,29 @@
       {/if}
     </div>
 
+    {#if searchType === 'albums'}
+      <div class="filter-input-wrapper label-filter">
+        <svg class="filter-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+        <input
+          type="text"
+          bind:value={labelFilter}
+          placeholder={$t('search.filter.label')}
+          aria-label={$t('search.filter.label')}
+          aria-describedby="label-filter-hint"
+          class="filter-input label-filter-input"
+        />
+      </div>
+      <p id="label-filter-hint" class="label-filter-hint">
+        {$t('search.filter.labelHint')}
+        {#if unknownLabelCount > 0}
+          <span class="label-unknown-count">{$t('search.filter.unknownLabel', { count: unknownLabelCount })}</span>
+        {/if}
+      </p>
+    {/if}
+
     {#if searchType === 'tracks'}
       <div class="results-list">
         {#each filteredResults as track, i (track.id)}
@@ -351,6 +390,14 @@
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
             </button>
+            <button
+              class="atmos-btn track-atmos-btn"
+              onclick={() => downloadTrack(track, 'ATMOS')}
+              title={$t('search.download.atmosTitle')}
+              aria-label={$t('search.download.atmosTitle')}
+            >
+              {$t('search.download.atmos')}
+            </button>
           </div>
         {/each}
       </div>
@@ -371,6 +418,9 @@
             <div class="album-card-info">
               <span class="album-card-title" title={album.title}>{album.title}</span>
               <span class="album-card-artist">{album.artist}</span>
+              {#if album.label}
+                <span class="album-card-label" title={$t('search.album.label')}>{album.label}</span>
+              {/if}
               <div class="album-card-meta">
                 {#if album.releaseDate}
                   <span>{formatYear(album.releaseDate)}</span>
@@ -383,23 +433,34 @@
                 {/if}
               </div>
             </div>
-            <button
-              class="album-download-btn"
-              onclick={() => downloadAlbum(album)}
-              disabled={downloadingAlbums.has(album.id)}
-              title={$t('search.downloadAlbum')}
-            >
-              {#if downloadingAlbums.has(album.id)}
-                <div class="spinner-small"></div>
-              {:else}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                {$t('search.download')}
-              {/if}
-            </button>
+            <div class="album-actions">
+              <button
+                class="album-download-btn"
+                onclick={() => downloadAlbum(album)}
+                disabled={downloadingAlbums.has(album.id)}
+                title={$t('search.downloadAlbum')}
+              >
+                {#if downloadingAlbums.has(album.id)}
+                  <div class="spinner-small"></div>
+                {:else}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {$t('search.download')}
+                {/if}
+              </button>
+              <button
+                class="atmos-btn album-atmos-btn"
+                onclick={() => downloadAlbum(album, 'ATMOS')}
+                disabled={downloadingAlbums.has(album.id)}
+                title={$t('search.download.atmosTitle')}
+                aria-label={$t('search.download.atmosTitle')}
+              >
+                {$t('search.download.atmos')}
+              </button>
+            </div>
           </div>
         {/each}
       </div>
@@ -900,6 +961,29 @@
     text-overflow: ellipsis;
   }
 
+  .label-filter {
+    margin-bottom: 4px;
+  }
+
+  .label-filter-hint {
+    margin: 0 0 16px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+
+  .label-unknown-count {
+    margin-left: 8px;
+    color: var(--color-text-tertiary);
+  }
+
+  .album-card-label {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .album-card-meta {
     display: flex;
     align-items: center;
@@ -917,6 +1001,42 @@
     font-size: 11px;
     font-weight: 500;
     text-transform: uppercase;
+  }
+
+  .album-actions {
+    display: flex;
+    gap: 8px;
+    margin: 8px 16px 16px;
+  }
+
+  .album-actions .album-download-btn {
+    flex: 1;
+    margin: 0;
+  }
+
+  .atmos-btn {
+    padding: 6px 10px;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 8px;
+    color: #c084fc;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  :global([data-theme="light"]) .atmos-btn { color: #7e22ce; }
+  :global([data-theme="light"]) .album-download-btn,
+  :global([data-theme="light"]) .download-all-btn { color: #be185d; }
+
+  .atmos-btn:hover:not(:disabled) {
+    background: rgba(168, 85, 247, 0.2);
+  }
+
+  .atmos-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .album-download-btn {

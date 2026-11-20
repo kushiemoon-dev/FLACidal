@@ -56,26 +56,29 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	app              *fiber.App
-	configMu         sync.RWMutex // guards config, see cfg/setCfg/updateConfig
-	config           *core.Config
-	db               *core.Database
-	downloadManager  *core.DownloadManager
-	sourceManager    *core.SourceManager
-	tidalSource      *core.TidalSource
-	qobuzSource      *core.QobuzSource
-	downloader       *core.TidalHifiService
-	core             *core.Core
-	lyricsClient     *core.LyricsClient
-	wsHub            *WebSocketHub
-	queueBroadcaster *QueueBroadcaster
-	ctx              context.Context
-	frontendFS       embed.FS
-	frontendDir      string
-	logBuffer        *core.LogBuffer
-	version          string
-	ffmpeg           app.FFmpegInstaller
-	cancelLogs       func()
+	app             *fiber.App
+	configMu        sync.RWMutex // guards config, see cfg/setCfg/updateConfig
+	config          *core.Config
+	db              *core.Database
+	downloadManager *core.DownloadManager
+	sourceManager   *core.SourceManager
+	tidalSource     *core.TidalSource
+	qobuzSource     *core.QobuzSource
+	downloader      *core.TidalHifiService
+	core            *core.Core
+	lyricsClient    *core.LyricsClient
+	wsHub           *WebSocketHub
+	analyzeBatches  app.BatchRegistry
+	// analyzeProgressHook replaces the WebSocket broadcast of batch progress; tests only.
+	analyzeProgressHook func(map[string]interface{})
+	queueBroadcaster    *QueueBroadcaster
+	ctx                 context.Context
+	frontendFS          embed.FS
+	frontendDir         string
+	logBuffer           *core.LogBuffer
+	version             string
+	ffmpeg              app.FFmpegInstaller
+	cancelLogs          func()
 }
 
 func NewServer(cfg ServerConfig) *Server {

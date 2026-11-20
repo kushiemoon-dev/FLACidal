@@ -10,6 +10,10 @@ export function AddRegistrySource(arg1) {
   return window['go']['app']['App']['AddRegistrySource'](arg1);
 }
 
+export function AnalyzeBatch(arg1, arg2) {
+  return window['go']['app']['App']['AnalyzeBatch'](arg1, arg2);
+}
+
 export function AnalyzeFile(arg1) {
   return window['go']['app']['App']['AnalyzeFile'](arg1);
 }
@@ -20,6 +24,10 @@ export function AnalyzeMultiple(arg1) {
 
 export function BrowseRegistry(arg1) {
   return window['go']['app']['App']['BrowseRegistry'](arg1);
+}
+
+export function CancelAnalyzeBatch(arg1) {
+  return window['go']['app']['App']['CancelAnalyzeBatch'](arg1);
 }
 
 export function CancelDownload(arg1) {
@@ -84,6 +92,10 @@ export function EmbedLyricsToFile(arg1, arg2, arg3) {
 
 export function ExpandDiscographyURL(arg1) {
   return window['go']['app']['App']['ExpandDiscographyURL'](arg1);
+}
+
+export function ExportAnalysisReport(arg1, arg2) {
+  return window['go']['app']['App']['ExportAnalysisReport'](arg1, arg2);
 }
 
 export function ExportConfig() {
@@ -310,24 +322,24 @@ export function ProbeEndpoints() {
   return window['go']['app']['App']['ProbeEndpoints']();
 }
 
-export function QueueArtistAlbum(arg1, arg2, arg3) {
-  return window['go']['app']['App']['QueueArtistAlbum'](arg1, arg2, arg3);
+export function QueueArtistAlbum(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['QueueArtistAlbum'](arg1, arg2, arg3, arg4);
 }
 
 export function QueueDiscographyAlbums(arg1, arg2) {
   return window['go']['app']['App']['QueueDiscographyAlbums'](arg1, arg2);
 }
 
-export function QueueDownloads(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['app']['App']['QueueDownloads'](arg1, arg2, arg3, arg4, arg5);
+export function QueueDownloads(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['app']['App']['QueueDownloads'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function QueueQobuzDownloads(arg1, arg2, arg3) {
   return window['go']['app']['App']['QueueQobuzDownloads'](arg1, arg2, arg3);
 }
 
-export function QueueSingleDownload(arg1, arg2, arg3, arg4) {
-  return window['go']['app']['App']['QueueSingleDownload'](arg1, arg2, arg3, arg4);
+export function QueueSingleDownload(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['app']['App']['QueueSingleDownload'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function QuickAnalyze(arg1) {

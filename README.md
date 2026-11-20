@@ -234,7 +234,7 @@ Reach the Tools panel through the grid icon in the sidebar:
 
 | Tool | What it does |
 |------|-------------|
-| **Quality Analyzer** | Examines actual frequency content to confirm true lossless status, reports BPM/musical key, and can retag from Deezer (album/tracknumber/discnumber/year/genre/cover) |
+| **Quality Analyzer** | Examines actual frequency content to confirm true lossless status, reports BPM/musical key, and can retag from Deezer (album/tracknumber/discnumber/year/genre/cover); analyzes up to 5000 files per batch with progress and cancel, and exports a CSV or JSON report |
 | **Resampler** | Adjusts sample rate (192 kHz down to 44.1 kHz, for instance) |
 | **Converter** | Transcodes to other formats (MP3, AAC, OGG, Opus, Vorbis, ALAC, WAV, AIFF) through FFmpeg |
 | **File Manager** | Batch-renames files based on metadata templates |
@@ -266,7 +266,7 @@ Settings live at `~/.flacidal/config.json` and can be edited from within the app
 
 | Setting | Default | Options |
 |---------|---------|---------|
-| Quality | `Lossless` | `Hi-Res` (24-bit/48kHz+) · `Lossless` (16-bit/44.1kHz) · `High` (320kbps, lossy) · `Atmos` (lossy, .m4a, Tidal only) |
+| Quality | `Lossless` | `Hi-Res` (24-bit/48kHz+) · `Lossless` (16-bit/44.1kHz) · `High` (320kbps, lossy) · `Atmos` (lossy, .m4a, Tidal only; the **Atmos** button in Search downloads one track or album this way without changing the setting) |
 | File naming | `{artist} - {title}` | Custom template with metadata variables |
 | Embed cover art | `true` | `true` · `false` |
 | Concurrent downloads | `4` | `1` – `10` |
