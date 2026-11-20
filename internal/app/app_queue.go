@@ -74,12 +74,16 @@ func (a *App) DownloadTrackFromTidal(track core.TidalTrack, outputDir string) (*
 	return a.downloader.DownloadTrack(track.ID, outputDir, track.Copyright, track.Label, "", nil)
 }
 
-func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, contentName string, contentID string, contentType string) (int, error) {
+func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, contentName string, contentID string, contentType string, quality string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
 		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
+	}
+	q, err := core.NormalizeDownloadQuality(quality)
+	if err != nil {
+		return 0, err
 	}
 
 	if contentName != "" {
@@ -89,7 +93,7 @@ func (a *App) QueueDownloads(tracks []core.TidalTrack, outputDir string, content
 		}
 	}
 
-	queued := a.downloadManager.QueueMultiple(tracks, outputDir)
+	queued := a.downloadManager.QueueMultipleWithQuality(tracks, outputDir, q)
 
 	if a.db != nil && contentID != "" {
 		if err := a.db.SaveDownloadRecord(&core.DownloadRecord{
@@ -126,12 +130,16 @@ func (a *App) QueueQobuzDownloads(tracks []core.SourceTrack, outputDir string, c
 }
 
 // outputDir should point at the artist's folder; an album subfolder gets created automatically.
-func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string) (int, error) {
+func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir string, quality string) (int, error) {
 	if a.downloadManager == nil {
 		return 0, core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
 		return 0, core.NewCodedError(core.CodeQueueNoOutputDir, "")
+	}
+	q, err := core.NormalizeDownloadQuality(quality)
+	if err != nil {
+		return 0, err
 	}
 
 	album, err := a.downloader.GetAlbumFromProxy(albumID)
@@ -149,7 +157,7 @@ func (a *App) QueueArtistAlbum(albumID string, artistName string, outputDir stri
 		return 0, fmt.Errorf("failed to create album folder: %w", err)
 	}
 
-	queued := a.downloadManager.QueueMultiple(album.Tracks, albumDir)
+	queued := a.downloadManager.QueueMultipleWithQuality(album.Tracks, albumDir, q)
 	return queued, nil
 }
 
@@ -158,12 +166,16 @@ func (a *App) DownloadArtistAssets(artistID string, artistName string, outputDir
 	return DownloadArtistAssets(a.tidalClient, artistID, artistName, outputDir)
 }
 
-func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) error {
+func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist, quality string) error {
 	if a.downloadManager == nil {
 		return core.NewCodedError(core.CodeQueueNotReady, "")
 	}
 	if outputDir == "" {
 		return core.NewCodedError(core.CodeQueueNoOutputDir, "")
+	}
+	q, qErr := core.NormalizeDownloadQuality(quality)
+	if qErr != nil {
+		return qErr
 	}
 
 	// Pull the full Tidal metadata, not just the ISRC, so sources that don't
@@ -179,9 +191,9 @@ func (a *App) QueueSingleDownload(trackID int, outputDir, title, artist string) 
 			track.Artist = artist
 		}
 		title, artist = track.Title, track.Artist
-		err = a.downloadManager.QueueDownloadTrack(*track, outputDir)
+		err = a.downloadManager.QueueDownloadTrackWithQuality(*track, outputDir, q)
 	} else {
-		err = a.downloadManager.QueueDownloadWithISRC(trackID, outputDir, title, artist, "")
+		err = a.downloadManager.QueueDownloadWithQuality(trackID, outputDir, title, artist, "", q)
 	}
 	if err == nil && a.db != nil {
 		contentID := strconv.Itoa(trackID)

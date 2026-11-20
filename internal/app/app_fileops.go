@@ -12,7 +12,7 @@ func (a *App) ListDownloadedFiles() ([]core.DownloadedFileInfo, error) {
 		return []core.DownloadedFileInfo{}, nil
 	}
 
-	return core.ListFLACFiles(folder)
+	return core.ListDownloadedAudioFiles(folder)
 }
 
 func (a *App) DeleteFile(path string) error {

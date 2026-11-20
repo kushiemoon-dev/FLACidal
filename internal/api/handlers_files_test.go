@@ -114,3 +114,48 @@ func TestHandleGetCoverArt_InvalidFile(t *testing.T) {
 		t.Errorf("body = %v, want an 'error' key", body)
 	}
 }
+
+func TestHandleFiles_M4aListedAndDeletable(t *testing.T) {
+	dir := t.TempDir()
+	for _, n := range []string{"song.m4a", "song.mp3"} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := NewServer(ServerConfig{Config: &core.Config{DownloadFolder: dir}})
+
+	var files []core.DownloadedFileInfo
+	if resp := doRequest(t, s, "GET", "/api/files", nil, &files); resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("list status = %d", resp.StatusCode)
+	}
+	if len(files) != 1 || files[0].Name != "song.m4a" || files[0].Format != "m4a" {
+		t.Fatalf("files = %+v, want only song.m4a", files)
+	}
+
+	var body map[string]interface{}
+	resp := doRequest(t, s, "DELETE", "/api/files?path="+filepath.Join(dir, "song.mp3"), nil, &body)
+	if resp.StatusCode != fiber.StatusBadRequest || body["error"] != "only downloaded FLAC and M4A files can be deleted" {
+		t.Errorf("mp3 delete: status=%d body=%v", resp.StatusCode, body)
+	}
+	resp = doRequest(t, s, "DELETE", "/api/files?path="+filepath.Join(dir, "song.m4a"), nil, nil)
+	if resp.StatusCode != fiber.StatusOK {
+		t.Errorf("m4a delete status = %d", resp.StatusCode)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "song.m4a")); err == nil {
+		t.Error("song.m4a should be gone")
+	}
+}
+
+func TestHandleDeleteFile_M4aOutsideAllowedFolders(t *testing.T) {
+	dir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "x.m4a")
+	os.WriteFile(outside, []byte("x"), 0o644)
+	s := NewServer(ServerConfig{Config: &core.Config{DownloadFolder: dir}})
+	resp := doRequest(t, s, "DELETE", "/api/files?path="+outside, nil, nil)
+	if resp.StatusCode == fiber.StatusOK {
+		t.Error("outside file must not be deletable")
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Error("outside file was deleted")
+	}
+}

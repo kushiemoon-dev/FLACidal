@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -289,8 +288,13 @@ func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 		Tracks      []core.TidalTrack `json:"tracks"`
 		OutputDir   string            `json:"outputDir"`
 		ContentName string            `json:"contentName"`
+		Quality     string            `json:"quality"`
 	}
 	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	quality, err := core.NormalizeDownloadQuality(req.Quality)
+	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -302,7 +306,7 @@ func (s *Server) handleQueueDownloads(c *fiber.Ctx) error {
 		outputDir = core.GetDefaultDownloadFolder()
 	}
 
-	count := s.downloadManager.QueueMultiple(req.Tracks, outputDir)
+	count := s.downloadManager.QueueMultipleWithQuality(req.Tracks, outputDir, quality)
 	return c.JSON(fiber.Map{"queued": count})
 }
 
@@ -312,9 +316,14 @@ func (s *Server) handleQueueSingle(c *fiber.Ctx) error {
 		OutputDir string `json:"outputDir"`
 		Title     string `json:"title"`
 		Artist    string `json:"artist"`
+		Quality   string `json:"quality"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	quality, qErr := core.NormalizeDownloadQuality(req.Quality)
+	if qErr != nil {
+		return c.Status(400).JSON(fiber.Map{"error": qErr.Error()})
 	}
 
 	outputDir := req.OutputDir
@@ -325,7 +334,7 @@ func (s *Server) handleQueueSingle(c *fiber.Ctx) error {
 		outputDir = core.GetDefaultDownloadFolder()
 	}
 
-	err := s.downloadManager.QueueDownload(req.TrackID, outputDir, req.Title, req.Artist)
+	err := s.downloadManager.QueueDownloadWithQuality(req.TrackID, outputDir, req.Title, req.Artist, "", quality)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -544,7 +553,7 @@ func (s *Server) handleListFiles(c *fiber.Ctx) error {
 		return c.JSON([]core.DownloadedFileInfo{})
 	}
 
-	files, err := core.ListFLACFiles(folder)
+	files, err := core.ListDownloadedAudioFiles(folder)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -561,8 +570,8 @@ func (s *Server) handleDeleteFile(c *fiber.Ctx) error {
 	if err := s.confine(path); err != nil {
 		return pathError(c, err)
 	}
-	if !strings.HasSuffix(strings.ToLower(path), ".flac") {
-		return c.Status(400).JSON(fiber.Map{"error": "only FLAC files can be deleted"})
+	if !core.IsDeletableDownload(path) {
+		return c.Status(400).JSON(fiber.Map{"error": "only downloaded FLAC and M4A files can be deleted"})
 	}
 
 	if err := core.DeleteFile(path); err != nil {

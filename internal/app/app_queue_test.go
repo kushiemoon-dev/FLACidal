@@ -90,13 +90,13 @@ func TestDownloadTrackFromTidal_Guards(t *testing.T) {
 func TestQueueDownloads_Guards(t *testing.T) {
 	t.Run("nil downloadManager", func(t *testing.T) {
 		a := &App{}
-		if _, err := a.QueueDownloads(nil, "/tmp/out", "name", "id", "album"); err == nil {
+		if _, err := a.QueueDownloads(nil, "/tmp/out", "name", "id", "album", ""); err == nil {
 			t.Error("QueueDownloads() with nil downloadManager: want error, got nil")
 		}
 	})
 	t.Run("empty outputDir", func(t *testing.T) {
 		a := &App{downloadManager: core.NewDownloadManager(core.NewTidalHifiService(), 1)}
-		if _, err := a.QueueDownloads(nil, "", "name", "id", "album"); err == nil {
+		if _, err := a.QueueDownloads(nil, "", "name", "id", "album", ""); err == nil {
 			t.Error("QueueDownloads() with empty outputDir: want error, got nil")
 		}
 	})
@@ -120,13 +120,13 @@ func TestQueueQobuzDownloads_Guards(t *testing.T) {
 func TestQueueArtistAlbum_Guards(t *testing.T) {
 	t.Run("nil downloadManager", func(t *testing.T) {
 		a := &App{}
-		if _, err := a.QueueArtistAlbum("album-id", "artist", "/tmp/out"); err == nil {
+		if _, err := a.QueueArtistAlbum("album-id", "artist", "/tmp/out", ""); err == nil {
 			t.Error("QueueArtistAlbum() with nil downloadManager: want error, got nil")
 		}
 	})
 	t.Run("empty outputDir", func(t *testing.T) {
 		a := &App{downloadManager: core.NewDownloadManager(core.NewTidalHifiService(), 1)}
-		if _, err := a.QueueArtistAlbum("album-id", "artist", ""); err == nil {
+		if _, err := a.QueueArtistAlbum("album-id", "artist", "", ""); err == nil {
 			t.Error("QueueArtistAlbum() with empty outputDir: want error, got nil")
 		}
 	})
@@ -142,13 +142,13 @@ func TestDownloadArtistAssets_EmptyOutputDir(t *testing.T) {
 func TestQueueSingleDownload_Guards(t *testing.T) {
 	t.Run("nil downloadManager", func(t *testing.T) {
 		a := &App{}
-		if err := a.QueueSingleDownload(1, "/tmp/out", "title", "artist"); err == nil {
+		if err := a.QueueSingleDownload(1, "/tmp/out", "title", "artist", ""); err == nil {
 			t.Error("QueueSingleDownload() with nil downloadManager: want error, got nil")
 		}
 	})
 	t.Run("empty outputDir", func(t *testing.T) {
 		a := &App{downloadManager: core.NewDownloadManager(core.NewTidalHifiService(), 1)}
-		if err := a.QueueSingleDownload(1, "", "title", "artist"); err == nil {
+		if err := a.QueueSingleDownload(1, "", "title", "artist", ""); err == nil {
 			t.Error("QueueSingleDownload() with empty outputDir: want error, got nil")
 		}
 	})
