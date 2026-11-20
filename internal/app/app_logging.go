@@ -1,8 +1,9 @@
 package app
 
 import (
+	"fmt"
+
 	core "github.com/kushiemoon-dev/flacidal-core"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func (a *App) GetLogs() []core.LogEntry {
@@ -31,9 +32,23 @@ func (a *App) AddLog(level, message string) {
 func (a *App) wireLogEvents() {
 	emit := a.emit
 	if emit == nil {
-		emit = func(event string, data any) { runtime.EventsEmit(a.ctx, event, data) }
+		emit = a.emitEvent
 	}
 	a.cancelLogs = a.logBuffer.Subscribe(func(e core.LogEntry) { emit("log", e) })
+}
+
+// logDownloading writes the "Now downloading" line once per track: the core
+// reports progress several times a second, and one log line per tick would
+// flood the log and the event queue.
+func (a *App) logDownloading(trackID int) {
+	if _, seen := a.downloadingLogged.LoadOrStore(trackID, struct{}{}); !seen {
+		a.logBuffer.Info(fmt.Sprintf("Now downloading track %d...", trackID))
+	}
+}
+
+// clearDownloading lets a retried track log its "Now downloading" line again.
+func (a *App) clearDownloading(trackID int) {
+	a.downloadingLogged.Delete(trackID)
 }
 
 func (a *App) GetLogFilePath() string {

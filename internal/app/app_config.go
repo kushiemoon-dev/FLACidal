@@ -204,9 +204,10 @@ func (a *App) OpenConfigFolder() error {
 }
 
 // ExportConfig writes the current config to a user-chosen JSON file, with
-// Tidal/Soulseek/Qobuz secrets redacted (same 7 fields as FLACidal-Core's
-// rpc.go handleExportConfig). Returns nil with no error if the user cancels
-// the save dialog.
+// Tidal/Soulseek/Qobuz/Jellyfin secrets redacted and the user and password
+// removed from every URL (see BuildConfigExport; FLACidal-Core's own export in
+// rpc.go does not blank the Jellyfin key or the URL credentials). Returns nil
+// with no error if the user cancels the save dialog.
 func (a *App) ExportConfig() error {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: "flacidal-config.json",

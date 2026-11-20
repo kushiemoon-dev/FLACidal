@@ -19,14 +19,14 @@
 
 ### Web parity
 - **Server file browser** (English, French, German, keyboard and screen reader friendly) replaces the native pickers in the browser: Analyzer, Converter, Resampler, Lyrics and File Manager choose files and folders on the server. Tools stay inside the download folder and the library paths (`GET /api/browse?scope=tools`); picking a download folder or library works anywhere on the server and lists folders only (`scope=folders`). `GET /api/browse/flac` lists the FLAC files of a chosen folder.
-- **Export and import of the config in the browser**: `GET /api/config/export` and `POST /api/config/import`, same file format as the desktop app, the 7 credentials blanked and the server token never included.
-- **Live logs**: every log entry reaches the Terminal as it is written, in the browser through `/ws` and in the desktop app through the `log` event, which was only sent for a few messages before. The browser reloads the history after a dropped connection.
+- **Export and import of the config in the browser**: `GET /api/config/export` and `POST /api/config/import`, same file format as the desktop app, the 8 credentials blanked, the user and password removed from every URL (proxy, Jellyfin, custom endpoints), and the server token never included.
+- **Live logs**: log entries reach the Terminal as they are written, in the browser through `/ws` and in the desktop app through the `log` event, which was only sent for a few messages before. The desktop app sends every event to the window through one queue, where repeated progress updates of a download or of the FFmpeg install are merged into the latest one. A log line is dropped from the live view only if that queue is full (it stays in the log history). The browser reloads the history after a dropped connection.
 - **Discography, artist images and FFmpeg install in the browser**: `POST /api/discography/expand`, `/api/discography/queue`, `/api/artists/assets` and `/api/ffmpeg/install`, sharing their code with the desktop app. FFmpeg progress comes through `/ws` and a second install at the same time is refused.
 - The drop zone buttons work in the browser. The buttons that open the local file manager and the in-app update are hidden there.
 - Needs FLACidal-Core v0.31.0.
 
 ### Changed
-- Importing a config no longer erases the credentials already saved when the file has them blank (desktop app and browser). A credential present in the file still replaces the saved one.
+- Importing a config no longer erases the credentials already saved when the file has them blank (desktop app and browser), as long as the file sends them to the same hosts: the Qobuz credentials need the same Qobuz endpoints and proxy, the Jellyfin key the same Jellyfin URL and proxy. Otherwise they are not carried over, so a shared file cannot send them to another server. A credential present in the file still replaces the saved one.
 - A race in the `/ws` client counter is fixed.
 
 ### New features

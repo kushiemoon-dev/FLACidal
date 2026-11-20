@@ -21,7 +21,8 @@ func (s *Server) handleExportConfig(c *fiber.Ctx) error {
 }
 
 // handleImportConfig applies an export file. A secret left empty in the file
-// keeps the stored one. Errors never echo the file content.
+// keeps the stored one only when the hosts that receive it are unchanged (see
+// app.MergeImportedConfig). Errors never echo the file content.
 func (s *Server) handleImportConfig(c *fiber.Ctx) error {
 	merged, err := app.MergeImportedConfig(c.Body(), s.cfg())
 	if err != nil {

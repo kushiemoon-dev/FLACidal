@@ -369,7 +369,7 @@ func (a *App) PauseDownloads() bool {
 	success := a.downloadManager.PauseQueue()
 	if success && a.logBuffer != nil {
 		a.logBuffer.Info("Paused the download queue")
-		runtime.EventsEmit(a.ctx, "queue-paused", true)
+		a.emitEvent("queue-paused", true)
 	}
 	return success
 }
@@ -382,7 +382,7 @@ func (a *App) ResumeDownloads() bool {
 	success := a.downloadManager.ResumeQueue()
 	if success && a.logBuffer != nil {
 		a.logBuffer.Info("Resumed the download queue")
-		runtime.EventsEmit(a.ctx, "queue-paused", false)
+		a.emitEvent("queue-paused", false)
 	}
 	return success
 }

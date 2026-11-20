@@ -20,7 +20,7 @@ func (a *App) GetFFmpegInfo() map[string]interface{} {
 
 func (a *App) InstallFFmpeg() error {
 	return a.ffmpeg.Install(func(p core.FFmpegInstallProgress) {
-		runtime.EventsEmit(a.ctx, "ffmpeg-install-progress", p)
+		a.emitCoalesced("ffmpeg-install", "ffmpeg-install-progress", p)
 	})
 }
 

@@ -13,30 +13,32 @@ import (
 )
 
 type App struct {
-	version         string
-	core            *core.Core // owner of the config and of every component below once Startup ran
-	ctx             context.Context
-	configMu        sync.RWMutex // guards config, see cfg/setCfg/updateConfig
-	config          *core.Config
-	db              *core.Database
-	tidalClient     *core.TidalClient
-	spotifySearch   *core.SpotifyClient // Client Credentials, so no login is required
-	matcher         *core.Matcher
-	downloader      *core.TidalHifiService
-	downloadManager *core.DownloadManager
-	logBuffer       *core.LogBuffer
-	sourceManager   *core.SourceManager
-	tidalSource     *core.TidalSource
-	ffmpeg          FFmpegInstaller
-	emit            func(event string, data any) // Wails event sink, injectable in tests
-	cancelLogs      func()
-	qobuzSource     *core.QobuzSource
-	amazonSource    *core.AmazonSource
-	deezerSource    *core.DeezerSource         // metadata only
-	spotifySource   *core.SpotifySource        // metadata only
-	bandcampSource  *core.BandcampSource       // pay-what-you-want downloads
-	orchestrator    *core.DownloadOrchestrator // applies live priority changes
-	trackContentMap sync.Map                   // tracks trackID -> contentID, used when recording history
+	version           string
+	core              *core.Core // owner of the config and of every component below once Startup ran
+	ctx               context.Context
+	configMu          sync.RWMutex // guards config, see cfg/setCfg/updateConfig
+	config            *core.Config
+	db                *core.Database
+	tidalClient       *core.TidalClient
+	spotifySearch     *core.SpotifyClient // Client Credentials, so no login is required
+	matcher           *core.Matcher
+	downloader        *core.TidalHifiService
+	downloadManager   *core.DownloadManager
+	logBuffer         *core.LogBuffer
+	sourceManager     *core.SourceManager
+	tidalSource       *core.TidalSource
+	ffmpeg            FFmpegInstaller
+	emit              func(event string, data any) // Wails event sink, injectable in tests
+	cancelLogs        func()
+	events            *serialEmitter // single path to the front end, see emitEvent
+	qobuzSource       *core.QobuzSource
+	amazonSource      *core.AmazonSource
+	deezerSource      *core.DeezerSource         // metadata only
+	spotifySource     *core.SpotifySource        // metadata only
+	bandcampSource    *core.BandcampSource       // pay-what-you-want downloads
+	orchestrator      *core.DownloadOrchestrator // applies live priority changes
+	trackContentMap   sync.Map                   // tracks trackID -> contentID, used when recording history
+	downloadingLogged sync.Map                   // trackIDs whose "Now downloading" line was already logged
 }
 
 func NewApp(version string) *App {
@@ -73,31 +75,26 @@ func (a *App) Startup(ctx context.Context) {
 		return
 	}
 	a.attachCore(c)
+	// One goroutine for every front end event, so ExecuteJS calls never overlap
+	// (log lines included), which otherwise crashes WebKit on Linux.
+	events := newSerialEmitter(func(name string, data any) { runtime.EventsEmit(ctx, name, data) }, 50*time.Millisecond)
+	a.events = events
+	a.emit = events.TrySend
 	a.wireLogEvents()
-
-	// A single-file event channel keeps ExecuteJS calls from overlapping, which otherwise crashes WebKit on Linux.
-	type progressEvent struct {
-		eventType string // defaults to "download-progress" when left blank
-		trackID   int
-		status    string
-		result    *core.DownloadResult
-	}
-	eventCh := make(chan progressEvent, 64)
-	go func() {
-		for ev := range eventCh {
-			evType := ev.eventType
-			if evType == "" {
-				evType = "download-progress"
-			}
-			runtime.EventsEmit(ctx, evType, map[string]interface{}{
-				"trackId": ev.trackID,
-				"status":  ev.status,
-				"result":  ev.result,
-			})
-			// Brief pause between events so WebKit/GTK can process the JS
-			time.Sleep(50 * time.Millisecond)
+	sendProgress := func(eventType string, trackID int, status string, result *core.DownloadResult) {
+		payload := map[string]interface{}{
+			"trackId": trackID,
+			"status":  status,
+			"result":  result,
 		}
-	}()
+		if status == "downloading" {
+			// Progress ticks arrive several times a second per download and only
+			// the latest one matters.
+			events.SendCoalesced(fmt.Sprintf("track:%d", trackID), eventType, payload)
+			return
+		}
+		events.Send(eventType, payload)
+	}
 
 	a.downloadManager.SetProgressCallback(func(trackID int, status string, result *core.DownloadResult) {
 		if a.logBuffer != nil {
@@ -105,7 +102,7 @@ func (a *App) Startup(ctx context.Context) {
 			case "queued":
 				a.logBuffer.Info(fmt.Sprintf("Queued track %d", trackID))
 			case "downloading":
-				a.logBuffer.Info(fmt.Sprintf("Now downloading track %d...", trackID))
+				a.logDownloading(trackID)
 			case "completed":
 				if result != nil {
 					a.logBuffer.Success(fmt.Sprintf("Download complete: %s (quality: %s)", result.FilePath, result.Quality))
@@ -134,14 +131,19 @@ func (a *App) Startup(ctx context.Context) {
 								minCooldown = stat.CooldownSecs
 							}
 						}
-						eventCh <- progressEvent{eventType: "endpoint-cooldown", trackID: -1, status: "cooldown", result: &core.DownloadResult{
+						sendProgress("endpoint-cooldown", -1, "cooldown", &core.DownloadResult{
 							Error: fmt.Sprintf("all endpoints cooling down, resuming in %ds", minCooldown),
-						}}
+						})
 					}
 				}
 			case "cancelled":
 				a.logBuffer.Warn(fmt.Sprintf("Cancelled track %d", trackID))
 			}
+		}
+
+		switch status {
+		case "completed", "error", "cancelled":
+			a.clearDownloading(trackID)
 		}
 
 		if a.db != nil {
@@ -163,8 +165,7 @@ func (a *App) Startup(ctx context.Context) {
 			}
 		}
 
-		// Blocks briefly if the buffer is full, trivial next to download time.
-		eventCh <- progressEvent{trackID: trackID, status: status, result: result}
+		sendProgress("download-progress", trackID, status, result)
 	})
 	// Starts the workers and restores the persisted queue; the callback above is already in place.
 	a.core.Start()

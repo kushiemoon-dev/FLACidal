@@ -36,6 +36,8 @@ func TestConfigExportBlanksSecretsAndOmitsServerToken(t *testing.T) {
 	s := transferServer(t, core.Config{
 		TidalClientID: "tid", TidalClientSecret: "tsec", SoulseekUsername: "su", SoulseekPassword: "sp",
 		QobuzAppID: "qid", QobuzAppSecret: "qsec", QobuzAuthToken: "qtok",
+		JellyfinAPIKey: "jkey", ProxyURL: "socks5://user:pass@127.0.0.1:1080",
+		TidalPriorityEndpoints: []string{"https://admin:pw@hifi.home"},
 	}, "server-token-xyz")
 
 	req := httptest.NewRequest("GET", "/api/config/export", nil)
@@ -54,9 +56,14 @@ func TestConfigExportBlanksSecretsAndOmitsServerToken(t *testing.T) {
 	if cd := resp.Header.Get("Content-Disposition"); cd != `attachment; filename="flacidal-config.json"` {
 		t.Errorf("Content-Disposition = %q", cd)
 	}
-	for _, secret := range []string{"tid", "tsec", "su", "sp", "qid", "qsec", "qtok", "server-token-xyz"} {
+	for _, secret := range []string{"tid", "tsec", "su", "sp", "qid", "qsec", "qtok", "jkey", "server-token-xyz"} {
 		if strings.Contains(string(body), `"`+secret+`"`) {
 			t.Errorf("export leaks %s", secret)
+		}
+	}
+	for _, leak := range []string{"user:pass", "admin:pw"} {
+		if strings.Contains(string(body), leak) {
+			t.Errorf("export leaks the URL credential %s", leak)
 		}
 	}
 	var out struct {
