@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -254,4 +255,100 @@ func TestEmitCoalescedUsesSerialEmitter(t *testing.T) {
 	a := &App{events: em}
 	a.emitCoalesced("ffmpeg", "ffmpeg-install-progress", 7)
 	expectEvent(t, ch, "ffmpeg-install-progress", 7)
+}
+
+func TestSerialEmitter_CloseDropsBacklogAndStops(t *testing.T) {
+	release := make(chan struct{})
+	var mu sync.Mutex
+	var got []string
+	em := newSerialEmitter(func(name string, _ any) {
+		mu.Lock()
+		got = append(got, name)
+		first := len(got) == 1
+		mu.Unlock()
+		if first {
+			<-release
+		}
+	}, 0)
+
+	em.Send("first", nil)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		n := len(got)
+		mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	for i := 0; i < 10; i++ {
+		em.Send("backlog", i)
+	}
+	em.Close()
+	em.Close() // idempotent
+
+	done := make(chan struct{})
+	go func() {
+		em.Send("late", nil)
+		em.SendCoalesced("k", "late", nil)
+		em.TrySend("late", nil)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("sending after Close blocked")
+	}
+	close(release)
+	time.Sleep(50 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if !reflect.DeepEqual(got, []string{"first"}) {
+		t.Errorf("emitted %v after Close, want only the in-flight event", got)
+	}
+}
+
+func TestSerialEmitter_CloseReleasesBlockedSend(t *testing.T) {
+	block := make(chan struct{})
+	started := make(chan struct{}, 1)
+	em := newSerialEmitter(func(string, any) {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		<-block
+	}, 0)
+	defer close(block)
+
+	em.Send("first", 0)
+	<-started
+	for i := 0; i < serialEmitterBuffer; i++ {
+		em.Send("fill", i)
+	}
+	done := make(chan struct{})
+	go func() {
+		em.Send("extra", 1)
+		close(done)
+	}()
+	time.Sleep(50 * time.Millisecond)
+	em.Close()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a Send waiting for room was not released by Close")
+	}
+}
+
+func TestShutdownStopsTheEventQueue(t *testing.T) {
+	em, ch := capturingEmitter()
+	a := &App{events: em}
+	a.Shutdown(context.Background())
+	a.emitEvent("late", 1)
+	select {
+	case ev := <-ch:
+		t.Errorf("event %+v emitted after Shutdown", ev)
+	case <-time.After(50 * time.Millisecond):
+	}
 }

@@ -23,6 +23,7 @@ type serialEmitter struct {
 	notFull  *sync.Cond
 	queue    []*serialEvent
 	pending  map[string]*serialEvent // coalescible events still waiting in queue
+	closed   bool
 }
 
 // newSerialEmitter starts the goroutine; pause is waited after each event so
@@ -34,8 +35,12 @@ func newSerialEmitter(emit func(name string, data any), pause time.Duration) *se
 	go func() {
 		for {
 			s.mu.Lock()
-			for len(s.queue) == 0 {
+			for len(s.queue) == 0 && !s.closed {
 				s.notEmpty.Wait()
+			}
+			if s.closed {
+				s.mu.Unlock()
+				return
 			}
 			ev := s.queue[0]
 			s.queue = s.queue[1:]
@@ -59,6 +64,9 @@ func (s *serialEmitter) Send(name string, data any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.waitForRoom()
+	if s.closed {
+		return
+	}
 	clear(s.pending)
 	s.push(&serialEvent{name: name, data: data})
 }
@@ -74,6 +82,9 @@ func (s *serialEmitter) SendCoalesced(key, name string, data any) {
 		return
 	}
 	s.waitForRoom()
+	if s.closed {
+		return
+	}
 	ev := &serialEvent{name: name, data: data, key: key}
 	s.pending[key] = ev
 	s.push(ev)
@@ -84,15 +95,29 @@ func (s *serialEmitter) SendCoalesced(key, name string, data any) {
 func (s *serialEmitter) TrySend(name string, data any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.queue) >= serialEmitterBuffer {
+	if s.closed || len(s.queue) >= serialEmitterBuffer {
 		return
 	}
 	s.push(&serialEvent{name: name, data: data})
 }
 
-// waitForRoom must be called with s.mu held.
+// Close drops the events still waiting and stops the goroutine once the event
+// it may be sending has returned. Later sends are ignored, and a Send waiting
+// for room is released. Without it the queue would keep calling a window that
+// is being destroyed for as long as its backlog lasts. Safe to call twice.
+func (s *serialEmitter) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closed = true
+	s.queue = nil
+	clear(s.pending)
+	s.notEmpty.Broadcast()
+	s.notFull.Broadcast()
+}
+
+// waitForRoom must be called with s.mu held. On return the emitter may be closed.
 func (s *serialEmitter) waitForRoom() {
-	for len(s.queue) >= serialEmitterBuffer {
+	for len(s.queue) >= serialEmitterBuffer && !s.closed {
 		s.notFull.Wait()
 	}
 }
