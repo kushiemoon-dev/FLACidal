@@ -35,5 +35,8 @@
   },
   "dependencies": {
     "lucide-svelte": "^1.0.1"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }
