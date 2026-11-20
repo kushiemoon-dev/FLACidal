@@ -7,6 +7,8 @@ BIN="${BIN:-build/bin/flacidal}"
 ICON="${ICON:-build/appicon.png}"
 OUT="${OUT:-build/bin/flacidal.AppImage}"
 WORK="${WORK:-build/bin/appimage-work}"
+# Embedded so AppImageUpdate can find the release's .zsync (see the release workflow)
+UPDATE_INFO="${UPDATE_INFO:-gh-releases-zsync|kushiemoon-dev|FLACidal|latest|flacidal-x86_64.AppImage.zsync}"
 LIBDIR=/usr/lib/x86_64-linux-gnu
 WEBKIT_DIR="$LIBDIR/webkit2gtk-4.1"
 GIO_TLS="$LIBDIR/gio/modules/libgiognutls.so"
@@ -122,5 +124,5 @@ exec "$this_dir"/AppRun.wrapped "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
-"$WORK/appimagetool" "$APPDIR" "$OUT"
+"$WORK/appimagetool" -u "$UPDATE_INFO" "$APPDIR" "$OUT"
 echo "built $OUT ($(du -h "$OUT" | cut -f1))"

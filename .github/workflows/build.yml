@@ -181,6 +181,7 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
             imagemagick \
+            zsync \
             gstreamer1.0-plugins-base \
             gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-ugly \
@@ -215,11 +216,21 @@ jobs:
       - name: Package AppImage
         run: bash packaging/appimage/build-appimage.sh
 
+      - name: Generate zsync
+        # -u is the final asset URL (name after create-release renames it), -f the
+        # name stored in the .zsync. The bytes do not change on rename, so it stays valid.
+        run: |
+          zsyncmake -u "https://github.com/kushiemoon-dev/FLACidal/releases/download/${GITHUB_REF_NAME}/flacidal_linux_amd64.AppImage" \
+            -f flacidal_linux_amd64.AppImage \
+            -o build/bin/flacidal-x86_64.AppImage.zsync build/bin/flacidal.AppImage
+
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: flacidal-linux
-          path: build/bin/flacidal.AppImage
+          path: |
+            build/bin/flacidal.AppImage
+            build/bin/flacidal-x86_64.AppImage.zsync
 
   create-release:
     name: Create Release
@@ -277,4 +288,5 @@ jobs:
             artifacts/flacidal-macos/flacidal.dmg
             artifacts/flacidal-macos/flacidal_darwin_all.zip
             artifacts/flacidal-linux/flacidal_linux_amd64.AppImage
+            artifacts/flacidal-linux/flacidal-x86_64.AppImage.zsync
             checksums.txt
