@@ -42,4 +42,6 @@ export const files = {
   'files.selectRow': 'Sélectionner {name}',
   'files.sortedAsc': 'trié par ordre croissant',
   'files.sortedDesc': 'trié par ordre décroissant',
+  'files.badge.atmos': 'Dolby Atmos',
+  'files.badge.m4a': 'M4A',
 };
