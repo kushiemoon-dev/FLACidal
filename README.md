@@ -376,7 +376,7 @@ Not yet. A `flacidal-bin` `PKGBUILD` exists in the repo (`packaging/aur/`) but i
 
 <div align="center">
 
-[![Star History](docs/star-history.svg)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
+[![Star History](https://raw.githubusercontent.com/kushiemoon-dev/FLACidal/star-history/star-history.svg)](https://github.com/kushiemoon-dev/FLACidal/stargazers)
 
 </div>
 

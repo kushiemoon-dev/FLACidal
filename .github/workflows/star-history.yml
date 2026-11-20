@@ -7,30 +7,24 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   gen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: python3 .github/scripts/star_history.py "${{ github.repository }}" docs/star-history.svg
+      - run: python3 .github/scripts/star_history.py "${{ github.repository }}" "$RUNNER_TEMP/star-history.svg"
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Open PR with the refreshed history
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Publish to the star-history branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/star-history.svg
-          git diff --cached --quiet && exit 0
-          git checkout -b star-history-update
+          # main is protected and its checks never run on a PR opened with the
+          # default token, so the SVG lives on its own branch that the README links to.
+          git checkout --orphan star-history
+          git rm -rf --quiet .
+          cp "$RUNNER_TEMP/star-history.svg" star-history.svg
+          git add star-history.svg
           git commit -m "chore: refresh star history"
-          # main is protected; push the update to its own branch and open
-          # a PR instead of pushing straight to main (avoids needing a PAT).
-          git push -f origin star-history-update
-          gh pr create --title "chore: refresh star history" \
-            --body "Automated weekly star history refresh." \
-            --base main --head star-history-update \
-            || echo "PR already open, branch updated"
+          git push -f origin star-history
