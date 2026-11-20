@@ -180,6 +180,9 @@ func (a *App) Shutdown(ctx context.Context) {
 	if a.core != nil {
 		a.core.Shutdown()
 	}
+	if a.events != nil {
+		a.events.Close()
+	}
 
 	if a.configLoaded() {
 		cfg := a.cfg()
